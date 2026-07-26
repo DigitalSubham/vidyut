@@ -1,0 +1,14 @@
+{
+  "name": "@vidyut/config",
+  "version": "0.0.0",
+  "private": true,
+  "main": "index.js",
+  "files": [
+    "tsconfig.base.json",
+    "tailwind.preset.js",
+    "eslint.base.js"
+  ],
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}

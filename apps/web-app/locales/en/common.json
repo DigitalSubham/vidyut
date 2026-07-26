@@ -1,0 +1,71 @@
+{
+  "app": {
+    "name": "Vidyut",
+    "tagline": "The energy that powers your school."
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "students": "Students",
+    "fees": "Fees",
+    "attendance": "Attendance"
+  },
+  "topbar": {
+    "schoolPlaceholder": "Your School Name",
+    "userPlaceholder": "Guest User"
+  },
+  "language": {
+    "label": "Language",
+    "english": "English",
+    "hindi": "Hindi"
+  },
+  "home": {
+    "greeting": "Welcome to Vidyut",
+    "description": "Run your school with less effort — fees, attendance, and results, all in one place."
+  },
+  "platform": {
+    "common": {
+      "loading": "Loading…"
+    },
+    "errors": {
+      "unknown": "Something went wrong. Please try again."
+    },
+    "login": {
+      "title": "Super-admin login",
+      "description": "Platform access only — school staff sign in from their own school's login.",
+      "email": "Email",
+      "password": "Password",
+      "submit": "Sign in"
+    },
+    "tenants": {
+      "title": "Schools",
+      "create": "Add school",
+      "empty": "No schools yet — add the first one.",
+      "name": "Name",
+      "slug": "Slug",
+      "status": "Status",
+      "appType": "App delivery"
+    },
+    "newTenant": {
+      "title": "Add a school",
+      "schoolName": "School name",
+      "slug": "Slug (used to resolve this school for login)",
+      "plan": "Plan",
+      "ownerName": "Owner name",
+      "ownerEmail": "Owner email",
+      "ownerPassword": "Owner password",
+      "submit": "Create school"
+    },
+    "tenantDetail": {
+      "status": "Status",
+      "plan": "Plan",
+      "appType": "App delivery",
+      "usage": "Usage",
+      "students": "Students",
+      "users": "Staff users",
+      "branches": "Branches",
+      "storageGb": "Storage (GB)",
+      "suspend": "Suspend",
+      "activate": "Activate"
+    }
+  }
+}

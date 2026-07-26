@@ -1,0 +1,95 @@
+// Tenancy foundation — Unit 02. See context/data-model.md §2 and
+// context/architecture-context.md §3 for the RLS + withTenant() model this depends on.
+
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+  TRIAL
+  CANCELLED
+}
+
+enum AppDelivery {
+  SHARED
+  DEDICATED
+}
+
+enum Board {
+  CBSE
+  ICSE
+  STATE_BIHAR
+  OTHER
+}
+
+/// The customer (school owner/group). Platform-level — not itself RLS-scoped;
+/// accessed by the super-admin surface, not through withTenant().
+model Tenant {
+  id        String       @id @default(cuid())
+  name      String
+  slug      String       @unique
+  status    TenantStatus @default(TRIAL)
+  planId    String?
+  appType   AppDelivery  @default(SHARED)
+  locale    String       @default("en")
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  deletedAt DateTime?
+
+  plan Plan? @relation(fields: [planId], references: [id])
+
+  branches          Branch[]
+  academicSessions  AcademicSession[]
+  users             User[]
+  roles             Role[]
+  rolePermissions   RolePermission[]
+  userRoles         UserRole[]
+  branchMemberships BranchMembership[]
+  refreshTokens     RefreshToken[]
+  subscriptions     Subscription[]
+  moduleToggles     ModuleToggle[]
+  smsWallet         SmsWallet?
+  appBuilds         AppBuild[]
+  auditLogs         AuditLog[]
+}
+
+/// A physical school under the tenant. Tenant-owned — RLS-scoped.
+model Branch {
+  id        String    @id @default(cuid())
+  tenantId  String
+  name      String
+  code      String
+  address   String?
+  board     Board     @default(CBSE)
+  logoUrl   String?
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  tenant            Tenant             @relation(fields: [tenantId], references: [id])
+  academicSessions  AcademicSession[]
+  userRoles         UserRole[]
+  branchMemberships BranchMembership[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+}
+
+/// An academic year for a branch, e.g. "2026-27". Tenant-owned — RLS-scoped.
+model AcademicSession {
+  id        String    @id @default(cuid())
+  tenantId  String
+  branchId  String
+  name      String
+  startDate DateTime
+  endDate   DateTime
+  isCurrent Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  branch Branch @relation(fields: [branchId], references: [id])
+
+  @@unique([branchId, name])
+  @@index([tenantId])
+}

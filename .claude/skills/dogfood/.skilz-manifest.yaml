@@ -1,0 +1,8 @@
+installed_at: '2026-07-25T19:57:27+00:00'
+skill_id: git/dogfood
+git_repo: https://github.com/callstackincubator/agent-skills
+skill_path: /private/var/folders/3x/wr2hrst54c7dpvf7qdy8dwwr0000gn/T/skilz-git-g_cct8t5/plugins/vendored/.agents/skills/dogfood
+git_sha: f6b87e35a35cc300c71331b89af2ac3d9b48a193
+skilz_version: 1.10.0
+install_mode: copy
+canonical_path: null

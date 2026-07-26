@@ -1,0 +1,69 @@
+/* Vidyut design tokens — shared across apps (context/ui-context.md + context/brand.md). Light theme only. */
+:root {
+  --bg-base: #f8fafc;
+  --bg-surface: #ffffff;
+  --bg-subtle: #eef1f6;
+  --bg-elevated: #f1f4f9;
+
+  --border-default: #e2e8f0;
+  --border-strong: #cbd5e1;
+
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+
+  --brand: #4f46e5;
+  --brand-hover: #4338ca;
+  --brand-tint: #eef0ff;
+
+  --data-accent: #06b6d4;
+  --data-accent-deep: #0e7490;
+
+  --success: #16a34a;
+  --warning: #d97706;
+  --danger: #dc2626;
+  --info: #0891b2;
+
+  --radius: 0.5rem;
+
+  --font-heading: "Plus Jakarta Sans", "Noto Sans Devanagari", sans-serif;
+  --font-body: "Inter", "Noto Sans Devanagari", sans-serif;
+  --font-devanagari: "Noto Sans Devanagari", "Inter", sans-serif;
+}
+
+@theme inline {
+  --color-bg-base: var(--bg-base);
+  --color-bg-surface: var(--bg-surface);
+  --color-bg-subtle: var(--bg-subtle);
+  --color-bg-elevated: var(--bg-elevated);
+
+  --color-border: var(--border-default);
+  --color-border-strong: var(--border-strong);
+
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-tint: var(--brand-tint);
+
+  --color-data-accent: var(--data-accent);
+  --color-data-accent-deep: var(--data-accent-deep);
+
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-info: var(--info);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+
+  --font-heading: var(--font-heading);
+  --font-body: var(--font-body);
+  --font-devanagari: var(--font-devanagari);
+  --font-sans: var(--font-body);
+}

@@ -1,0 +1,135 @@
+// Identity, auth & RBAC — Unit 03. See context/data-model.md §3 and
+// context/rbac.md for the full role/permission model.
+
+enum RoleKey {
+  SUPERADMIN
+  OWNER
+  PRINCIPAL
+  ADMIN
+  ACCOUNTANT
+  TEACHER
+  PARENT
+  STUDENT
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  INVITED
+}
+
+/// Any human login (staff, parent, student). Tenant-owned — RLS-scoped.
+model User {
+  id               String     @id @default(cuid())
+  tenantId         String
+  name             String
+  phone            String?
+  email            String?
+  passwordHash     String?
+  status           UserStatus @default(ACTIVE)
+  twoFactorEnabled Boolean    @default(false)
+  locale           String     @default("en")
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  deletedAt        DateTime?
+
+  tenant            Tenant             @relation(fields: [tenantId], references: [id])
+  userRoles         UserRole[]
+  branchMemberships BranchMembership[]
+  refreshTokens     RefreshToken[]
+
+  @@unique([tenantId, phone])
+  @@unique([tenantId, email])
+  @@index([tenantId])
+}
+
+/// A bundle of permissions, per tenant. Seeded system roles + tenant-editable
+/// custom roles. Tenant-owned — RLS-scoped.
+model Role {
+  id        String    @id @default(cuid())
+  tenantId  String
+  key       RoleKey
+  name      String
+  isSystem  Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  tenant          Tenant           @relation(fields: [tenantId], references: [id])
+  rolePermissions RolePermission[]
+  userRoles       UserRole[]
+
+  @@unique([tenantId, key])
+  @@index([tenantId])
+}
+
+/// Role -> permission-string mapping. `tenantId` is denormalized from Role
+/// (data-model.md §1: every tenant-owned table carries tenantId) so RLS can
+/// be enforced directly on this table rather than only transitively via Role.
+model RolePermission {
+  id            String @id @default(cuid())
+  tenantId      String
+  roleId        String
+  permissionKey String
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  role   Role   @relation(fields: [roleId], references: [id])
+
+  @@unique([roleId, permissionKey])
+  @@index([tenantId])
+}
+
+/// User <-> Role, optionally scoped to one branch (multi-branch access
+/// control). `tenantId` denormalized from User, same rationale as above.
+model UserRole {
+  id        String   @id @default(cuid())
+  tenantId  String
+  userId    String
+  roleId    String
+  branchId  String?
+  createdAt DateTime @default(now())
+
+  tenant Tenant  @relation(fields: [tenantId], references: [id])
+  user   User    @relation(fields: [userId], references: [id])
+  role   Role    @relation(fields: [roleId], references: [id])
+  branch Branch? @relation(fields: [branchId], references: [id])
+
+  @@unique([userId, roleId, branchId])
+  @@index([tenantId])
+}
+
+/// Which branches a user can access — drives branch scoping in services
+/// (RLS does not enforce branch scope, only tenant scope).
+model BranchMembership {
+  id        String   @id @default(cuid())
+  tenantId  String
+  userId    String
+  branchId  String
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+  branch Branch @relation(fields: [branchId], references: [id])
+
+  @@unique([userId, branchId])
+  @@index([tenantId])
+}
+
+/// Rotating refresh tokens, stored hashed and revocable — never the raw JWT
+/// (context/api-conventions.md Auth). Tenant-owned — RLS-scoped.
+model RefreshToken {
+  id           String    @id @default(cuid())
+  tenantId     String
+  userId       String
+  tokenHash    String    @unique
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  replacedById String?
+  createdAt    DateTime  @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@index([tenantId])
+  @@index([userId])
+}

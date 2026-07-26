@@ -1,0 +1,11 @@
+-- POSTGRES_USER (vidyut) is the initdb bootstrap role and is a real Postgres
+-- superuser, which BYPASSES Row-Level Security unconditionally — including
+-- FORCE ROW LEVEL SECURITY. That's a bad local stand-in for prod, where the
+-- RDS master user is not a true superuser and does respect FORCE RLS. Create
+-- a plain, non-superuser role for migrations + the app to connect as, so RLS
+-- is actually exercised the way it will be in production.
+-- CREATEDB is unrelated to RLS bypass (only NOSUPERUSER/NOBYPASSRLS matter for
+-- that) — it's granted so Prisma Migrate's shadow-database diffing works,
+-- mirroring how an RDS master user can create databases without being a real
+-- Postgres superuser.
+CREATE ROLE vidyut_app WITH LOGIN PASSWORD 'vidyut_app' NOSUPERUSER NOBYPASSRLS CREATEDB;

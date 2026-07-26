@@ -1,0 +1,179 @@
+// Platform / super-admin — Unit 05. See context/data-model.md §13 and
+// context/plans-entitlements.md for the plan/module/limit rules.
+//
+// RLS note: unlike §2-12, these tables (except AuditLog) do NOT have RLS.
+// data-model.md §13 labels this whole section "NOT tenant-scoped" even
+// though most rows carry a tenantId column (kept for indexing/filtering,
+// not for RLS) — they are platform-managed configuration consulted by
+// internal guards and the super-admin surface, never a tenant-facing CRUD
+// resource. Application code is responsible for scoping these queries by
+// tenantId; there is no RLS safety net here, unlike every other table.
+
+enum PlanKey {
+  STARTER
+  STANDARD
+  PRO
+  ENTERPRISE
+}
+
+enum ModuleKey {
+  students
+  attendance
+  fees
+  communication
+  parent_app
+  teacher_app
+  exams_reportcards
+  admissions
+  certificates
+  timetable
+  homework
+  online_payment
+  owner_dashboard
+  staff_leave
+  multi_branch
+  payroll
+  transport
+  analytics_advanced
+  dedicated_app
+  library
+  hostel
+  inventory
+  accounting
+  ai_features
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+}
+
+enum AppBuildPlatform {
+  ANDROID
+  IOS
+}
+
+enum AppBuildStoreStatus {
+  PENDING
+  BUILDING
+  SUBMITTED
+  LIVE
+  FAILED
+}
+
+/// Global plan catalog — not tenant-owned at all (no tenantId column).
+model Plan {
+  id           String      @id @default(cuid())
+  key          PlanKey     @unique
+  name         String
+  priceYear    Int
+  setupFee     Int
+  studentLimit Int?
+  userLimit    Int?
+  branchLimit  Int?
+  storageGb    Int?
+  appType      AppDelivery
+  modules      Json
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  subscriptions Subscription[]
+  tenants       Tenant[]
+}
+
+model Subscription {
+  id               String             @id @default(cuid())
+  tenantId         String
+  planId           String
+  status           SubscriptionStatus @default(ACTIVE)
+  currentPeriodEnd DateTime
+  seats            Int?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  plan   Plan   @relation(fields: [planId], references: [id])
+
+  @@index([tenantId])
+}
+
+model ModuleToggle {
+  id        String    @id @default(cuid())
+  tenantId  String
+  moduleKey ModuleKey
+  enabled   Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, moduleKey])
+}
+
+model SmsWallet {
+  id           String   @id @default(cuid())
+  tenantId     String   @unique
+  balancePaise Int      @default(0)
+  updatedAt    DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+}
+
+/// White-label build pipeline record (real EAS pipeline is Unit 31 — this
+/// unit only creates the record + enqueues a stub job).
+model AppBuild {
+  id          String              @id @default(cuid())
+  tenantId    String
+  platform    AppBuildPlatform
+  mode        AppDelivery
+  version     String?
+  storeStatus AppBuildStoreStatus @default(PENDING)
+  buildRef    String?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+}
+
+/// Super-admin login — platform-level, no tenantId, no RLS. Separate from
+/// User (context/rbac.md: SUPERADMIN operates across tenants, never via
+/// withTenant()); a distinct table keeps that invariant structural rather
+/// than a convention someone can forget.
+model PlatformUser {
+  id           String     @id @default(cuid())
+  name         String
+  email        String     @unique
+  passwordHash String
+  status       UserStatus @default(ACTIVE)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
+
+enum AuditActorType {
+  USER
+  PLATFORM_USER
+}
+
+/// Sensitive-action trail (context/data-model.md §12). Tenant-owned and
+/// RLS-scoped like §2-12 — even platform actions log against the specific
+/// tenant they affected, written via withTenant(thatTenantId, ...).
+model AuditLog {
+  id        String         @id @default(cuid())
+  tenantId  String
+  branchId  String?
+  actorId   String
+  actorType AuditActorType @default(USER)
+  action    String
+  entity    String
+  entityId  String
+  before    Json?
+  after     Json?
+  createdAt DateTime       @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+}
