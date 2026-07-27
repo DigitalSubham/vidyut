@@ -70,6 +70,7 @@ export interface UsageResponse {
   users: UsageMetric;
   branches: UsageMetric;
   storageGb: UsageMetric;
+  smsWalletBalancePaise: number;
 }
 
 export interface CreateTenantInput {
@@ -79,6 +80,20 @@ export interface CreateTenantInput {
   ownerName: string;
   ownerEmail: string;
   ownerPassword: string;
+}
+
+export interface PlatformInvoice {
+  id: string;
+  invoiceNo: string;
+  amount: number;
+  status: "PENDING" | "PAID" | "OVERDUE";
+  dueDate: string;
+  paidAt: string | null;
+}
+
+export interface RevenueSummary {
+  subscriptionRevenuePaise: number;
+  platformFeeRevenuePaise: number;
 }
 
 export const platformApi = {
@@ -104,4 +119,23 @@ export const platformApi = {
       body: JSON.stringify(input),
     }),
   getUsage: (id: string) => platformFetch<{ data: UsageResponse }>(`/api/v1/platform/tenants/${id}/usage`),
+  listInvoices: (tenantId: string) =>
+    platformFetch<{ data: PlatformInvoice[] }>(`/api/v1/platform/tenants/${tenantId}/invoices`),
+  createInvoice: (tenantId: string, input: { amount: number; dueDate: string }) =>
+    platformFetch<{ data: PlatformInvoice }>(`/api/v1/platform/tenants/${tenantId}/invoices`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  markInvoicePaid: (tenantId: string, invoiceId: string) =>
+    platformFetch<{ data: PlatformInvoice }>(
+      `/api/v1/platform/tenants/${tenantId}/invoices/${invoiceId}`,
+      { method: "PATCH", body: JSON.stringify({ status: "PAID" }) }
+    ),
+  rechargeWallet: (tenantId: string, amountPaise: number) =>
+    platformFetch<{ data: { balancePaise: number } }>(
+      `/api/v1/platform/tenants/${tenantId}/wallet/recharge`,
+      { method: "POST", body: JSON.stringify({ amountPaise, reason: "manual_recharge" }) }
+    ),
+  getRevenueSummary: () =>
+    platformFetch<{ data: RevenueSummary }>("/api/v1/platform/revenue/summary"),
 };

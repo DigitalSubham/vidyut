@@ -1,0 +1,90 @@
+{
+  "schoolCode": {
+    "title": "Enter your school code",
+    "placeholder": "e.g. AB12CD",
+    "continue": "Continue",
+    "notFound": "School not found — check the code and try again"
+  },
+  "phone": {
+    "title": "Enter your phone number",
+    "placeholder": "10-digit mobile number",
+    "sendCode": "Send code"
+  },
+  "otp": {
+    "title": "Enter the code sent to your phone",
+    "verify": "Verify",
+    "invalid": "Incorrect code — please try again"
+  },
+  "home": {
+    "parent": "Parent Home",
+    "teacher": "Teacher Home",
+    "staff": "Staff Home",
+    "student": "Student Home",
+    "logout": "Log out"
+  },
+  "language": {
+    "english": "English",
+    "hindi": "हिन्दी"
+  },
+  "attendance": {
+    "title": "Mark Attendance",
+    "branchId": "Branch ID",
+    "sectionId": "Section ID",
+    "load": "Load",
+    "sync": "Sync",
+    "syncing": "Syncing…",
+    "syncedTitle": "Synced",
+    "syncedBody": "{{count}} record(s) sent",
+    "errorTitle": "Something went wrong",
+    "status": {
+      "PRESENT": "Present",
+      "ABSENT": "Absent",
+      "LATE": "Late"
+    }
+  },
+  "teacherHome": {
+    "tabs": {
+      "attendance": "Attendance",
+      "marks": "Marks",
+      "homework": "Homework"
+    }
+  },
+  "marks": {
+    "title": "Enter Marks",
+    "selectExamHint": "Select an exam to begin",
+    "noSchemeTitle": "No mark scheme",
+    "noSchemeBody": "This class/subject has no ExamSubject for the selected exam yet.",
+    "marksPlaceholder": "Marks",
+    "markAbsent": "Mark Absent",
+    "markPresent": "Mark Present",
+    "next": "Next",
+    "done": "All students entered"
+  },
+  "homework": {
+    "title": "Post Homework",
+    "titlePlaceholder": "Title",
+    "descriptionPlaceholder": "Description",
+    "dueDatePlaceholder": "Due date (YYYY-MM-DD)",
+    "post": "Post",
+    "postedTitle": "Homework posted"
+  },
+  "me": {
+    "tabs": {
+      "fees": "Fees",
+      "attendance": "Attendance",
+      "reportCards": "Report Cards",
+      "notices": "Notices",
+      "homework": "Homework",
+      "timetable": "Timetable"
+    },
+    "due": "due",
+    "day": "Day",
+    "period": "Period",
+    "fees": {
+      "payment": "Payment",
+      "payNow": "Pay Now",
+      "orderCreatedTitle": "Payment order created",
+      "orderCreatedBody": "Order reference:"
+    }
+  }
+}

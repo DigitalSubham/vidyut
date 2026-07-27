@@ -1,9 +1,21 @@
-import { prisma, withTenant, seedDefaultRoles, seedModuleToggles, Prisma } from "@vidyut/db";
+import {
+  generateSchoolCode,
+  nextPlatformInvoiceNumber,
+  prisma,
+  withTenant,
+  seedDefaultRoles,
+  seedModuleToggles,
+  Prisma,
+} from "@vidyut/db";
 import type {
+  CreatePlatformInvoiceInput,
   CreateTenantInput,
   ListTenantsQueryInput,
+  PatchPlatformInvoiceStatusInput,
   PatchTenantInput,
   PlatformLoginInput,
+  RevenueSummaryQueryInput,
+  WalletRechargeInput,
 } from "@vidyut/validation";
 import type { ModuleKey } from "@vidyut/types";
 import { AppError } from "../../core/errors";
@@ -50,10 +62,12 @@ export async function createTenant(input: CreateTenantInput, actorPlatformUserId
     throw new AppError("NOT_FOUND", "platform.errors.planNotFound");
   }
 
+  const schoolCode = await generateSchoolCode();
   const tenant = await prisma.tenant.create({
     data: {
       name: input.name,
       slug: input.slug,
+      schoolCode,
       status: "ACTIVE",
       planId: plan.id,
       appType: plan.appType,
@@ -115,6 +129,16 @@ export async function createTenant(input: CreateTenantInput, actorPlatformUserId
 
   await prisma.smsWallet.create({ data: { tenantId: tenant.id, balancePaise: 0 } });
 
+  // Unit 30: no Subscription row was ever created here before — Tenant.planId
+  // tracked the plan but nothing tracked the billing period. One ACTIVE
+  // subscription per tenant, a 1-year period matching plans-entitlements.md's
+  // annual pricing.
+  const periodEnd = new Date(tenant.createdAt);
+  periodEnd.setFullYear(periodEnd.getFullYear() + 1);
+  await prisma.subscription.create({
+    data: { tenantId: tenant.id, planId: plan.id, status: "ACTIVE", currentPeriodEnd: periodEnd },
+  });
+
   // app_type branches onboarding (context/plans-entitlements.md rule 3): shared
   // is immediately usable; dedicated gets an AppBuild record + a stubbed job
   // (the real EAS pipeline is Unit 31 — this only proves enqueue works).
@@ -123,7 +147,7 @@ export async function createTenant(input: CreateTenantInput, actorPlatformUserId
     appBuild = await prisma.appBuild.create({
       data: { tenantId: tenant.id, platform: "ANDROID", mode: "DEDICATED", storeStatus: "PENDING" },
     });
-    await enqueue("appbuild.stub", { tenantId: tenant.id, appBuildId: appBuild.id });
+    await enqueue("appbuild.generate", { tenantId: tenant.id, appBuildId: appBuild.id });
   }
 
   await withTenant(tenant.id, (tx) =>
@@ -193,6 +217,16 @@ export async function patchTenant(
       data: { planId: plan.id, appType: plan.appType },
     });
     await seedModuleToggles(tenantId, input.planKey); // re-seed = reset to the new plan's defaults
+
+    // Keep the active Subscription's planId in sync with the tenant's plan
+    // change (Unit 30) — the period itself isn't reset, only which plan it bills.
+    const activeSubscription = await prisma.subscription.findFirst({
+      where: { tenantId, status: "ACTIVE" },
+      orderBy: { createdAt: "desc" },
+    });
+    if (activeSubscription) {
+      await prisma.subscription.update({ where: { id: activeSubscription.id }, data: { planId: plan.id } });
+    }
   }
 
   if (input.moduleOverride) {
@@ -226,17 +260,20 @@ export async function patchTenant(
 
 export async function getTenantUsage(tenantId: string) {
   const tenant = await getTenant(tenantId);
-  const [userCount, branchCount] = await withTenant(tenantId, (tx) =>
-    Promise.all([tx.user.count(), tx.branch.count()])
+  const [userCount, branchCount, studentCount] = await withTenant(tenantId, (tx) =>
+    Promise.all([tx.user.count(), tx.branch.count(), tx.student.count({ where: { status: "ACTIVE" } })])
   );
+  const wallet = await prisma.smsWallet.findUnique({ where: { tenantId } });
 
   return {
-    // Student model doesn't exist until Unit 07 — wired to real counts then.
-    students: { used: 0, limit: tenant.plan?.studentLimit ?? null },
+    // Unit 30 fix — this used to be hardcoded 0 with a stale "Student model
+    // doesn't exist until Unit 07" comment; Unit 07 has been done for a while.
+    students: { used: studentCount, limit: tenant.plan?.studentLimit ?? null },
     users: { used: userCount, limit: tenant.plan?.userLimit ?? null },
     branches: { used: branchCount, limit: tenant.plan?.branchLimit ?? null },
     // No Document/storage-accounting model yet — wired to real usage later.
     storageGb: { used: 0, limit: tenant.plan?.storageGb ?? null },
+    smsWalletBalancePaise: wallet?.balancePaise ?? 0,
   };
 }
 
@@ -273,4 +310,107 @@ export async function impersonateUser(
     branchIds: ctx.branchIds,
   });
   return { accessToken };
+}
+
+// --- Unit 30: Billing & Subscriptions ---
+
+async function getActiveSubscriptionOrThrow(tenantId: string) {
+  const subscription = await prisma.subscription.findFirst({
+    where: { tenantId, status: "ACTIVE" },
+    orderBy: { createdAt: "desc" },
+  });
+  if (!subscription) {
+    throw new AppError("NOT_FOUND", "platform.errors.subscriptionNotFound");
+  }
+  return subscription;
+}
+
+export async function createPlatformInvoice(tenantId: string, input: CreatePlatformInvoiceInput) {
+  await getTenant(tenantId); // 404s if the tenant doesn't exist
+  const subscription = await getActiveSubscriptionOrThrow(tenantId);
+  const invoiceNo = await nextPlatformInvoiceNumber();
+
+  return prisma.platformInvoice.create({
+    data: {
+      tenantId,
+      subscriptionId: subscription.id,
+      invoiceNo,
+      amount: input.amount,
+      dueDate: input.dueDate,
+    },
+  });
+}
+
+export async function listPlatformInvoices(tenantId: string) {
+  return prisma.platformInvoice.findMany({ where: { tenantId }, orderBy: { createdAt: "desc" } });
+}
+
+export async function patchPlatformInvoiceStatus(
+  tenantId: string,
+  invoiceId: string,
+  input: PatchPlatformInvoiceStatusInput
+) {
+  const invoice = await prisma.platformInvoice.findUnique({ where: { id: invoiceId } });
+  if (!invoice || invoice.tenantId !== tenantId) {
+    throw new AppError("NOT_FOUND", "platform.errors.invoiceNotFound");
+  }
+
+  return prisma.platformInvoice.update({
+    where: { id: invoiceId },
+    data: {
+      status: input.status,
+      paidAt: input.status === "PAID" ? new Date() : invoice.paidAt,
+    },
+  });
+}
+
+export async function rechargeWallet(tenantId: string, input: WalletRechargeInput) {
+  await getTenant(tenantId);
+
+  const [wallet] = await prisma.$transaction([
+    prisma.smsWallet.upsert({
+      where: { tenantId },
+      update: { balancePaise: { increment: input.amountPaise } },
+      create: { tenantId, balancePaise: input.amountPaise },
+    }),
+    prisma.walletTxn.create({
+      data: { tenantId, type: "CREDIT", amount: input.amountPaise, reason: input.reason },
+    }),
+  ]);
+
+  return wallet;
+}
+
+export async function getRevenueSummary(query: RevenueSummaryQueryInput) {
+  const createdAtFilter =
+    query.from || query.to
+      ? { ...(query.from ? { gte: query.from } : {}), ...(query.to ? { lte: query.to } : {}) }
+      : undefined;
+
+  const subscriptionRevenue = await prisma.platformInvoice.aggregate({
+    where: { status: "PAID", ...(createdAtFilter ? { paidAt: createdAtFilter } : {}) },
+    _sum: { amount: true },
+  });
+
+  // Payment.platformFeeAmount is tenant-RLS'd (Unit 13) — no cross-tenant
+  // bypass exists, so summing it means one withTenant() aggregate per tenant.
+  const tenantIds = (await prisma.tenant.findMany({ select: { id: true } })).map((t) => t.id);
+  let platformFeeTotal = 0;
+  for (const tenantId of tenantIds) {
+    const sum = await withTenant(tenantId, (tx) =>
+      tx.payment.aggregate({
+        where: {
+          status: "SUCCESS",
+          ...(createdAtFilter ? { createdAt: createdAtFilter } : {}),
+        },
+        _sum: { platformFeeAmount: true },
+      })
+    );
+    platformFeeTotal += sum._sum?.platformFeeAmount ?? 0;
+  }
+
+  return {
+    subscriptionRevenuePaise: subscriptionRevenue._sum.amount ?? 0,
+    platformFeeRevenuePaise: platformFeeTotal,
+  };
 }

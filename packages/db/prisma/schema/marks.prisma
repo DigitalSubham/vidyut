@@ -1,0 +1,31 @@
+// Marks entry & moderation — Unit 18. See context/data-model.md §9 and
+// context/feature-specs/18-marks-entry-moderation.md. Builds on Unit 17's
+// Exam/ExamSubject; ReportCard (Unit 19) reads this table.
+
+/// One student's mark for one ExamSubject. Tenant-owned — RLS-scoped.
+/// `lockedAt` is a per-row moderation lock (narrower than Unit 17's
+/// whole-exam `isLocked`) — set by `marks.moderate`, blocks further edits to
+/// that row only. `enteredById`/no relation constraint, same convention as
+/// AttendanceRecord.markedById (a plain User.id, not FK-enforced).
+model MarksEntry {
+  id            String    @id @default(cuid())
+  tenantId      String
+  branchId      String
+  examSubjectId String
+  studentId     String
+  marks         Int?
+  grade         String?
+  isAbsent      Boolean   @default(false)
+  enteredById   String
+  lockedAt      DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id])
+  branch      Branch      @relation(fields: [branchId], references: [id])
+  examSubject ExamSubject @relation(fields: [examSubjectId], references: [id])
+  student     Student     @relation(fields: [studentId], references: [id])
+
+  @@unique([examSubjectId, studentId])
+  @@index([tenantId])
+}

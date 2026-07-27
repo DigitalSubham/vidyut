@@ -22,9 +22,14 @@ export default function TenantsListPage() {
         <h1 className="font-heading text-2xl font-semibold text-text-primary">
           {t("platform.tenants.title")}
         </h1>
-        <Button asChild>
-          <Link href="/super-admin/tenants/new">{t("platform.tenants.create")}</Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" asChild>
+            <Link href="/super-admin/revenue">{t("platform.revenue.title")}</Link>
+          </Button>
+          <Button asChild>
+            <Link href="/super-admin/tenants/new">{t("platform.tenants.create")}</Link>
+          </Button>
+        </div>
       </div>
       {isLoading ? (
         <p className="text-text-secondary">{t("platform.common.loading")}</p>

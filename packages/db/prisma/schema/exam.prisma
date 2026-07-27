@@ -1,0 +1,71 @@
+// Exam setup & grading structure — Unit 17. See context/data-model.md §9 and
+// context/feature-specs/17-exam-setup-grading.md. MarksEntry/ReportCard are
+// later units (18/19) — this unit only defines the exam + per-class-subject
+// mark scheme that those units build on.
+
+enum ExamType {
+  UNIT_TEST
+  HALF_YEARLY
+  ANNUAL
+  PRE_BOARD
+  PRACTICAL
+}
+
+enum GradingScheme {
+  MARKS
+  PERCENTAGE
+  GRADE
+  CCE
+  CGPA
+}
+
+/// An exam/term within a session (e.g. "Half-Yearly 2025-26"). Tenant-owned
+/// — RLS-scoped. `isLocked` freezes the exam's own fields and its
+/// ExamSubject rows before Unit 18's marks entry begins.
+model Exam {
+  id            String        @id @default(cuid())
+  tenantId      String
+  branchId      String
+  sessionId     String
+  name          String
+  type          ExamType
+  gradingScheme GradingScheme
+  startDate     DateTime?
+  isLocked      Boolean       @default(false)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  deletedAt     DateTime?
+
+  tenant  Tenant          @relation(fields: [tenantId], references: [id])
+  branch  Branch          @relation(fields: [branchId], references: [id])
+  session AcademicSession @relation(fields: [sessionId], references: [id])
+
+  examSubjects ExamSubject[]
+  reportCards  ReportCard[]
+
+  @@index([tenantId])
+}
+
+/// Per-class-subject mark scheme for an exam. Tenant-owned — RLS-scoped via
+/// the parent Exam's tenant (no separate branchId — always the exam's branch).
+model ExamSubject {
+  id         String   @id @default(cuid())
+  tenantId   String
+  examId     String
+  classId    String
+  subjectId  String
+  maxMarks   Int
+  passMarks  Int
+  weightage  Int?
+  createdAt  DateTime @default(now())
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+  exam    Exam    @relation(fields: [examId], references: [id])
+  class   Class   @relation(fields: [classId], references: [id])
+  subject Subject @relation(fields: [subjectId], references: [id])
+
+  marksEntries MarksEntry[]
+
+  @@unique([examId, classId, subjectId])
+  @@index([tenantId])
+}

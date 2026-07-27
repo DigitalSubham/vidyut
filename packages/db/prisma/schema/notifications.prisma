@@ -1,0 +1,84 @@
+// Fee reminders / notification log — Unit 14. See context/data-model.md
+// §11, §13 and context/feature-specs/14-fee-reminders.md.
+
+enum NotifChannel {
+  PUSH
+  SMS
+  WHATSAPP
+  EMAIL
+  IN_APP
+}
+
+enum NotifStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  FAILED
+}
+
+/// A record of a notification attempt (fee reminder now; Unit 20 reuses this
+/// for general-purpose announcements). Branch-owned — RLS-scoped.
+model NotificationLog {
+  id          String       @id @default(cuid())
+  tenantId    String
+  branchId    String
+  channel     NotifChannel
+  templateKey String
+  toUserId    String?
+  toPhone     String?
+  status      NotifStatus  @default(QUEUED)
+  payload     Json?
+  sentAt      DateTime?
+  createdAt   DateTime     @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  branch Branch @relation(fields: [branchId], references: [id])
+
+  @@index([tenantId])
+}
+
+/// A notice-board record — Unit 20. See context/data-model.md §11 and
+/// context/feature-specs/20-notifications-announcements.md. `audience` is a
+/// simple rule object `{ roles?: RoleKey[], classIds?: string[] }`, not a
+/// query engine (Open Question 1) — empty/omitted means "everyone in the
+/// branch." `createdById` is a small addition beyond the bare doc sketch
+/// (the issuer, needed for the register), same convention as Unit 15's
+/// `regularizedById`. Publishes immediately on create (no draft state).
+/// Branch-owned — RLS-scoped.
+model Announcement {
+  id            String    @id @default(cuid())
+  tenantId      String
+  branchId      String
+  title         String
+  body          String
+  audience      Json?
+  attachmentUrl String?
+  publishedAt   DateTime  @default(now())
+  createdById   String
+  createdAt     DateTime  @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  branch Branch @relation(fields: [branchId], references: [id])
+
+  @@index([tenantId])
+}
+
+enum WalletTxnType {
+  CREDIT
+  DEBIT
+}
+
+/// context/feature-specs/14's Open Questions — data-model.md §13 gave this
+/// model with its fields literally elided. No RLS, same as SmsWallet (Unit
+/// 05's decision: platform-managed config, plain tenantId-filtered queries).
+model WalletTxn {
+  id          String        @id @default(cuid())
+  tenantId    String
+  type        WalletTxnType
+  amount      Int
+  reason      String
+  referenceId String?
+  createdAt   DateTime      @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+}

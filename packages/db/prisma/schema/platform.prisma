@@ -62,6 +62,12 @@ enum AppBuildStoreStatus {
   FAILED
 }
 
+enum PlatformInvoiceStatus {
+  PENDING
+  PAID
+  OVERDUE
+}
+
 /// Global plan catalog — not tenant-owned at all (no tenantId column).
 model Plan {
   id           String      @id @default(cuid())
@@ -94,6 +100,8 @@ model Subscription {
 
   tenant Tenant @relation(fields: [tenantId], references: [id])
   plan   Plan   @relation(fields: [planId], references: [id])
+
+  platformInvoices PlatformInvoice[]
 
   @@index([tenantId])
 }
@@ -138,6 +146,30 @@ model AppBuild {
   @@index([tenantId])
 }
 
+/// Vidyut's own bill to a school for its subscription (Unit 30). Deliberately
+/// named `Platform*` to avoid confusion with the tenant-facing `Invoice`
+/// (Unit 12 — fees a school charges *its* parents). Manual create/mark-paid
+/// for v1 (context/feature-specs/30-billing-subscriptions.md) — no automated
+/// recurring billing engine yet. Platform-managed, no RLS (same posture as
+/// Plan/Subscription).
+model PlatformInvoice {
+  id             String                @id @default(cuid())
+  tenantId       String
+  subscriptionId String
+  invoiceNo      String                @unique
+  amount         Int
+  status         PlatformInvoiceStatus @default(PENDING)
+  dueDate        DateTime
+  paidAt         DateTime?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+  subscription Subscription @relation(fields: [subscriptionId], references: [id])
+
+  @@index([tenantId])
+}
+
 /// Super-admin login — platform-level, no tenantId, no RLS. Separate from
 /// User (context/rbac.md: SUPERADMIN operates across tenants, never via
 /// withTenant()); a distinct table keeps that invariant structural rather
@@ -155,6 +187,9 @@ model PlatformUser {
 enum AuditActorType {
   USER
   PLATFORM_USER
+  // Unit 13 addition — webhook-driven mutations (e.g. a Razorpay payment
+  // confirmation) have no authenticated human actor.
+  SYSTEM
 }
 
 /// Sensitive-action trail (context/data-model.md §12). Tenant-owned and

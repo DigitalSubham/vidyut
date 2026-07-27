@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction, ErrorRequestHandler } from "express";
 import { AppError } from "./errors";
+import { captureError } from "./sentry";
 
 export interface PaginationMeta {
   page: number;
@@ -41,7 +42,7 @@ export function asyncHandler(
   };
 }
 
-export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
+export const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
   if (err instanceof AppError) {
     res.status(err.status).json({
       error: {
@@ -55,6 +56,7 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
 
   // eslint-disable-next-line no-console
   console.error(err);
+  captureError(err, { requestId: req.requestId, tenantId: req.auth?.tenantId });
   res.status(500).json({
     error: { code: "INTERNAL", message: "auth.errors.internal" },
   });

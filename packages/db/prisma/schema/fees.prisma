@@ -1,0 +1,161 @@
+// Fee setup — Unit 11. See context/data-model.md §10 and
+// context/feature-specs/11-fee-setup.md.
+
+enum FeeType {
+  TUITION
+  TRANSPORT
+  EXAM
+  ADMISSION
+  LAB
+  MISC
+}
+
+enum FeeFrequency {
+  ONE_TIME
+  MONTHLY
+  QUARTERLY
+  TERM
+  ANNUAL
+}
+
+enum ConcessionType {
+  RTE
+  BPL
+  SIBLING
+  STAFF
+  MERIT
+  SCHOLARSHIP
+  OTHER
+}
+
+/// context/feature-specs/11's Decisions — data-model.md left this field
+/// unenumerated; confirmed as a fixed approval workflow rather than free text.
+enum ConcessionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+/// A fee component catalog entry (tuition, transport, exam...). Branch-owned — RLS-scoped.
+model FeeHead {
+  id        String    @id @default(cuid())
+  tenantId  String
+  branchId  String
+  name      String
+  type      FeeType
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  tenant       Tenant             @relation(fields: [tenantId], references: [id])
+  branch       Branch             @relation(fields: [branchId], references: [id])
+  items        FeeStructureItem[]
+  invoiceItems InvoiceItem[]
+
+  @@unique([branchId, name])
+  @@index([tenantId])
+}
+
+/// A named bundle of fee items for a class/session. Branch-owned — RLS-scoped.
+model FeeStructure {
+  id        String    @id @default(cuid())
+  tenantId  String
+  branchId  String
+  sessionId String
+  classId   String?
+  name      String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  tenant      Tenant             @relation(fields: [tenantId], references: [id])
+  branch      Branch             @relation(fields: [branchId], references: [id])
+  session     AcademicSession    @relation(fields: [sessionId], references: [id])
+  class       Class?             @relation(fields: [classId], references: [id])
+  items       FeeStructureItem[]
+  assignments FeeAssignment[]
+
+  @@index([tenantId])
+}
+
+/// One fee-head line within a structure, with its own frequency/amount. Branch-owned — RLS-scoped.
+model FeeStructureItem {
+  id             String       @id @default(cuid())
+  tenantId       String
+  structureId    String
+  feeHeadId      String
+  amount         Int
+  frequency      FeeFrequency
+  dueDayOfMonth  Int?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  tenant    Tenant        @relation(fields: [tenantId], references: [id])
+  structure FeeStructure  @relation(fields: [structureId], references: [id])
+  feeHead   FeeHead       @relation(fields: [feeHeadId], references: [id])
+  fineRule  FineRule?
+
+  @@unique([structureId, feeHeadId])
+  @@index([tenantId])
+}
+
+/// context/feature-specs/11's Decisions — a data-model.md gap: fine/late-fee
+/// config, one per FeeStructureItem. Unit 12 reads this when generating
+/// InvoiceItem.fine; this unit only stores the rule. Branch-owned — RLS-scoped.
+model FineRule {
+  id                 String   @id @default(cuid())
+  tenantId           String
+  branchId           String
+  feeStructureItemId String   @unique
+  graceDays          Int
+  isPercent          Boolean
+  value              Int
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  tenant           Tenant           @relation(fields: [tenantId], references: [id])
+  branch           Branch           @relation(fields: [branchId], references: [id])
+  feeStructureItem FeeStructureItem @relation(fields: [feeStructureItemId], references: [id])
+
+  @@index([tenantId])
+}
+
+/// Which structure a student is assigned to (bulk or individual — context/
+/// feature-specs/11's Decisions). Branch-owned — RLS-scoped.
+model FeeAssignment {
+  id          String   @id @default(cuid())
+  tenantId    String
+  branchId    String
+  studentId   String
+  structureId String
+  createdAt   DateTime @default(now())
+
+  tenant    Tenant       @relation(fields: [tenantId], references: [id])
+  branch    Branch       @relation(fields: [branchId], references: [id])
+  student   Student      @relation(fields: [studentId], references: [id])
+  structure FeeStructure @relation(fields: [structureId], references: [id])
+
+  @@unique([studentId, structureId])
+  @@index([tenantId])
+}
+
+/// A fee discount/waiver request + approval. Branch-owned — RLS-scoped.
+model Concession {
+  id           String           @id @default(cuid())
+  tenantId     String
+  branchId     String
+  studentId    String
+  type         ConcessionType
+  value        Int
+  isPercent    Boolean
+  status       ConcessionStatus @default(PENDING)
+  approvedById String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+  branch  Branch  @relation(fields: [branchId], references: [id])
+  student Student @relation(fields: [studentId], references: [id])
+
+  @@index([tenantId])
+}

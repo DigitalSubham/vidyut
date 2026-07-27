@@ -1,0 +1,126 @@
+// Academic structure — Unit 06. See context/data-model.md §4 and
+// context/feature-specs/06-academic-structure.md.
+
+enum SubjectType {
+  CORE
+  ELECTIVE
+  CO_SCHOLASTIC
+  PRACTICAL
+}
+
+/// A grade, e.g. "Class 8". Tenant-owned — RLS-scoped.
+model Class {
+  id        String    @id @default(cuid())
+  tenantId  String
+  branchId  String
+  name      String
+  order     Int
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
+  branch       Branch        @relation(fields: [branchId], references: [id])
+  sections     Section[]
+  classSubjects ClassSubject[]
+  enrollments  Enrollment[]
+  applications Application[]
+  feeStructures FeeStructure[]
+  examSubjects ExamSubject[]
+
+  @@unique([branchId, name])
+  @@index([tenantId])
+}
+
+/// A section within a class, e.g. "8-A". Tenant-owned — RLS-scoped.
+model Section {
+  id             String    @id @default(cuid())
+  tenantId       String
+  branchId       String
+  classId        String
+  name           String
+  capacity       Int?
+  classTeacherId String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  tenant       Tenant @relation(fields: [tenantId], references: [id])
+  branch       Branch @relation(fields: [branchId], references: [id])
+  class        Class  @relation(fields: [classId], references: [id])
+  classTeacher Staff? @relation("SectionClassTeacher", fields: [classTeacherId], references: [id])
+
+  teacherAssignments TeacherAssignment[]
+  enrollments        Enrollment[]
+  attendanceRecords  AttendanceRecord[]
+  timetablePeriods   TimetablePeriod[]
+  homework           Homework[]
+
+  @@unique([classId, name])
+  @@index([tenantId])
+}
+
+/// A branch-level subject catalog entry (not per-class). Tenant-owned — RLS-scoped.
+model Subject {
+  id        String      @id @default(cuid())
+  tenantId  String
+  branchId  String
+  name      String
+  code      String
+  type      SubjectType @default(CORE)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  deletedAt DateTime?
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id])
+  branch        Branch         @relation(fields: [branchId], references: [id])
+  classSubjects ClassSubject[]
+  teacherAssignments TeacherAssignment[]
+  examSubjects  ExamSubject[]
+  timetablePeriods TimetablePeriod[]
+  homework      Homework[]
+
+  @@unique([branchId, code])
+  @@index([tenantId])
+}
+
+/// Which subjects are offered in a class. Tenant-owned — RLS-scoped.
+model ClassSubject {
+  id         String   @id @default(cuid())
+  tenantId   String
+  classId    String
+  subjectId  String
+  isElective Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+  class   Class   @relation(fields: [classId], references: [id])
+  subject Subject @relation(fields: [subjectId], references: [id])
+
+  @@unique([classId, subjectId])
+  @@index([tenantId])
+}
+
+/// Teacher <-> subject <-> section mapping for a session. Unit 06 shipped
+/// this schema-only; Unit 09 adds the staffId relation (now that Staff
+/// exists) and the write endpoints. Tenant-owned — RLS-scoped.
+model TeacherAssignment {
+  id        String   @id @default(cuid())
+  tenantId  String
+  branchId  String
+  sessionId String
+  staffId   String
+  subjectId String
+  sectionId String
+  createdAt DateTime @default(now())
+
+  tenant  Tenant          @relation(fields: [tenantId], references: [id])
+  branch  Branch          @relation(fields: [branchId], references: [id])
+  session AcademicSession @relation(fields: [sessionId], references: [id])
+  staff   Staff           @relation(fields: [staffId], references: [id])
+  subject Subject         @relation(fields: [subjectId], references: [id])
+  section Section         @relation(fields: [sectionId], references: [id])
+
+  @@unique([sessionId, staffId, subjectId, sectionId])
+  @@index([tenantId])
+}

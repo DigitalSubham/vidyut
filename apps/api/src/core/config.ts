@@ -32,4 +32,18 @@ export const config = {
     forcePathStyle: process.env.S3_FORCE_PATH_STYLE === "true",
     signedUrlTtlSeconds: 15 * 60,
   },
+  payments: {
+    // Real Razorpay integration is stubbed (context/feature-specs/13's
+    // Decisions) but signature verification is real and needs a real secret.
+    razorpayWebhookSecret: requireEnv("RAZORPAY_WEBHOOK_SECRET"),
+    // Basis points (1/100 of a percent); defaults to 0 until a real rate is decided.
+    platformFeeBps: Number(process.env.PAYMENT_PLATFORM_FEE_BPS ?? 0),
+  },
+  notifications: {
+    // Placeholder per-SMS cost (context/feature-specs/14's Open Questions) —
+    // real pricing is decided later, the wallet-deduction mechanism exists now.
+    smsCostPaise: Number(process.env.SMS_COST_PAISE ?? 20),
+    reminderDaysBeforeDue: 3,
+    reminderRepeatDaysOverdue: 7,
+  },
 };

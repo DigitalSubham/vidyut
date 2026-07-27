@@ -2,22 +2,25 @@
 
 Read `AGENTS.md`, `data-model.md` (§5), `rbac.md`, `api-conventions.md`, `code-standards.md`, `architecture-context.md` (§4, jobs) first.
 
-## Open Questions
+## Decisions (confirmed with the user before implementation)
 
-- `admissionNo` is specified as "unique per branch" but `data-model.md` doesn't define a generation scheme, and the feature catalog only says "auto-generated, configurable format." **Recommendation (proceeding on this basis):** auto-generate a simple sequential number per branch (zero-padded, no configurable prefix/format yet) at creation time, with manual override allowed. A configurable-numbering-format setting is deferred to a later settings/admin unit.
-- This unit's own `progress-tracker.md` line says "adm/roll no., **ID basics**." Reading this as the identifying profile fields already on `Student` (admissionNo, rollNo, photoUrl) — **not** ID *card* generation/templates, which is explicitly Unit 21 (Certificates & IDs). Proceeding on that reading.
+- **admissionNo:** simple sequential, zero-padded, per branch (no prefix/configurable format yet — deferred to a later settings unit). Manual override allowed on single-create; import rows may also supply their own.
+- **Bulk import formats:** both Excel (`.xlsx`) and CSV, per `feature-catalog.md`'s "Bulk import (Excel/CSV)" line (the earlier draft under-scoped this to Excel-only).
+- **Missing current session:** `POST /students` and each import row reject with a clear error if the target branch has no `AcademicSession` with `isCurrent = true` — no silent fallback, no requirement to always pass `sessionId` explicitly either (the default-from-current-session behavior stays, it just fails loudly when there's nothing to default to).
+- **Import class/section reference:** by **name**, not internal ID — the sheet has `className`/`sectionName` columns (e.g. "Class 8" / "8-A"); the worker resolves each to a `Class`/`Section` row within the branch per import row (unmatched name = a row-level error). `POST /students` (single-create) still takes `classId`/`sectionId` directly, since a UI form can supply real IDs from a dropdown — only the import sheet needed the name-based lookup, since staff filling in a spreadsheet don't know internal IDs.
+- This unit's own `progress-tracker.md` line says "adm/roll no., **ID basics**." Reading this as the identifying profile fields already on `Student` (admissionNo, rollNo, photoUrl) — **not** ID *card* generation/templates, which is explicitly Unit 21 (Certificates & IDs).
 
 ## Goal
 
-Student records — CRUD plus enrollment into a class/section/session — and a background-job-driven Excel bulk import. The first "real" tenant-owned domain data most schools touch.
+Student records — CRUD plus enrollment into a class/section/session — and a background-job-driven Excel/CSV bulk import. The first "real" tenant-owned domain data most schools touch.
 
 ## Scope
 
 1. **Models** (`data-model.md` §5): `Student`, `Enrollment` + enums `StudentStatus`, `EnrollmentStatus`. Branch-scoped; RLS per the established pattern.
-2. `POST /api/v1/students` — creates a `Student` + an initial `Enrollment` atomically (classId/sectionId required; sessionId defaults to the branch's current session). Zod-validated; `admissionNo` auto-generated per the Open Question above unless supplied.
+2. `POST /api/v1/students` — creates a `Student` + an initial `Enrollment` atomically (classId/sectionId required; sessionId defaults to the branch's current session, rejecting if none is current — see Decisions). Zod-validated; `admissionNo` auto-generated (sequential, zero-padded, per branch) unless supplied.
 3. `GET /api/v1/students`, `GET /api/v1/students/:id` — paginated per `api-conventions.md`; filters: classId, sectionId, status, search by name/admissionNo.
 4. `PATCH /api/v1/students/:id` (profile fields, status transitions). `DELETE /api/v1/students/:id` is a soft delete (`deletedAt`), gated by `student.delete` (OWNER only).
-5. **Bulk import** (background job, per Unit 04's jobs interface): client requests a signed upload URL (`getUploadUrl`), uploads the Excel file directly to object storage, then `POST /api/v1/students/import { fileKey }` enqueues a `students.import` job and returns `202 { jobId }`. The worker parses rows, validates each row through the same Zod schema as single-create, rejects rows whose `admissionNo` already exists in the branch, creates Student+Enrollment per valid row, and stores a per-row result summary (success/error) retrievable via the existing `GET /api/v1/jobs/:id`.
+5. **Bulk import** (background job, per Unit 04's jobs interface): client requests a signed upload URL (`getUploadUrl`), uploads an `.xlsx` or `.csv` file directly to object storage, then `POST /api/v1/students/import { fileKey }` enqueues a `students.import` job and returns `202 { jobId }`. The worker parses rows (both formats via one library — e.g. SheetJS/`xlsx`, which reads `.csv` and `.xlsx` through the same API), validates each row through the same Zod schema as single-create, rejects rows whose `admissionNo` already exists in the branch or whose branch has no current session, creates Student+Enrollment per valid row, and stores a per-row result summary (success/error) retrievable via the existing `GET /api/v1/jobs/:id`.
 6. **RBAC:** `student.view` (broad — OWNER/PRINCIPAL/ADMIN/ACCOUNTANT/TEACHER) for reads; `student.edit` / `student.import` (OWNER/PRINCIPAL/ADMIN) for mutations/import; `student.delete` (OWNER only).
 7. **i18n:** all validation/error strings, including the import job's per-row error messages, via i18n keys.
 

@@ -12,6 +12,8 @@ declare global {
   namespace Express {
     interface Request {
       auth?: RequestAuth;
+      /** Raw request body bytes, captured by express.json()'s verify hook — needed for webhook signature verification (Unit 13). */
+      rawBody?: Buffer;
     }
   }
 }

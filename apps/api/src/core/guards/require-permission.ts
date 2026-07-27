@@ -2,7 +2,26 @@ import type { Request, Response, NextFunction } from "express";
 import { withTenant } from "@vidyut/db";
 import type { Permission } from "@vidyut/types";
 import { AppError } from "../errors";
+import type { RequestAuth } from "./types";
 import "./types";
+
+/** Standalone check reusable outside the middleware (e.g. an "either self-scope or this permission" route). */
+export async function userHasPermission(auth: RequestAuth, permission: Permission): Promise<boolean> {
+  if (auth.roles.length === 0) {
+    return false;
+  }
+  const match = await withTenant(auth.tenantId, (tx) =>
+    tx.role.findFirst({
+      where: {
+        tenantId: auth.tenantId,
+        key: { in: auth.roles },
+        rolePermissions: { some: { permissionKey: permission } },
+      },
+      select: { id: true },
+    })
+  );
+  return match != null;
+}
 
 /**
  * Checks permissions fresh from the DB on every request (never cached in
@@ -18,28 +37,12 @@ export function requirePermission(permission: Permission) {
       return;
     }
 
-    if (auth.roles.length === 0) {
-      next(new AppError("FORBIDDEN", "auth.errors.missingPermission"));
-      return;
-    }
-
     try {
-      const match = await withTenant(auth.tenantId, (tx) =>
-        tx.role.findFirst({
-          where: {
-            tenantId: auth.tenantId,
-            key: { in: auth.roles },
-            rolePermissions: { some: { permissionKey: permission } },
-          },
-          select: { id: true },
-        })
-      );
-
-      if (!match) {
+      const allowed = await userHasPermission(auth, permission);
+      if (!allowed) {
         next(new AppError("FORBIDDEN", "auth.errors.missingPermission"));
         return;
       }
-
       next();
     } catch (error) {
       next(error);

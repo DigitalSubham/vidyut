@@ -1,0 +1,51 @@
+// Parents/Guardians — Unit 08. See context/data-model.md §5 and
+// context/feature-specs/08-parents-guardians.md.
+
+enum GuardianRelation {
+  FATHER
+  MOTHER
+  GUARDIAN
+  OTHER
+}
+
+/// A parent/guardian. Tenant-owned — RLS-scoped, but deliberately carries no
+/// branchId: one guardian's children can span branches within a tenant
+/// group, so branch-scoping happens transitively through the linked
+/// Student, not here.
+model Guardian {
+  id         String           @id @default(cuid())
+  tenantId   String
+  userId     String?
+  name       String
+  relation   GuardianRelation
+  phone      String
+  email      String?
+  occupation String?
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  tenant           Tenant           @relation(fields: [tenantId], references: [id])
+  user             User?            @relation(fields: [userId], references: [id])
+  studentGuardians StudentGuardian[]
+
+  @@index([tenantId])
+}
+
+/// Student <-> Guardian link (many-to-many): which guardian is primary/pays.
+/// Tenant-owned — RLS-scoped.
+model StudentGuardian {
+  id         String   @id @default(cuid())
+  tenantId   String
+  studentId  String
+  guardianId String
+  isPrimary  Boolean  @default(false)
+  canPay     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+  student  Student  @relation(fields: [studentId], references: [id])
+  guardian Guardian @relation(fields: [guardianId], references: [id])
+
+  @@unique([studentId, guardianId])
+  @@index([tenantId])
+}

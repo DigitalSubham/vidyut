@@ -1,0 +1,75 @@
+// Staff/HR & Leave — Unit 09. See context/data-model.md §7 and
+// context/feature-specs/09-staff-hr-leave.md.
+
+enum StaffType {
+  TEACHING
+  NON_TEACHING
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+/// context/feature-specs/09's Decisions — data-model.md left this field
+/// unenumerated; confirmed as a fixed baseline rather than free text.
+enum LeaveType {
+  CASUAL
+  SICK
+  EARNED
+  OTHER
+}
+
+/// An employee record — one per User with a staff role. Branch-scoped;
+/// RLS per the established pattern.
+model Staff {
+  id             String    @id @default(cuid())
+  tenantId       String
+  branchId       String
+  userId         String
+  employeeNo     String
+  designation    String
+  type           StaffType
+  qualifications String?
+  joinedAt       DateTime
+  docs           Json?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  tenant             Tenant              @relation(fields: [tenantId], references: [id])
+  branch             Branch              @relation(fields: [branchId], references: [id])
+  user               User                @relation(fields: [userId], references: [id])
+  leaveRequests      LeaveRequest[]
+  teacherAssignments TeacherAssignment[]
+  classTeacherOf     Section[]           @relation("SectionClassTeacher")
+  timetablePeriods   TimetablePeriod[]
+
+  @@unique([branchId, employeeNo])
+  @@unique([userId])
+  @@index([tenantId])
+}
+
+/// A staff member's leave application. Branch-scoped; RLS per the established pattern.
+model LeaveRequest {
+  id         String      @id @default(cuid())
+  tenantId   String
+  branchId   String
+  staffId    String
+  type       LeaveType
+  fromDate   DateTime
+  toDate     DateTime
+  halfDay    Boolean     @default(false)
+  status     LeaveStatus @default(PENDING)
+  approverId String?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  branch Branch @relation(fields: [branchId], references: [id])
+  staff  Staff  @relation(fields: [staffId], references: [id])
+
+  @@index([tenantId])
+}

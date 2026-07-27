@@ -1,0 +1,67 @@
+// Admissions/Enquiry — Unit 10. See context/data-model.md §6 and
+// context/feature-specs/10-admissions-enquiry.md.
+
+enum EnquiryStage {
+  NEW
+  CONTACTED
+  VISITED
+  APPLIED
+  ADMITTED
+  LOST
+}
+
+enum ApplicationStatus {
+  DRAFT
+  SUBMITTED
+  OFFERED
+  CONFIRMED
+  REJECTED
+}
+
+/// A prospective family's enquiry. Branch-scoped; RLS per the established pattern.
+model Enquiry {
+  id           String       @id @default(cuid())
+  tenantId     String
+  branchId     String
+  childName    String
+  guardianName String
+  phone        String
+  source       String
+  stage        EnquiryStage @default(NEW)
+  assignedToId String?
+  followUpAt   DateTime?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
+  branch       Branch        @relation(fields: [branchId], references: [id])
+  applications Application[]
+
+  @@index([tenantId])
+}
+
+/// An admission application, optionally linked back to the Enquiry that
+/// produced it. `studentId` (nullable, set once on conversion) is a Unit
+/// 10 addition beyond data-model.md's sketch — see this unit's spec
+/// Decisions. `regFeeInvoiceId` is deliberately omitted until Unit 12
+/// introduces `Invoice`. Branch-scoped; RLS per the established pattern.
+model Application {
+  id            String            @id @default(cuid())
+  tenantId      String
+  branchId      String
+  enquiryId     String?
+  formData      Json
+  classAppliedId String
+  status        ApplicationStatus @default(DRAFT)
+  studentId     String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  branch      Branch   @relation(fields: [branchId], references: [id])
+  enquiry     Enquiry? @relation(fields: [enquiryId], references: [id])
+  classApplied Class   @relation(fields: [classAppliedId], references: [id])
+  student     Student? @relation(fields: [studentId], references: [id])
+
+  @@index([tenantId])
+}

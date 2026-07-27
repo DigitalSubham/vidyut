@@ -37,6 +37,9 @@ model User {
   userRoles         UserRole[]
   branchMemberships BranchMembership[]
   refreshTokens     RefreshToken[]
+  guardianProfiles  Guardian[]
+  staffProfile      Staff?
+  studentProfile    Student?
 
   @@unique([tenantId, phone])
   @@unique([tenantId, email])

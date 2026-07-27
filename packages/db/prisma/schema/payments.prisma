@@ -1,0 +1,159 @@
+// Fee collection & ledger — Unit 12. See context/data-model.md §10 and
+// context/feature-specs/12-fee-collection-ledger.md.
+
+enum InvoiceStatus {
+  PENDING
+  PARTIAL
+  PAID
+  CANCELLED
+  OVERDUE
+}
+
+enum PaymentMode {
+  CASH
+  CHEQUE
+  DD
+  CARD
+  UPI
+  NETBANKING
+  BANK
+  WALLET
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+/// context/feature-specs/13's Decisions — data-model.md has no entity for
+/// the refund request/approval step, only PaymentStatus.REFUNDED as a
+/// terminal state on Payment itself.
+enum RefundStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+/// A due bill for a student for one period. `@@unique([studentId, sessionId,
+/// periodLabel])` is a Unit 12 addition beyond data-model.md's bare sketch —
+/// it's what makes invoice generation idempotent (context/feature-specs/12's
+/// Decisions), same category as Unit 10's Application.studentId. Branch-owned — RLS-scoped.
+model Invoice {
+  id          String        @id @default(cuid())
+  tenantId    String
+  branchId    String
+  studentId   String
+  sessionId   String
+  number      String
+  periodLabel String
+  dueDate     DateTime
+  status      InvoiceStatus @default(PENDING)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  tenant  Tenant          @relation(fields: [tenantId], references: [id])
+  branch  Branch          @relation(fields: [branchId], references: [id])
+  student Student         @relation(fields: [studentId], references: [id])
+  session AcademicSession @relation(fields: [sessionId], references: [id])
+  items   InvoiceItem[]
+  payments Payment[]
+
+  @@unique([studentId, sessionId, periodLabel])
+  @@unique([branchId, number])
+  @@index([tenantId])
+}
+
+/// One fee-head line on an invoice. `discount`/`fine` exist per data-model.md
+/// but are populated as 0 by this unit's generator (context/feature-specs/12's
+/// Decisions — automatic Concession/FineRule application is deferred).
+model InvoiceItem {
+  id        String  @id @default(cuid())
+  tenantId  String
+  invoiceId String
+  feeHeadId String
+  amount    Int
+  discount  Int     @default(0)
+  fine      Int     @default(0)
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+  invoice Invoice @relation(fields: [invoiceId], references: [id])
+  feeHead FeeHead @relation(fields: [feeHeadId], references: [id])
+
+  @@index([tenantId])
+}
+
+/// A counter (or, later, gateway) payment. `idempotencyKey` is unique so a
+/// repeated `Idempotency-Key` header (api-conventions.md) never double-charges.
+/// Branch-owned — RLS-scoped.
+model Payment {
+  id             String        @id @default(cuid())
+  tenantId       String
+  branchId       String
+  invoiceId      String?
+  studentId      String
+  amount         Int
+  mode           PaymentMode
+  reference      String?
+  gatewayOrderId String?
+  status         PaymentStatus @default(SUCCESS)
+  receivedById   String?
+  idempotencyKey String        @unique
+  // Unit 13 addition — see context/feature-specs/13's Decisions: rate is
+  // configurable (PAYMENT_PLATFORM_FEE_BPS), defaults to 0.
+  platformFeeAmount Int      @default(0)
+  createdAt         DateTime @default(now())
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id])
+  branch        Branch         @relation(fields: [branchId], references: [id])
+  invoice       Invoice?       @relation(fields: [invoiceId], references: [id])
+  student       Student        @relation(fields: [studentId], references: [id])
+  receipt       Receipt?
+  refundRequests RefundRequest[]
+
+  @@index([tenantId])
+}
+
+/// A refund request + approval trail (context/feature-specs/13's Decisions
+/// — a Unit 13 addition beyond data-model.md's bare sketch). Branch-owned — RLS-scoped.
+model RefundRequest {
+  id           String       @id @default(cuid())
+  tenantId     String
+  branchId     String
+  paymentId    String
+  amount       Int
+  reason       String
+  status       RefundStatus @default(PENDING)
+  requestedById String
+  decidedById  String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+  branch  Branch  @relation(fields: [branchId], references: [id])
+  payment Payment @relation(fields: [paymentId], references: [id])
+
+  @@index([tenantId])
+}
+
+/// The receipt for a payment. `pdfUrl` stays null this unit — PDF generation
+/// is stubbed (context/feature-specs/12's Decisions). Branch-owned — RLS-scoped.
+model Receipt {
+  id           String    @id @default(cuid())
+  tenantId     String
+  branchId     String
+  paymentId    String    @unique
+  number       String
+  pdfUrl       String?
+  cancelledAt  DateTime?
+  cancelReason String?
+  createdAt    DateTime  @default(now())
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+  branch  Branch  @relation(fields: [branchId], references: [id])
+  payment Payment @relation(fields: [paymentId], references: [id])
+
+  @@unique([branchId, number])
+  @@index([tenantId])
+}

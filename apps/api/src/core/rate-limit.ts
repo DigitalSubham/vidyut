@@ -35,9 +35,19 @@ export function createRateLimiter(options: RateLimiterOptions) {
   });
 }
 
-/** Default pipeline-wide limiter. Tighter, route-specific limiters (e.g. OTP) can wrap createRateLimiter separately. */
+/**
+ * Default pipeline-wide limiter. Tighter, route-specific limiters (e.g. OTP)
+ * can wrap createRateLimiter separately.
+ *
+ * Unit 32 fix: the Redis-backed store is shared across every test file in a
+ * single `vitest run` (same IP, same key), so the real 300/min production
+ * limit was tripping as a flaky 429 once the growing test suite's total
+ * request count crossed it within the run's ~60s window — a false failure,
+ * not a real rate-limit bug. Raised only under NODE_ENV=test (which Vitest
+ * sets automatically); production behavior is unchanged.
+ */
 export const defaultRateLimiter = createRateLimiter({
   windowMs: 60_000,
-  max: 300,
+  max: process.env.NODE_ENV === "test" ? 10_000 : 300,
   keyPrefix: "default",
 });

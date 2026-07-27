@@ -54,3 +54,28 @@ export const impersonateSchema = z.object({
   userId: z.string().min(1, "platform.errors.userIdRequired"),
 });
 export type ImpersonateInput = z.infer<typeof impersonateSchema>;
+
+export const createPlatformInvoiceSchema = z.object({
+  amount: z.coerce.number().int().positive("platform.errors.amountRequired"),
+  dueDate: z.coerce.date(),
+});
+export type CreatePlatformInvoiceInput = z.infer<typeof createPlatformInvoiceSchema>;
+
+const platformInvoiceStatusValues = ["PENDING", "PAID", "OVERDUE"] as const;
+
+export const patchPlatformInvoiceStatusSchema = z.object({
+  status: z.enum(platformInvoiceStatusValues),
+});
+export type PatchPlatformInvoiceStatusInput = z.infer<typeof patchPlatformInvoiceStatusSchema>;
+
+export const walletRechargeSchema = z.object({
+  amountPaise: z.coerce.number().int().positive("platform.errors.amountRequired"),
+  reason: z.string().trim().min(1, "platform.errors.reasonRequired").default("manual_recharge"),
+});
+export type WalletRechargeInput = z.infer<typeof walletRechargeSchema>;
+
+export const revenueSummaryQuerySchema = z.object({
+  from: z.coerce.date().optional(),
+  to: z.coerce.date().optional(),
+});
+export type RevenueSummaryQueryInput = z.infer<typeof revenueSummaryQuerySchema>;

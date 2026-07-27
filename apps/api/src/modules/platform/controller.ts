@@ -41,3 +41,32 @@ export async function impersonate(req: Request, res: Response): Promise<void> {
   const result = await platformService.impersonateUser(req.params.id!, req.body.userId, actorId);
   ok(res, result);
 }
+
+export async function createPlatformInvoice(req: Request, res: Response): Promise<void> {
+  const invoice = await platformService.createPlatformInvoice(req.params.id!, req.body);
+  created(res, invoice);
+}
+
+export async function listPlatformInvoices(req: Request, res: Response): Promise<void> {
+  const invoices = await platformService.listPlatformInvoices(req.params.id!);
+  ok(res, invoices);
+}
+
+export async function patchPlatformInvoiceStatus(req: Request, res: Response): Promise<void> {
+  const invoice = await platformService.patchPlatformInvoiceStatus(
+    req.params.id!,
+    req.params.invoiceId!,
+    req.body
+  );
+  ok(res, invoice);
+}
+
+export async function rechargeWallet(req: Request, res: Response): Promise<void> {
+  const wallet = await platformService.rechargeWallet(req.params.id!, req.body);
+  ok(res, wallet);
+}
+
+export async function getRevenueSummary(req: Request, res: Response): Promise<void> {
+  const summary = await platformService.getRevenueSummary(res.locals.query);
+  ok(res, summary);
+}

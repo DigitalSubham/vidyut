@@ -1,0 +1,27 @@
+// Homework/Assignments — Unit 23. See context/data-model.md §11 and
+// context/feature-specs/23-homework-assignments.md. Last unit of Milestone
+// 6 — closes out the backend-core CRUD build (Milestone 7 onward is
+// apps/dashboards/billing/hardening, not new domain models).
+
+/// A homework/assignment notice for a section+subject. Tenant-owned — RLS-scoped.
+model Homework {
+  id            String   @id @default(cuid())
+  tenantId      String
+  branchId      String
+  sectionId     String
+  subjectId     String
+  title         String
+  description   String
+  attachmentUrl String?
+  dueDate       DateTime
+  createdById   String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+  branch  Branch  @relation(fields: [branchId], references: [id])
+  section Section @relation(fields: [sectionId], references: [id])
+  subject Subject @relation(fields: [subjectId], references: [id])
+
+  @@index([tenantId])
+}

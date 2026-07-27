@@ -23,10 +23,14 @@ enum Board {
 /// The customer (school owner/group). Platform-level — not itself RLS-scoped;
 /// accessed by the super-admin surface, not through withTenant().
 model Tenant {
-  id        String       @id @default(cuid())
-  name      String
-  slug      String       @unique
-  status    TenantStatus @default(TRIAL)
+  id         String       @id @default(cuid())
+  name       String
+  slug       String       @unique
+  // Unit 15b addition — short, human-friendly code the mobile app resolves
+  // to a tenant (replaces typing `tenantSlug` by hand). Nullable so existing
+  // rows can be backfilled by migration; every new tenant gets one at creation.
+  schoolCode String?      @unique
+  status     TenantStatus @default(TRIAL)
   planId    String?
   appType   AppDelivery  @default(SHARED)
   locale    String       @default("en")
@@ -46,9 +50,46 @@ model Tenant {
   refreshTokens     RefreshToken[]
   subscriptions     Subscription[]
   moduleToggles     ModuleToggle[]
+  platformInvoices  PlatformInvoice[]
   smsWallet         SmsWallet?
   appBuilds         AppBuild[]
   auditLogs         AuditLog[]
+  classes           Class[]
+  sections          Section[]
+  subjects          Subject[]
+  classSubjects     ClassSubject[]
+  teacherAssignments TeacherAssignment[]
+  students          Student[]
+  enrollments       Enrollment[]
+  guardians         Guardian[]
+  studentGuardians  StudentGuardian[]
+  staff             Staff[]
+  leaveRequests     LeaveRequest[]
+  enquiries         Enquiry[]
+  applications      Application[]
+  feeHeads          FeeHead[]
+  feeStructures     FeeStructure[]
+  feeStructureItems FeeStructureItem[]
+  fineRules         FineRule[]
+  feeAssignments    FeeAssignment[]
+  concessions       Concession[]
+  invoices          Invoice[]
+  invoiceItems      InvoiceItem[]
+  payments          Payment[]
+  receipts          Receipt[]
+  refundRequests    RefundRequest[]
+  notificationLogs  NotificationLog[]
+  announcements     Announcement[]
+  certificates      Certificate[]
+  timetablePeriods  TimetablePeriod[]
+  homework          Homework[]
+  walletTxns        WalletTxn[]
+  attendanceRecords AttendanceRecord[]
+  exams             Exam[]
+  examSubjects      ExamSubject[]
+  marksEntries      MarksEntry[]
+  reportCardTemplates ReportCardTemplate[]
+  reportCards       ReportCard[]
 }
 
 /// A physical school under the tenant. Tenant-owned — RLS-scoped.
@@ -69,6 +110,35 @@ model Branch {
   academicSessions  AcademicSession[]
   userRoles         UserRole[]
   branchMemberships BranchMembership[]
+  classes           Class[]
+  sections          Section[]
+  subjects          Subject[]
+  teacherAssignments TeacherAssignment[]
+  students          Student[]
+  enrollments       Enrollment[]
+  staff             Staff[]
+  leaveRequests     LeaveRequest[]
+  enquiries         Enquiry[]
+  applications      Application[]
+  feeHeads          FeeHead[]
+  feeStructures     FeeStructure[]
+  fineRules         FineRule[]
+  feeAssignments    FeeAssignment[]
+  concessions       Concession[]
+  invoices          Invoice[]
+  payments          Payment[]
+  receipts          Receipt[]
+  refundRequests    RefundRequest[]
+  notificationLogs  NotificationLog[]
+  announcements     Announcement[]
+  certificates      Certificate[]
+  timetablePeriods  TimetablePeriod[]
+  homework          Homework[]
+  attendanceRecords AttendanceRecord[]
+  exams             Exam[]
+  marksEntries      MarksEntry[]
+  reportCardTemplates ReportCardTemplate[]
+  reportCards       ReportCard[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
@@ -89,6 +159,14 @@ model AcademicSession {
 
   tenant Tenant @relation(fields: [tenantId], references: [id])
   branch Branch @relation(fields: [branchId], references: [id])
+  teacherAssignments TeacherAssignment[]
+  enrollments        Enrollment[]
+  feeStructures      FeeStructure[]
+  invoices           Invoice[]
+  attendanceRecords  AttendanceRecord[]
+  exams              Exam[]
+  reportCards        ReportCard[]
+  timetablePeriods   TimetablePeriod[]
 
   @@unique([branchId, name])
   @@index([tenantId])

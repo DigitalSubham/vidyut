@@ -22,6 +22,63 @@
     "greeting": "Welcome to Vidyut",
     "description": "Run your school with less effort — fees, attendance, and results, all in one place."
   },
+  "school": {
+    "branchIdPlaceholder": "Branch ID",
+    "login": {
+      "title": "School staff sign in",
+      "tenantSlug": "School slug",
+      "email": "Email",
+      "password": "Password",
+      "twoFaCode": "2FA code",
+      "submit": "Sign in",
+      "verify": "Verify"
+    },
+    "common": {
+      "loading": "Loading…",
+      "save": "Save",
+      "cancel": "Cancel",
+      "search": "Search"
+    },
+    "students": {
+      "title": "Students",
+      "add": "Add student",
+      "empty": "No students yet for this branch.",
+      "admissionNo": "Admission No.",
+      "name": "Name",
+      "class": "Class",
+      "section": "Section",
+      "status": "Status",
+      "firstName": "First name",
+      "lastName": "Last name",
+      "dob": "Date of birth",
+      "gender": "Gender",
+      "address": "Address",
+      "rollNo": "Roll no."
+    },
+    "fees": {
+      "title": "Fees",
+      "invoiceNumber": "Invoice #",
+      "period": "Period",
+      "status": "Status",
+      "collectPayment": "Collect payment",
+      "amount": "Amount (₹)",
+      "mode": "Mode",
+      "submit": "Record payment"
+    },
+    "attendance": {
+      "title": "Attendance",
+      "sectionId": "Section ID",
+      "loadRegister": "Load register",
+      "defaulters": "Defaulters (below 75%)"
+    },
+    "dashboard": {
+      "title": "Dashboard",
+      "collectionPercent": "Collection % (this month)",
+      "totalDues": "Total dues",
+      "attendancePercent": "Attendance % (today)",
+      "admissionsFunnel": "Admissions (enquiries / applications / converted)"
+    }
+  },
   "platform": {
     "common": {
       "loading": "Loading…"
@@ -65,7 +122,25 @@
       "branches": "Branches",
       "storageGb": "Storage (GB)",
       "suspend": "Suspend",
-      "activate": "Activate"
+      "activate": "Activate",
+      "smsWallet": "SMS wallet balance"
+    },
+    "billing": {
+      "invoices": "Subscription invoices",
+      "createInvoice": "Create invoice",
+      "invoiceNo": "Invoice #",
+      "amountPaise": "Amount (paise)",
+      "dueDate": "Due date",
+      "markPaid": "Mark paid",
+      "noInvoices": "No invoices yet.",
+      "walletRecharge": "SMS wallet recharge",
+      "recharge": "Recharge"
+    },
+    "revenue": {
+      "title": "Revenue summary",
+      "backToTenants": "Back to schools",
+      "subscriptionRevenue": "Subscription revenue (paid)",
+      "platformFeeRevenue": "Platform-fee revenue"
     }
   }
 }

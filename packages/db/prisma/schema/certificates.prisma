@@ -1,0 +1,40 @@
+// Certificates & IDs — Unit 21. See context/data-model.md §11 and
+// context/feature-specs/21-certificates-ids.md. `ID_CARD`/`ADMIT_CARD` are a
+// small, additive extension of data-model.md's bare enum sketch (Open
+// Question 1) — an ID/admit card is structurally identical to a certificate,
+// just a different `type`.
+
+enum CertificateType {
+  TC
+  BONAFIDE
+  CHARACTER
+  CONDUCT
+  ID_CARD
+  ADMIT_CARD
+  CUSTOM
+}
+
+/// A numbered, issued document — the issue register/log. `pdfUrl` stays null
+/// until a real PDF pipeline exists (stub job, same posture as Unit 12's
+/// Receipt/Unit 19's ReportCard). `issuedById` is a small addition beyond the
+/// bare doc sketch (the issuer, needed for the register). Branch-owned —
+/// RLS-scoped.
+model Certificate {
+  id           String          @id @default(cuid())
+  tenantId     String
+  branchId     String
+  studentId    String
+  type         CertificateType
+  customTitle  String?
+  number       String
+  pdfUrl       String?
+  issuedAt     DateTime        @default(now())
+  issuedById   String
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+  branch  Branch  @relation(fields: [branchId], references: [id])
+  student Student @relation(fields: [studentId], references: [id])
+
+  @@unique([branchId, type, number])
+  @@index([tenantId])
+}

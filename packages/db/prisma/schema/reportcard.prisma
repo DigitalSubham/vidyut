@@ -1,0 +1,53 @@
+// Report cards — Unit 19. See context/data-model.md §9 and
+// context/feature-specs/19-report-cards.md. Builds on Unit 17's Exam and
+// Unit 18's MarksEntry; `layout`/PDF rendering are stubbed exactly like Unit
+// 12's receipts (context/feature-specs/19's Open Question 1) — no real
+// Puppeteer pipeline exists yet.
+
+/// A reusable report-card layout. `branchId` nullable = a tenant-wide default
+/// template (not tied to one branch). Tenant-owned — RLS-scoped.
+model ReportCardTemplate {
+  id        String    @id @default(cuid())
+  tenantId  String
+  branchId  String?
+  name      String
+  board     Board
+  layout    Json
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  tenant Tenant  @relation(fields: [tenantId], references: [id])
+  branch Branch? @relation(fields: [branchId], references: [id])
+
+  reportCards ReportCard[]
+
+  @@index([tenantId])
+}
+
+/// One student's report card for one Exam. `pdfUrl` stays null until a real
+/// PDF pipeline exists (stub job, same posture as Unit 12's Receipt).
+/// Tenant-owned — RLS-scoped.
+model ReportCard {
+  id          String    @id @default(cuid())
+  tenantId    String
+  branchId    String
+  sessionId   String
+  studentId   String
+  examId      String
+  templateId  String
+  pdfUrl      String?
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  tenant   Tenant             @relation(fields: [tenantId], references: [id])
+  branch   Branch             @relation(fields: [branchId], references: [id])
+  session  AcademicSession    @relation(fields: [sessionId], references: [id])
+  student  Student            @relation(fields: [studentId], references: [id])
+  exam     Exam               @relation(fields: [examId], references: [id])
+  template ReportCardTemplate @relation(fields: [templateId], references: [id])
+
+  @@unique([examId, studentId])
+  @@index([tenantId])
+}

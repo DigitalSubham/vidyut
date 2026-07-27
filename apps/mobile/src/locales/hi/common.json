@@ -1,0 +1,90 @@
+{
+  "schoolCode": {
+    "title": "अपना स्कूल कोड डालें",
+    "placeholder": "जैसे AB12CD",
+    "continue": "आगे बढ़ें",
+    "notFound": "स्कूल नहीं मिला — कोड जांचें और फिर कोशिश करें"
+  },
+  "phone": {
+    "title": "अपना फ़ोन नंबर डालें",
+    "placeholder": "10 अंकों का मोबाइल नंबर",
+    "sendCode": "कोड भेजें"
+  },
+  "otp": {
+    "title": "फ़ोन पर भेजा गया कोड डालें",
+    "verify": "सत्यापित करें",
+    "invalid": "गलत कोड — फिर कोशिश करें"
+  },
+  "home": {
+    "parent": "अभिभावक होम",
+    "teacher": "शिक्षक होम",
+    "staff": "स्टाफ होम",
+    "student": "छात्र होम",
+    "logout": "लॉग आउट"
+  },
+  "language": {
+    "english": "English",
+    "hindi": "हिन्दी"
+  },
+  "attendance": {
+    "title": "हाजिरी दर्ज करें",
+    "branchId": "ब्रांच आईडी",
+    "sectionId": "सेक्शन आईडी",
+    "load": "लोड करें",
+    "sync": "सिंक करें",
+    "syncing": "सिंक हो रहा है…",
+    "syncedTitle": "सिंक हो गया",
+    "syncedBody": "{{count}} रिकॉर्ड भेजे गए",
+    "errorTitle": "कुछ गड़बड़ हो गई",
+    "status": {
+      "PRESENT": "उपस्थित",
+      "ABSENT": "अनुपस्थित",
+      "LATE": "देर से"
+    }
+  },
+  "teacherHome": {
+    "tabs": {
+      "attendance": "हाजिरी",
+      "marks": "अंक",
+      "homework": "गृहकार्य"
+    }
+  },
+  "marks": {
+    "title": "अंक दर्ज करें",
+    "selectExamHint": "शुरू करने के लिए परीक्षा चुनें",
+    "noSchemeTitle": "कोई अंक योजना नहीं",
+    "noSchemeBody": "इस कक्षा/विषय के लिए चुनी गई परीक्षा में कोई ExamSubject नहीं है।",
+    "marksPlaceholder": "अंक",
+    "markAbsent": "अनुपस्थित करें",
+    "markPresent": "उपस्थित करें",
+    "next": "अगला",
+    "done": "सभी छात्रों के अंक दर्ज हो गए"
+  },
+  "homework": {
+    "title": "गृहकार्य दें",
+    "titlePlaceholder": "शीर्षक",
+    "descriptionPlaceholder": "विवरण",
+    "dueDatePlaceholder": "जमा करने की तारीख (YYYY-MM-DD)",
+    "post": "पोस्ट करें",
+    "postedTitle": "गृहकार्य पोस्ट हो गया"
+  },
+  "me": {
+    "tabs": {
+      "fees": "फीस",
+      "attendance": "हाजिरी",
+      "reportCards": "रिपोर्ट कार्ड",
+      "notices": "सूचनाएं",
+      "homework": "गृहकार्य",
+      "timetable": "समय सारणी"
+    },
+    "due": "जमा करने की तारीख",
+    "day": "दिन",
+    "period": "पीरियड",
+    "fees": {
+      "payment": "भुगतान",
+      "payNow": "अभी भुगतान करें",
+      "orderCreatedTitle": "भुगतान ऑर्डर बन गया",
+      "orderCreatedBody": "ऑर्डर संदर्भ:"
+    }
+  }
+}

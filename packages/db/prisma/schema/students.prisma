@@ -1,0 +1,89 @@
+// Students & enrollment — Unit 07. See context/data-model.md §5 and
+// context/feature-specs/07-students-bulk-import.md.
+
+enum StudentStatus {
+  ACTIVE
+  INACTIVE
+  TC_ISSUED
+  ALUMNI
+  STRUCK_OFF
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  PROMOTED
+  DETAINED
+  LEFT
+}
+
+/// A student's profile. Tenant-owned — RLS-scoped.
+model Student {
+  id           String        @id @default(cuid())
+  tenantId     String
+  branchId     String
+  admissionNo  String
+  rollNo       String?
+  firstName    String
+  lastName     String
+  dob          DateTime
+  gender       String
+  bloodGroup   String?
+  category     String?
+  religion     String?
+  photoUrl     String?
+  address      String
+  status       StudentStatus @default(ACTIVE)
+  // Unit 24 addition — optional direct student login (older/senior students),
+  // same nullable-unique pattern as Guardian.userId. Most students are never
+  // given one; access is normally mediated through a Guardian's login.
+  userId       String?       @unique
+  customFields Json?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  deletedAt    DateTime?
+
+  tenant           Tenant            @relation(fields: [tenantId], references: [id])
+  branch           Branch            @relation(fields: [branchId], references: [id])
+  user             User?             @relation(fields: [userId], references: [id])
+  enrollments      Enrollment[]
+  studentGuardians StudentGuardian[]
+  applications     Application[]
+  feeAssignments   FeeAssignment[]
+  concessions      Concession[]
+  invoices         Invoice[]
+  payments         Payment[]
+  attendanceRecords AttendanceRecord[]
+  marksEntries      MarksEntry[]
+  reportCards       ReportCard[]
+  certificates      Certificate[]
+
+  @@unique([branchId, admissionNo])
+  @@index([tenantId])
+}
+
+/// A student's placement in a class/section for one session. History is
+/// preserved across sessions (never overwritten) so year-end rollover
+/// (Unit 33) has a full enrollment trail. Tenant-owned — RLS-scoped.
+model Enrollment {
+  id        String           @id @default(cuid())
+  tenantId  String
+  branchId  String
+  studentId String
+  sessionId String
+  classId   String
+  sectionId String
+  rollNo    String?
+  status    EnrollmentStatus @default(ACTIVE)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  tenant  Tenant          @relation(fields: [tenantId], references: [id])
+  branch  Branch          @relation(fields: [branchId], references: [id])
+  student Student         @relation(fields: [studentId], references: [id])
+  session AcademicSession @relation(fields: [sessionId], references: [id])
+  class   Class           @relation(fields: [classId], references: [id])
+  section Section         @relation(fields: [sectionId], references: [id])
+
+  @@unique([studentId, sessionId])
+  @@index([tenantId])
+}

@@ -2,6 +2,11 @@
 
 Read `AGENTS.md`, `data-model.md` (§7), `rbac.md`, `api-conventions.md`, `code-standards.md`, and Unit 06's spec (class-teacher/teacher-assignment deferral) first.
 
+## Decisions (confirmed with the user before implementation)
+
+- **LeaveRequest.type:** `data-model.md` lists it as a plain field with no defined enum (unlike `StaffType`/`LeaveStatus`, which are explicit). Confirmed: a fixed enum `LeaveType{CASUAL, SICK, EARNED, OTHER}` — the common Indian-school HR baseline. A configurable/tenant-specific leave-type catalog is deferred to a later HR/settings unit if a school needs more types.
+- **`PATCH /academic/sections/:id` (classTeacherId):** this unit's own scope line writes it as a flat route, but Unit 06 already built `Section` under the nested `/academic/classes/:classId/sections/:id` route. Rather than add a redundant flat route, `classTeacherId` is added to the existing nested `PATCH` endpoint's schema — same resource, no new route shape.
+
 ## Goal
 
 Staff records with linked logins, and leave apply/approve — and close the loop Unit 06 deferred: class-teacher assignment and teacher-subject-section mapping, now that Staff exists to assign.

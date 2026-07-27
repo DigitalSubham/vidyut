@@ -1,0 +1,29 @@
+// Timetable — Unit 22. See context/data-model.md §11 and
+// context/feature-specs/22-timetable.md. `dayOfWeek` is a plain Int 0-6
+// (Monday=0 ... Sunday=6) — no enum needed, validated at the Zod layer.
+
+/// One period slot in a section's weekly grid. Tenant-owned — RLS-scoped.
+model TimetablePeriod {
+  id        String   @id @default(cuid())
+  tenantId  String
+  branchId  String
+  sessionId String
+  sectionId String
+  dayOfWeek Int
+  periodNo  Int
+  subjectId String
+  staffId   String
+  room      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant  Tenant          @relation(fields: [tenantId], references: [id])
+  branch  Branch          @relation(fields: [branchId], references: [id])
+  session AcademicSession @relation(fields: [sessionId], references: [id])
+  section Section         @relation(fields: [sectionId], references: [id])
+  subject Subject         @relation(fields: [subjectId], references: [id])
+  staff   Staff           @relation(fields: [staffId], references: [id])
+
+  @@unique([sectionId, dayOfWeek, periodNo])
+  @@index([tenantId])
+}

@@ -22,6 +22,63 @@
     "greeting": "विद्युत में आपका स्वागत है",
     "description": "फीस, उपस्थिति और परिणाम — अपने स्कूल को कम मेहनत में चलाएँ।"
   },
+  "school": {
+    "branchIdPlaceholder": "ब्रांच आईडी",
+    "login": {
+      "title": "स्कूल स्टाफ़ साइन इन",
+      "tenantSlug": "स्कूल स्लग",
+      "email": "ईमेल",
+      "password": "पासवर्ड",
+      "twoFaCode": "2FA कोड",
+      "submit": "साइन इन करें",
+      "verify": "सत्यापित करें"
+    },
+    "common": {
+      "loading": "लोड हो रहा है…",
+      "save": "सेव करें",
+      "cancel": "रद्द करें",
+      "search": "खोजें"
+    },
+    "students": {
+      "title": "विद्यार्थी",
+      "add": "विद्यार्थी जोड़ें",
+      "empty": "इस ब्रांच के लिए अभी कोई विद्यार्थी नहीं है।",
+      "admissionNo": "प्रवेश संख्या",
+      "name": "नाम",
+      "class": "कक्षा",
+      "section": "सेक्शन",
+      "status": "स्थिति",
+      "firstName": "पहला नाम",
+      "lastName": "अंतिम नाम",
+      "dob": "जन्म तिथि",
+      "gender": "लिंग",
+      "address": "पता",
+      "rollNo": "रोल नंबर"
+    },
+    "fees": {
+      "title": "फीस",
+      "invoiceNumber": "इनवॉइस #",
+      "period": "अवधि",
+      "status": "स्थिति",
+      "collectPayment": "भुगतान लें",
+      "amount": "राशि (₹)",
+      "mode": "माध्यम",
+      "submit": "भुगतान दर्ज करें"
+    },
+    "attendance": {
+      "title": "उपस्थिति",
+      "sectionId": "सेक्शन आईडी",
+      "loadRegister": "रजिस्टर लोड करें",
+      "defaulters": "डिफॉल्टर (75% से कम)"
+    },
+    "dashboard": {
+      "title": "डैशबोर्ड",
+      "collectionPercent": "संग्रह % (इस महीने)",
+      "totalDues": "कुल बकाया",
+      "attendancePercent": "उपस्थिति % (आज)",
+      "admissionsFunnel": "प्रवेश (पूछताछ / आवेदन / परिवर्तित)"
+    }
+  },
   "platform": {
     "common": {
       "loading": "लोड हो रहा है…"
@@ -65,7 +122,25 @@
       "branches": "शाखाएँ",
       "storageGb": "स्टोरेज (GB)",
       "suspend": "निलंबित करें",
-      "activate": "सक्रिय करें"
+      "activate": "सक्रिय करें",
+      "smsWallet": "SMS वॉलेट बैलेंस"
+    },
+    "billing": {
+      "invoices": "सदस्यता चालान",
+      "createInvoice": "चालान बनाएं",
+      "invoiceNo": "चालान #",
+      "amountPaise": "राशि (पैसे)",
+      "dueDate": "देय तिथि",
+      "markPaid": "भुगतान किया गया चिह्नित करें",
+      "noInvoices": "अभी तक कोई चालान नहीं।",
+      "walletRecharge": "SMS वॉलेट रिचार्ज",
+      "recharge": "रिचार्ज करें"
+    },
+    "revenue": {
+      "title": "राजस्व सारांश",
+      "backToTenants": "स्कूलों पर वापस जाएं",
+      "subscriptionRevenue": "सदस्यता राजस्व (भुगतान किया गया)",
+      "platformFeeRevenue": "प्लेटफ़ॉर्म-शुल्क राजस्व"
     }
   }
 }

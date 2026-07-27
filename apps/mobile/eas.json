@@ -1,0 +1,23 @@
+{
+  "cli": {
+    "version": ">= 12.0.0"
+  },
+  "build": {
+    "shared": {
+      "channel": "shared",
+      "env": {
+        "VIDYUT_APP_MODE": "SHARED"
+      }
+    },
+    "dedicated": {
+      "channel": "dedicated",
+      "env": {
+        "VIDYUT_APP_MODE": "DEDICATED"
+      }
+    }
+  },
+  "submit": {
+    "shared": {},
+    "dedicated": {}
+  }
+}

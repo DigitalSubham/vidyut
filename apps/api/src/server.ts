@@ -1,4 +1,7 @@
+import { initSentry } from "./core/sentry";
 import { createApp } from "./app";
+
+initSentry();
 
 const port = Number(process.env.PORT ?? 4000);
 

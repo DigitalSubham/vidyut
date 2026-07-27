@@ -1,0 +1,7 @@
+@import "tailwindcss";
+@import "@vidyut/config/tailwind-tokens.css";
+
+body {
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+}

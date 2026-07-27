@@ -2,11 +2,12 @@
 
 Read `AGENTS.md`, `data-model.md` (§6), `rbac.md`, `api-conventions.md`, `code-standards.md`, `architecture-context.md` (repo structure — `apps/web-site`) first.
 
-## Open Questions
+## Decisions (confirmed with the user before implementation)
 
-- The unit's own scope line mentions an "online admission form," but that's a **public, unauthenticated** parent self-apply form — which belongs on `apps/web-site` (the public marketing/admission site), an app that doesn't exist until Unit 29 (Milestone 7). **Recommendation (proceeding on this basis):** this unit builds the full `Enquiry`/`Application` backend + a **staff-facing** admin UI in `apps/web-app` (front desk logs walk-in/phone enquiries and applications, reviews them, converts to student); the actual public self-apply form is deferred to Unit 29, when `web-site` exists to host it. The backend API is written so Unit 29 can point a public form at it later without changes.
-- `Application` in `data-model.md` §6 has no `studentId` back-reference, so a converted application has no durable link to the `Student` it produced. **Recommendation:** add a nullable `Application.studentId`, set once on conversion — a small, justified addition (same category as Unit 03's `RefreshToken`), not a new invented feature. Flagging rather than silently adding, since it's a schema change beyond the sketch.
-- `Application.regFeeInvoiceId?` references an `Invoice`, which doesn't exist until Fees (Unit 11+). **Recommendation:** omit this column for now and add it via migration when Unit 12 introduces `Invoice`; registration-fee collection at apply-time is explicitly out of scope until then.
+- **Scope stays backend + tests only** — no `apps/web-app` UI screens this unit, matching Units 06–09 (none of those domain modules have any web UI yet either; a front-desk admin UI is better built as a dedicated later pass across all of them at once, not one at a time). The DoD's "works end to end through the staff admin UI" line is read as "through the API," same verification bar as every prior unit.
+- The unit's own scope line mentions an "online admission form," but that's a **public, unauthenticated** parent self-apply form — which belongs on `apps/web-site` (the public marketing/admission site), an app that doesn't exist until Unit 29 (Milestone 7). This unit builds the full `Enquiry`/`Application` backend only; the public self-apply form is deferred to Unit 29, when `web-site` exists to host it. The backend API is written so Unit 29 can point a public form at it later without changes.
+- `Application` in `data-model.md` §6 has no `studentId` back-reference, so a converted application has no durable link to the `Student` it produced. Confirmed: add a nullable `Application.studentId`, set once on conversion — a small, justified addition (same category as Unit 03's `RefreshToken`), not a new invented feature.
+- `Application.regFeeInvoiceId?` references an `Invoice`, which doesn't exist until Fees (Unit 11+). Confirmed: omit this column for now and add it via migration when Unit 12 introduces `Invoice`; registration-fee collection at apply-time is explicitly out of scope until then.
 
 ## Goal
 
@@ -26,7 +27,7 @@ Public self-apply form (deferred to Unit 29, see Open Questions), registration-f
 
 ## Definition of done / checks
 
-- Enquiry → application → convert-to-student works end to end through the staff admin UI, tenant + branch isolated.
+- Enquiry → application → convert-to-student works end to end through the API, tenant + branch isolated.
 - Converting an application creates a real, correctly-enrolled `Student` (reusing Unit 07's path).
 - Tenant-isolation test: cross-tenant enquiry/application queries return zero rows both via RLS and via a deliberately unscoped query.
 - RBAC test: `admission.manage` roles (OWNER/PRINCIPAL/ADMIN) pass; TEACHER/ACCOUNTANT get `403 FORBIDDEN`.
