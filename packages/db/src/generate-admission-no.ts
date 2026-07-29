@@ -13,6 +13,10 @@ import type { Prisma } from "@prisma/client";
  * counter row with `SELECT ... FOR UPDATE`.
  */
 export async function nextAdmissionNo(tx: Prisma.TransactionClient, branchId: string): Promise<string> {
-  const count = await tx.student.count({ where: { branchId } });
-  return String(count + 1).padStart(4, "0");
+  const [count, branch] = await Promise.all([
+    tx.student.count({ where: { branchId } }),
+    tx.branch.findUnique({ where: { id: branchId }, select: { tenant: { select: { admissionNoPrefix: true } } } }),
+  ]);
+  const prefix = branch?.tenant.admissionNoPrefix ?? "";
+  return `${prefix}${String(count + 1).padStart(4, "0")}`;
 }

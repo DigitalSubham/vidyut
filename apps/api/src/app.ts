@@ -23,12 +23,16 @@ import {
   feeReportsRouter,
   invoicesRouter,
   paymentsRouter,
+  reconciliationRouter,
+  receiptsRouter,
   studentFeeLedgerRouter,
 } from "./modules/payments/routes";
 import { razorpayWebhookRouter, refundRequestsRouter } from "./modules/online-payments/routes";
 import { feeRemindersRouter, notificationsRouter } from "./modules/notifications/routes";
-import { attendanceRouter } from "./modules/attendance/routes";
+import { attendanceRouter, deviceScanRouter } from "./modules/attendance/routes";
 import { examsRouter } from "./modules/exams/routes";
+import { onlineExamsRouter } from "./modules/online-exams/routes";
+import { questionBankRouter } from "./modules/question-bank/routes";
 import { marksRouter } from "./modules/marks/routes";
 import { reportCardTemplatesRouter, reportCardsRouter } from "./modules/reportcards/routes";
 import { announcementsRouter } from "./modules/announcements/routes";
@@ -42,6 +46,10 @@ import { tenantsRouter } from "./modules/tenants/routes";
 import { jobsRouter } from "./modules/jobs/routes";
 import { sampleRouter } from "./modules/sample/routes";
 import { platformRouter } from "./modules/platform/routes";
+import { usersRouter } from "./modules/users/routes";
+import { rolesRouter } from "./modules/roles/routes";
+import { searchRouter } from "./modules/search/routes";
+import { dataDeletionRequestsRouter } from "./modules/dpdp/routes";
 
 /**
  * Builds the Express app instance. Pipeline order per
@@ -95,12 +103,19 @@ export function createApp(): Express {
   app.use("/api/v1/payments", paymentsRouter);
   app.use("/api/v1/fees/reports", feeReportsRouter);
   app.use("/api/v1/students", studentFeeLedgerRouter);
+  app.use("/api/v1/fees/reconciliation", reconciliationRouter);
+  app.use("/api/v1/receipts", receiptsRouter);
   app.use("/api/v1/refund-requests", refundRequestsRouter);
   app.use("/api/v1/webhooks/razorpay", razorpayWebhookRouter);
   app.use("/api/v1/fees/reminders", feeRemindersRouter);
   app.use("/api/v1/notifications", notificationsRouter);
+  // Registered before attendanceRouter — Express matches mount prefixes in
+  // registration order, and both mounts share the "/api/v1/attendance" prefix.
+  app.use("/api/v1/attendance/device-scan", deviceScanRouter);
   app.use("/api/v1/attendance", attendanceRouter);
   app.use("/api/v1/exams", examsRouter);
+  app.use("/api/v1/online-exams", onlineExamsRouter);
+  app.use("/api/v1/question-bank", questionBankRouter);
   app.use("/api/v1/marks", marksRouter);
   app.use("/api/v1/report-card-templates", reportCardTemplatesRouter);
   app.use("/api/v1/report-cards", reportCardsRouter);
@@ -115,6 +130,10 @@ export function createApp(): Express {
   app.use("/api/v1/jobs", jobsRouter);
   app.use("/api/v1/sample", sampleRouter);
   app.use("/api/v1/platform", platformRouter);
+  app.use("/api/v1/users", usersRouter);
+  app.use("/api/v1/roles", rolesRouter);
+  app.use("/api/v1/search", searchRouter);
+  app.use("/api/v1/data-deletion-requests", dataDeletionRequestsRouter);
 
   app.use(errorHandler);
   return app;

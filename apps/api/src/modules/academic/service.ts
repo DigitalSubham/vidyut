@@ -1,16 +1,25 @@
 import { withTenant } from "@vidyut/db";
 import type {
+  AddElectiveOptionInput,
+  ChooseElectiveInput,
+  CreateBranchInput,
   CreateClassInput,
   CreateClassSubjectInput,
+  CreateElectiveGroupInput,
+  CreateHouseInput,
   CreateSectionInput,
   CreateSessionInput,
   CreateSubjectInput,
   CreateTeacherAssignmentInput,
+  ListBranchesQueryInput,
   ListClassesQueryInput,
+  ListElectiveGroupsQueryInput,
+  ListHousesQueryInput,
   ListSectionsQueryInput,
   ListSessionsQueryInput,
   ListSubjectsQueryInput,
   ListTeacherAssignmentsQueryInput,
+  PatchBranchInput,
   PatchClassInput,
   PatchSectionInput,
   PatchSessionInput,
@@ -537,4 +546,160 @@ export async function commitRollover(auth: RequestAuth, input: RolloverCommitInp
   });
 
   return { outcomes: results };
+}
+
+// ---------------------------------------------------------------------------
+// Unit 36 — Branch management (closes the `branch.manage` RBAC gap; Unit 06
+// only ever created branches via seed/platform-provisioning). Branches are
+// never deleted, only deactivated (`isActive`), matching every other
+// soft-delete convention in this codebase.
+// ---------------------------------------------------------------------------
+
+export async function createBranch(auth: RequestAuth, input: CreateBranchInput) {
+  return withTenant(auth.tenantId, (tx) =>
+    tx.branch.create({
+      data: {
+        tenantId: auth.tenantId,
+        name: input.name,
+        code: input.code,
+        address: input.address,
+        board: input.board,
+        logoUrl: input.logoUrl,
+      },
+    })
+  );
+}
+
+export async function listBranches(auth: RequestAuth, query: ListBranchesQueryInput) {
+  return withTenant(auth.tenantId, async (tx) => {
+    const where = { deletedAt: null } as const;
+    const [items, total] = await Promise.all([
+      tx.branch.findMany({
+        where,
+        orderBy: { name: "asc" },
+        skip: (query.page - 1) * query.pageSize,
+        take: query.pageSize,
+      }),
+      tx.branch.count({ where }),
+    ]);
+    return { items, total };
+  });
+}
+
+async function getBranchOrThrow(auth: RequestAuth, id: string) {
+  const branch = await withTenant(auth.tenantId, (tx) => tx.branch.findUnique({ where: { id } }));
+  if (!branch || branch.deletedAt) {
+    throw new AppError("NOT_FOUND", "academic.errors.branchNotFound");
+  }
+  return branch;
+}
+
+export async function patchBranch(auth: RequestAuth, id: string, input: PatchBranchInput) {
+  const branch = await getBranchOrThrow(auth, id);
+  assertBranchAccess(auth, branch.id);
+
+  return withTenant(auth.tenantId, (tx) => tx.branch.update({ where: { id }, data: input }));
+}
+
+// ---------------------------------------------------------------------------
+// Unit 43 — Academic Structure Depth (elective baskets, houses)
+//
+// Streams (Science/Commerce/Arts) resolved with the user: a separate Class
+// row per stream (e.g. "Class 11 Science") — zero new schema, just a
+// convention already representable today.
+// ---------------------------------------------------------------------------
+
+export async function createElectiveGroup(auth: RequestAuth, input: CreateElectiveGroupInput) {
+  assertBranchAccess(auth, input.branchId);
+
+  return withTenant(auth.tenantId, (tx) =>
+    tx.electiveGroup.create({
+      data: { tenantId: auth.tenantId, branchId: input.branchId, classId: input.classId, name: input.name },
+    })
+  );
+}
+
+export async function listElectiveGroups(auth: RequestAuth, query: ListElectiveGroupsQueryInput) {
+  return withTenant(auth.tenantId, (tx) =>
+    tx.electiveGroup.findMany({
+      where: { classId: query.classId },
+      include: { options: true },
+      orderBy: { name: "asc" },
+    })
+  );
+}
+
+async function getElectiveGroupOrThrow(auth: RequestAuth, id: string) {
+  const group = await withTenant(auth.tenantId, (tx) => tx.electiveGroup.findUnique({ where: { id } }));
+  if (!group) {
+    throw new AppError("NOT_FOUND", "academic.errors.electiveGroupNotFound");
+  }
+  return group;
+}
+
+export async function addElectiveOption(auth: RequestAuth, id: string, input: AddElectiveOptionInput) {
+  const group = await getElectiveGroupOrThrow(auth, id);
+  assertBranchAccess(auth, group.branchId);
+
+  return withTenant(auth.tenantId, (tx) =>
+    tx.classSubject.update({ where: { id: input.classSubjectId }, data: { electiveGroupId: id, isElective: true } })
+  );
+}
+
+/** A student picks one option from the group — one choice per group, upsert on re-pick. */
+export async function chooseElective(auth: RequestAuth, id: string, input: ChooseElectiveInput) {
+  const group = await getElectiveGroupOrThrow(auth, id);
+  assertBranchAccess(auth, group.branchId);
+
+  const option = await withTenant(auth.tenantId, (tx) => tx.classSubject.findUnique({ where: { id: input.classSubjectId } }));
+  if (!option || option.electiveGroupId !== id) {
+    throw new AppError("VALIDATION_ERROR", "academic.errors.optionNotInGroup");
+  }
+
+  return withTenant(auth.tenantId, (tx) =>
+    tx.studentElectiveChoice.upsert({
+      where: { studentId_electiveGroupId: { studentId: input.studentId, electiveGroupId: id } },
+      update: { classSubjectId: input.classSubjectId },
+      create: {
+        tenantId: auth.tenantId,
+        branchId: group.branchId,
+        studentId: input.studentId,
+        electiveGroupId: id,
+        classSubjectId: input.classSubjectId,
+      },
+    })
+  );
+}
+
+export async function createHouse(auth: RequestAuth, input: CreateHouseInput) {
+  assertBranchAccess(auth, input.branchId);
+
+  return withTenant(auth.tenantId, (tx) =>
+    tx.house.create({ data: { tenantId: auth.tenantId, branchId: input.branchId, name: input.name, color: input.color } })
+  );
+}
+
+export async function listHouses(auth: RequestAuth, query: ListHousesQueryInput) {
+  assertBranchAccess(auth, query.branchId);
+
+  return withTenant(auth.tenantId, (tx) =>
+    tx.house.findMany({ where: { branchId: query.branchId }, orderBy: { name: "asc" } })
+  );
+}
+
+/** A house's roster — students currently tagged with this house. */
+export async function getHouseRoster(auth: RequestAuth, id: string) {
+  const house = await withTenant(auth.tenantId, (tx) => tx.house.findUnique({ where: { id } }));
+  if (!house) {
+    throw new AppError("NOT_FOUND", "academic.errors.houseNotFound");
+  }
+  assertBranchAccess(auth, house.branchId);
+
+  return withTenant(auth.tenantId, (tx) =>
+    tx.student.findMany({
+      where: { houseId: id, deletedAt: null },
+      select: { id: true, admissionNo: true, firstName: true, lastName: true },
+      orderBy: { firstName: "asc" },
+    })
+  );
 }

@@ -12,19 +12,34 @@ function assertBranchAccess(auth: RequestAuth, branchId: string): void {
 }
 
 export async function issueCertificate(auth: RequestAuth, input: IssueCertificateInput) {
-  const student = await withTenant(auth.tenantId, (tx) => tx.student.findUnique({ where: { id: input.studentId } }));
-  if (!student || student.deletedAt) {
-    throw new AppError("NOT_FOUND", "student.errors.notFound");
-  }
-  assertBranchAccess(auth, student.branchId);
+  // Unit 42 — exactly one of studentId/staffId (Zod-enforced); the same
+  // register/numbering machinery issues either, distinguished only by which
+  // FK is set.
+  const branchId = input.studentId
+    ? await (async () => {
+        const student = await withTenant(auth.tenantId, (tx) => tx.student.findUnique({ where: { id: input.studentId } }));
+        if (!student || student.deletedAt) {
+          throw new AppError("NOT_FOUND", "student.errors.notFound");
+        }
+        return student.branchId;
+      })()
+    : await (async () => {
+        const staff = await withTenant(auth.tenantId, (tx) => tx.staff.findUnique({ where: { id: input.staffId } }));
+        if (!staff || staff.deletedAt) {
+          throw new AppError("NOT_FOUND", "staff.errors.notFound");
+        }
+        return staff.branchId;
+      })();
+  assertBranchAccess(auth, branchId);
 
   const certificate = await withTenant(auth.tenantId, async (tx) => {
-    const number = await nextCertificateNumber(tx, student.branchId, input.type);
+    const number = await nextCertificateNumber(tx, branchId, input.type);
     return tx.certificate.create({
       data: {
         tenantId: auth.tenantId,
-        branchId: student.branchId,
+        branchId,
         studentId: input.studentId,
+        staffId: input.staffId,
         type: input.type,
         customTitle: input.customTitle,
         number,
@@ -46,6 +61,7 @@ export async function listCertificates(auth: RequestAuth, query: ListCertificate
       where: {
         branchId: query.branchId,
         ...(query.studentId ? { studentId: query.studentId } : {}),
+        ...(query.staffId ? { staffId: query.staffId } : {}),
         ...(query.type ? { type: query.type } : {}),
       },
       orderBy: { issuedAt: "desc" },

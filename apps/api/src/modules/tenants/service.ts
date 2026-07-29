@@ -1,4 +1,5 @@
 import { prisma } from "@vidyut/db";
+import type { PatchTenantProfileInput } from "@vidyut/validation";
 import { AppError } from "../../core/errors";
 import type { RequestAuth } from "../../core/guards/types";
 
@@ -28,4 +29,17 @@ export async function getMySubscription(auth: RequestAuth) {
     throw new AppError("NOT_FOUND", "platform.errors.subscriptionNotFound");
   }
   return subscription;
+}
+
+/**
+ * Unit 36 — closes the `settings.manage` RBAC gap (Unit 34's own audit
+ * finding): school-group profile fields, editable by OWNER/PRINCIPAL.
+ * `Tenant` is a platform-managed, no-RLS table (data-model.md §13) — scoped
+ * explicitly by `auth.tenantId`, same posture as `getMySubscription` above.
+ */
+export async function patchMyProfile(auth: RequestAuth, input: PatchTenantProfileInput) {
+  return prisma.tenant.update({
+    where: { id: auth.tenantId },
+    data: input,
+  });
 }

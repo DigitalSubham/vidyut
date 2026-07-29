@@ -1,5 +1,6 @@
 import { Router } from "express";
 import {
+  cancelReceiptSchema,
   createOpeningBalanceSchema,
   createPaymentSchema,
   createRefundRequestSchema,
@@ -7,6 +8,7 @@ import {
   initiateOnlinePaymentSchema,
   listInvoicesQuerySchema,
   listPaymentsQuerySchema,
+  reconciliationQuerySchema,
 } from "@vidyut/validation";
 import { asyncHandler } from "../../core/envelope";
 import { authGuard } from "../../core/guards/auth-guard";
@@ -90,6 +92,31 @@ feeReportsRouter.get(
   requirePermission("fee.reports"),
   validateQuery(feeReportsQuerySchema),
   asyncHandler(controller.getDefaultersReport)
+);
+
+// -- Unit 38: Fee Reconciliation (mounted at /api/v1/fees/reconciliation) ----
+
+export const reconciliationRouter = Router();
+reconciliationRouter.use(authGuard, tenantContext);
+
+reconciliationRouter.get(
+  "/",
+  requireBranch(branchIdFromQuery),
+  requirePermission("fee.reports"),
+  validateQuery(reconciliationQuerySchema),
+  asyncHandler(controller.getReconciliation)
+);
+
+// -- Unit 38: Receipt cancellation --------------------------------------------
+
+export const receiptsRouter = Router();
+receiptsRouter.use(authGuard, tenantContext);
+
+receiptsRouter.patch(
+  "/:id/cancel",
+  requirePermission("fee.refund"),
+  validateBody(cancelReceiptSchema),
+  asyncHandler(controller.cancelReceipt)
 );
 
 // -- Student fee ledger + opening balance (mounted under /students) -----------

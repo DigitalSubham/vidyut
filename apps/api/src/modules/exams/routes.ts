@@ -1,7 +1,9 @@
 import { Router } from "express";
 import {
+  bulkEnterCoScholasticGradesSchema,
   createExamSchema,
   createExamSubjectSchema,
+  createExamTimetableSchema,
   listExamsQuerySchema,
   patchExamSchema,
 } from "@vidyut/validation";
@@ -60,3 +62,29 @@ examsRouter.delete(
   requirePermission("exam.manage"),
   asyncHandler(controller.deleteExamSubject)
 );
+
+// -- Unit 46: exam datesheet ---------------------------------------------------
+
+examsRouter.post(
+  "/:examId/timetable",
+  requirePermission("exam.manage"),
+  validateBody(createExamTimetableSchema),
+  asyncHandler(controller.createExamTimetable)
+);
+
+examsRouter.get("/:examId/timetable", asyncHandler(controller.listExamTimetable));
+
+// -- Unit 46: co-scholastic grades ---------------------------------------------
+
+examsRouter.post(
+  "/:examId/co-scholastic",
+  requirePermission("marks.enter"),
+  validateBody(bulkEnterCoScholasticGradesSchema),
+  asyncHandler(controller.bulkEnterCoScholasticGrades)
+);
+
+examsRouter.get("/:examId/co-scholastic", asyncHandler(controller.listCoScholasticGrades));
+
+// -- Unit 46: rank/toppers (computed from existing MarksEntry, no new input) --
+
+examsRouter.get("/:id/results/rank", asyncHandler(controller.getExamRank));

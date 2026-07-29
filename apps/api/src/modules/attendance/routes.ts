@@ -1,7 +1,9 @@
 import { Router } from "express";
 import {
+  attendanceAnalyticsQuerySchema,
   attendanceDefaultersQuerySchema,
   attendanceRegisterQuerySchema,
+  deviceScanSchema,
   listAttendanceQuerySchema,
   markAttendanceSchema,
   regularizeAttendanceSchema,
@@ -13,6 +15,12 @@ import { requireBranch } from "../../core/guards/branch-scope";
 import { requirePermission } from "../../core/guards/require-permission";
 import { validateBody, validateQuery } from "../../core/guards/validate";
 import * as controller from "./controller";
+
+/** Mounted at /api/v1/attendance/device-scan — public, no authGuard (a
+ * biometric/RFID device isn't a user; it authenticates via its own
+ * per-branch token, checked inside the service). */
+export const deviceScanRouter = Router();
+deviceScanRouter.post("/", validateBody(deviceScanSchema), asyncHandler(controller.deviceScan));
 
 export const attendanceRouter = Router();
 attendanceRouter.use(authGuard, tenantContext);
@@ -58,4 +66,20 @@ attendanceRouter.get(
   requirePermission("attendance.view"),
   validateQuery(attendanceDefaultersQuerySchema),
   asyncHandler(controller.getDefaulters)
+);
+
+attendanceRouter.get(
+  "/analytics",
+  requireBranch(branchIdFromQuery),
+  requirePermission("attendance.view"),
+  validateQuery(attendanceAnalyticsQuerySchema),
+  asyncHandler(controller.getAnalytics)
+);
+
+// Unit 44: device token management — branch.manage, same admin tier as the
+// rest of Unit 36's branch endpoints.
+attendanceRouter.post(
+  "/device-token/:branchId",
+  requirePermission("branch.manage"),
+  asyncHandler(controller.rotateDeviceToken)
 );

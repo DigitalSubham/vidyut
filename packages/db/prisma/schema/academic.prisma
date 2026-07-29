@@ -27,6 +27,9 @@ model Class {
   applications Application[]
   feeStructures FeeStructure[]
   examSubjects ExamSubject[]
+  electiveGroups ElectiveGroup[]
+  onlineExams OnlineExam[]
+  questionBankItems QuestionBankItem[]
 
   @@unique([branchId, name])
   @@index([tenantId])
@@ -79,6 +82,9 @@ model Subject {
   examSubjects  ExamSubject[]
   timetablePeriods TimetablePeriod[]
   homework      Homework[]
+  examTimetables ExamTimetable[]
+  onlineExams   OnlineExam[]
+  questionBankItems QuestionBankItem[]
 
   @@unique([branchId, code])
   @@index([tenantId])
@@ -91,13 +97,78 @@ model ClassSubject {
   classId    String
   subjectId  String
   isElective Boolean  @default(false)
+  // Unit 43 — an elective ClassSubject optionally belongs to one named
+  // basket a student picks from; null for a required (non-elective) subject.
+  electiveGroupId String?
   createdAt  DateTime @default(now())
 
   tenant  Tenant  @relation(fields: [tenantId], references: [id])
   class   Class   @relation(fields: [classId], references: [id])
   subject Subject @relation(fields: [subjectId], references: [id])
+  electiveGroup ElectiveGroup? @relation(fields: [electiveGroupId], references: [id])
+  studentChoices StudentElectiveChoice[]
 
   @@unique([classId, subjectId])
+  @@index([tenantId])
+}
+
+/// Unit 43 — a named set of elective `ClassSubject` rows a student picks
+/// one from (e.g. "XI Elective Basket A": Biology/Computer Science/
+/// Psychology). Tenant-owned — RLS-scoped.
+model ElectiveGroup {
+  id        String   @id @default(cuid())
+  tenantId  String
+  branchId  String
+  classId   String
+  name      String
+  createdAt DateTime @default(now())
+
+  tenant   Tenant         @relation(fields: [tenantId], references: [id])
+  branch   Branch         @relation(fields: [branchId], references: [id])
+  class    Class          @relation(fields: [classId], references: [id])
+  options  ClassSubject[]
+  choices  StudentElectiveChoice[]
+
+  @@index([tenantId])
+}
+
+/// Unit 43 — a student's pick from one `ElectiveGroup`, one per group.
+/// Tenant-owned — RLS-scoped.
+model StudentElectiveChoice {
+  id              String   @id @default(cuid())
+  tenantId        String
+  branchId        String
+  studentId       String
+  electiveGroupId String
+  classSubjectId  String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant        Tenant        @relation(fields: [tenantId], references: [id])
+  branch        Branch        @relation(fields: [branchId], references: [id])
+  student       Student       @relation(fields: [studentId], references: [id])
+  electiveGroup ElectiveGroup @relation(fields: [electiveGroupId], references: [id])
+  classSubject  ClassSubject  @relation(fields: [classSubjectId], references: [id])
+
+  @@unique([studentId, electiveGroupId])
+  @@index([tenantId])
+}
+
+/// Unit 43 — simple house tagging for events/discipline points; no scoring
+/// engine (D6 Discipline module territory). Tenant-owned — RLS-scoped.
+model House {
+  id        String   @id @default(cuid())
+  tenantId  String
+  branchId  String
+  name      String
+  color     String?
+  createdAt DateTime @default(now())
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id])
+  branch   Branch    @relation(fields: [branchId], references: [id])
+  students Student[]
+
+  @@unique([branchId, name])
   @@index([tenantId])
 }
 

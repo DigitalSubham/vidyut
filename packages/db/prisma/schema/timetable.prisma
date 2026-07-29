@@ -23,6 +23,7 @@ model TimetablePeriod {
   section Section         @relation(fields: [sectionId], references: [id])
   subject Subject         @relation(fields: [subjectId], references: [id])
   staff   Staff           @relation(fields: [staffId], references: [id])
+  attendanceRecords AttendanceRecord[]
 
   @@unique([sectionId, dayOfWeek, periodNo])
   @@index([tenantId])

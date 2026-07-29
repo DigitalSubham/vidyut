@@ -42,6 +42,8 @@ model Exam {
 
   examSubjects ExamSubject[]
   reportCards  ReportCard[]
+  examTimetables ExamTimetable[]
+  coScholasticGrades CoScholasticGrade[]
 
   @@index([tenantId])
 }

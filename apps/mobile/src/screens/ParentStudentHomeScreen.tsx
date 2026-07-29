@@ -1,33 +1,42 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useTranslation } from "react-i18next";
+import * as DocumentPicker from "expo-document-picker";
 import { useAuth } from "../lib/auth-context";
+import { OnlineExamTaker } from "./OnlineExamTaker";
 import {
   getMyAnnouncements,
   getMyAttendance,
   getMyFeeLedger,
   getMyHomework,
+  getMyHomeworkCalendar,
   getMyReportCards,
   getMyTimetable,
   initiateOnlinePayment,
+  listMyOnlineExams,
   listMyStudents,
+  requestHomeworkSubmissionUpload,
   type MyAnnouncement,
   type MyAttendanceRecord,
   type MyFeeLedgerEntry,
+  type MyHomeworkCalendar,
   type MyHomeworkItem,
+  type MyOnlineExamListItem,
   type MyReportCard,
   type MyStudent,
   type MyTimetablePeriod,
 } from "../lib/api-client";
 
-type Section = "fees" | "attendance" | "reportCards" | "notices" | "homework" | "timetable";
+type Section = "fees" | "attendance" | "reportCards" | "notices" | "homework" | "timetable" | "calendar" | "onlineExams";
 
-const SECTIONS: Section[] = ["fees", "attendance", "reportCards", "notices", "homework", "timetable"];
+const SECTIONS: Section[] = ["fees", "attendance", "reportCards", "notices", "homework", "timetable", "calendar", "onlineExams"];
 
 /**
  * Unit 24 built the self-scope layer with a minimal proof screen; Unit 25
  * fills it out into the real Parent App — fees + pay, attendance, results,
  * notices, homework, timetable — behind the same multi-child switcher.
+ * Unit 45 adds homework submission + a calendar view; Unit 46 adds MCQ
+ * online-exam taking.
  */
 export function ParentStudentHomeScreen() {
   const { t } = useTranslation();
@@ -42,6 +51,11 @@ export function ParentStudentHomeScreen() {
   const [announcements, setAnnouncements] = useState<MyAnnouncement[]>([]);
   const [homework, setHomework] = useState<MyHomeworkItem[]>([]);
   const [timetable, setTimetable] = useState<MyTimetablePeriod[]>([]);
+  const [calendar, setCalendar] = useState<MyHomeworkCalendar>({});
+  const [onlineExams, setOnlineExams] = useState<MyOnlineExamListItem[]>([]);
+  const [submittingHomeworkId, setSubmittingHomeworkId] = useState<string | null>(null);
+  const [submittedHomeworkIds, setSubmittedHomeworkIds] = useState<Set<string>>(new Set());
+  const [takingExamId, setTakingExamId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!session) return;
@@ -66,8 +80,12 @@ export function ParentStudentHomeScreen() {
       setAnnouncements(await getMyAnnouncements(session.accessToken, activeStudentId));
     } else if (section === "homework") {
       setHomework(await getMyHomework(session.accessToken, activeStudentId));
-    } else {
+    } else if (section === "timetable") {
       setTimetable(await getMyTimetable(session.accessToken, activeStudentId));
+    } else if (section === "calendar") {
+      setCalendar(await getMyHomeworkCalendar(session.accessToken, activeStudentId, now.getMonth() + 1, now.getFullYear()));
+    } else {
+      setOnlineExams(await listMyOnlineExams(session.accessToken, activeStudentId));
     }
   }, [session, activeStudentId, section]);
 
@@ -100,11 +118,57 @@ export function ParentStudentHomeScreen() {
     [session, activeStudent, t]
   );
 
+  const submitHomework = useCallback(
+    async (homeworkId: string) => {
+      if (!session || !activeStudentId) return;
+      const picked = await DocumentPicker.getDocumentAsync({ copyToCacheDirectory: true });
+      if (picked.canceled || !picked.assets?.[0]) return;
+      const file = picked.assets[0];
+
+      setSubmittingHomeworkId(homeworkId);
+      try {
+        const { uploadUrl } = await requestHomeworkSubmissionUpload(session.accessToken, homeworkId, {
+          studentId: activeStudentId,
+          fileName: file.name,
+          contentType: file.mimeType ?? "application/octet-stream",
+        });
+        const fileData = await fetch(file.uri);
+        const blob = await fileData.blob();
+        await fetch(uploadUrl, { method: "PUT", headers: { "Content-Type": file.mimeType ?? "application/octet-stream" }, body: blob });
+        setSubmittedHomeworkIds((prev) => new Set(prev).add(homeworkId));
+        Alert.alert(t("me.homeworkSubmittedTitle"));
+      } catch (err) {
+        Alert.alert(t("attendance.errorTitle"), (err as Error).message);
+      } finally {
+        setSubmittingHomeworkId(null);
+      }
+    },
+    [session, activeStudentId, t]
+  );
+
   if (loading) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator />
       </View>
+    );
+  }
+
+  if (takingExamId && session && activeStudentId) {
+    return (
+      <OnlineExamTaker
+        accessToken={session.accessToken}
+        examId={takingExamId}
+        studentId={activeStudentId}
+        onDone={(result) => {
+          setTakingExamId(null);
+          if (result) {
+            setOnlineExams((prev) =>
+              prev.map((e) => (e.id === takingExamId ? { ...e, submitted: true, score: result.score, maxScore: result.maxScore } : e))
+            );
+          }
+        }}
+      />
     );
   }
 
@@ -197,9 +261,23 @@ export function ParentStudentHomeScreen() {
           data={homework}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <Text style={styles.row2}>
-              {item.title} — {t("me.due")} {item.dueDate.slice(0, 10)}
-            </Text>
+            <View style={styles.homeworkRow}>
+              <Text>
+                {item.title} — {t("me.due")} {item.dueDate.slice(0, 10)}
+              </Text>
+              <TouchableOpacity
+                onPress={() => submitHomework(item.id)}
+                disabled={submittingHomeworkId === item.id}
+              >
+                <Text style={styles.submitLink}>
+                  {submittingHomeworkId === item.id
+                    ? t("me.submitting")
+                    : submittedHomeworkIds.has(item.id)
+                      ? t("me.submitted")
+                      : t("me.submit")}
+                </Text>
+              </TouchableOpacity>
+            </View>
           )}
         />
       ) : null}
@@ -211,6 +289,42 @@ export function ParentStudentHomeScreen() {
             <Text style={styles.row2}>
               {t("me.day")} {item.dayOfWeek} — {t("me.period")} {item.periodNo}
             </Text>
+          )}
+        />
+      ) : null}
+      {section === "calendar" ? (
+        <FlatList
+          data={Object.entries(calendar).sort(([a], [b]) => Number(a) - Number(b))}
+          keyExtractor={([day]) => day}
+          renderItem={({ item: [day, items] }) => (
+            <View style={styles.row2}>
+              <Text style={styles.noticeTitle}>{t("me.dayOfMonth", { day })}</Text>
+              {items.map((hw) => (
+                <Text key={hw.id}>{hw.title}</Text>
+              ))}
+            </View>
+          )}
+        />
+      ) : null}
+      {section === "onlineExams" ? (
+        <FlatList
+          data={onlineExams}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <View style={styles.homeworkRow}>
+              <Text>
+                {item.title} ({item.durationMinutes} {t("onlineExams.minutes")})
+              </Text>
+              {item.submitted ? (
+                <Text style={styles.scoreText}>
+                  {t("onlineExams.score")}: {item.score}/{item.maxScore}
+                </Text>
+              ) : (
+                <TouchableOpacity onPress={() => setTakingExamId(item.id)}>
+                  <Text style={styles.submitLink}>{t("onlineExams.take")}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           )}
         />
       ) : null}
@@ -239,6 +353,17 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#E5E7EB",
   },
+  homeworkRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
+    gap: 8,
+  },
   payNow: { color: "#4F46E5", fontWeight: "600" },
+  submitLink: { color: "#4F46E5", fontWeight: "600" },
+  scoreText: { color: "#166534", fontWeight: "600" },
   noticeTitle: { fontWeight: "600" },
 });

@@ -1,7 +1,9 @@
 import { withTenant } from "@vidyut/db";
 import type {
+  BulkEnterCoScholasticGradesInput,
   CreateExamInput,
   CreateExamSubjectInput,
+  CreateExamTimetableInput,
   ListExamsQueryInput,
   PatchExamInput,
 } from "@vidyut/validation";
@@ -148,4 +150,118 @@ export async function deleteExamSubject(auth: RequestAuth, examId: string, id: s
   }
 
   await withTenant(auth.tenantId, (tx) => tx.examSubject.delete({ where: { id } }));
+}
+
+// -- Unit 46: exam datesheet ----------------------------------------------------
+
+export async function createExamTimetable(auth: RequestAuth, examId: string, input: CreateExamTimetableInput) {
+  const exam = await getExamOrThrow(auth, examId);
+  assertBranchAccess(auth, exam.branchId);
+
+  return withTenant(auth.tenantId, (tx) =>
+    tx.examTimetable.create({
+      data: {
+        tenantId: auth.tenantId,
+        examId,
+        subjectId: input.subjectId,
+        date: input.date,
+        startTime: input.startTime,
+        room: input.room,
+      },
+    })
+  );
+}
+
+export async function listExamTimetable(auth: RequestAuth, examId: string) {
+  const exam = await getExamOrThrow(auth, examId);
+  assertBranchAccess(auth, exam.branchId);
+
+  return withTenant(auth.tenantId, (tx) =>
+    tx.examTimetable.findMany({ where: { examId }, include: { subject: true }, orderBy: { date: "asc" } })
+  );
+}
+
+// -- Unit 46: co-scholastic grades ------------------------------------------------
+
+export async function bulkEnterCoScholasticGrades(
+  auth: RequestAuth,
+  examId: string,
+  input: BulkEnterCoScholasticGradesInput
+) {
+  const exam = await getExamOrThrow(auth, examId);
+  assertBranchAccess(auth, exam.branchId);
+
+  return withTenant(auth.tenantId, async (tx) => {
+    const saved = [];
+    for (const entry of input.entries) {
+      const row = await tx.coScholasticGrade.upsert({
+        where: {
+          examId_studentId_activity: { examId, studentId: entry.studentId, activity: entry.activity },
+        },
+        create: {
+          tenantId: auth.tenantId,
+          branchId: exam.branchId,
+          examId,
+          studentId: entry.studentId,
+          activity: entry.activity,
+          grade: entry.grade,
+          enteredById: auth.userId,
+        },
+        update: { grade: entry.grade, enteredById: auth.userId },
+      });
+      saved.push(row);
+    }
+    return saved;
+  });
+}
+
+export async function listCoScholasticGrades(auth: RequestAuth, examId: string) {
+  const exam = await getExamOrThrow(auth, examId);
+  assertBranchAccess(auth, exam.branchId);
+
+  return withTenant(auth.tenantId, (tx) => tx.coScholasticGrade.findMany({ where: { examId } }));
+}
+
+// -- Unit 46: rank/toppers, computed from existing MarksEntry rows --------------
+
+export async function getExamRank(auth: RequestAuth, examId: string) {
+  const exam = await getExamOrThrow(auth, examId);
+  assertBranchAccess(auth, exam.branchId);
+
+  return withTenant(auth.tenantId, async (tx) => {
+    const examSubjects = await tx.examSubject.findMany({ where: { examId } });
+    const entries = await tx.marksEntry.findMany({
+      where: { examSubjectId: { in: examSubjects.map((es) => es.id) } },
+      include: { student: true },
+    });
+
+    const maxByExamSubject = new Map(examSubjects.map((es) => [es.id, es.maxMarks]));
+    const totals = new Map<string, { obtained: number; max: number; firstName: string; lastName: string }>();
+    for (const entry of entries) {
+      const maxMarks = maxByExamSubject.get(entry.examSubjectId) ?? 0;
+      const bucket = totals.get(entry.studentId) ?? {
+        obtained: 0,
+        max: 0,
+        firstName: entry.student.firstName,
+        lastName: entry.student.lastName,
+      };
+      bucket.obtained += entry.marks ?? 0;
+      bucket.max += maxMarks;
+      totals.set(entry.studentId, bucket);
+    }
+
+    const ranked = [...totals.entries()]
+      .map(([studentId, t]) => ({
+        studentId,
+        firstName: t.firstName,
+        lastName: t.lastName,
+        obtainedMarks: t.obtained,
+        maxMarks: t.max,
+        percent: t.max > 0 ? Math.round((t.obtained / t.max) * 10000) / 100 : 0,
+      }))
+      .sort((a, b) => b.percent - a.percent)
+      .map((row, index) => ({ ...row, rank: index + 1 }));
+
+    return ranked;
+  });
 }

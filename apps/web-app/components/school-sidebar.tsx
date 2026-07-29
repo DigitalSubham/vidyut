@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslation } from "react-i18next";
-import { Users, Wallet, CalendarCheck, LayoutDashboard } from "lucide-react";
+import { Users, Wallet, CalendarCheck, LayoutDashboard, Settings, BadgeCheck, Layers, GraduationCap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getAdminRoles } from "@/lib/admin-client";
 
@@ -11,15 +11,20 @@ import { getAdminRoles } from "@/lib/admin-client";
  * Unit 27's reference-module nav — role-filtered per context/feature-specs/
  * 27's Open Question 2, but by role (not permission — no `GET /auth/me`
  * endpoint exists yet to fetch effective permissions, see admin-client.ts).
- * Only students/fees/attendance are wired; the remaining modules
- * (guardians, staff, admissions, exams, marks, report cards, announcements,
- * certificates, timetable, homework) are fast-follow work, not built here.
+ * Units 42/43/44/46 added their own screens (staff, academic structure,
+ * exams) on top of the original students/fees/attendance/settings set;
+ * guardians/admissions/announcements/certificates/timetable/homework remain
+ * fast-follow work, not built here.
  */
 const NAV_ITEMS = [
   { key: "dashboard", href: "/dashboard", icon: LayoutDashboard, roles: ["OWNER", "PRINCIPAL"] },
   { key: "students", href: "/students", icon: Users, roles: ["OWNER", "PRINCIPAL", "ADMIN", "ACCOUNTANT", "TEACHER"] },
+  { key: "staff", href: "/staff", icon: BadgeCheck, roles: ["OWNER", "PRINCIPAL", "ADMIN"] },
   { key: "fees", href: "/fees", icon: Wallet, roles: ["OWNER", "PRINCIPAL", "ADMIN", "ACCOUNTANT"] },
   { key: "attendance", href: "/attendance", icon: CalendarCheck, roles: ["OWNER", "PRINCIPAL", "ADMIN", "TEACHER"] },
+  { key: "academicStructure", href: "/academic-structure", icon: Layers, roles: ["OWNER", "PRINCIPAL", "ADMIN"] },
+  { key: "exams", href: "/exams", icon: GraduationCap, roles: ["OWNER", "PRINCIPAL", "ADMIN", "TEACHER"] },
+  { key: "settings", href: "/settings", icon: Settings, roles: ["OWNER", "PRINCIPAL"] },
 ] as const;
 
 export function SchoolSidebar() {

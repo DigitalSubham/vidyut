@@ -19,11 +19,18 @@ enum CertificateType {
 /// Receipt/Unit 19's ReportCard). `issuedById` is a small addition beyond the
 /// bare doc sketch (the issuer, needed for the register). Branch-owned —
 /// RLS-scoped.
+///
+/// Unit 42 — `studentId` is now nullable and `staffId` added so a staff ID
+/// card can be issued through the same register/numbering machinery instead
+/// of a parallel `StaffCertificate` model. Exactly one of `studentId`/
+/// `staffId` must be set — enforced at the app layer (service.ts), not a DB
+/// constraint Postgres can express cleanly for an XOR across two nullable FKs.
 model Certificate {
   id           String          @id @default(cuid())
   tenantId     String
   branchId     String
-  studentId    String
+  studentId    String?
+  staffId      String?
   type         CertificateType
   customTitle  String?
   number       String
@@ -31,9 +38,10 @@ model Certificate {
   issuedAt     DateTime        @default(now())
   issuedById   String
 
-  tenant  Tenant  @relation(fields: [tenantId], references: [id])
-  branch  Branch  @relation(fields: [branchId], references: [id])
-  student Student @relation(fields: [studentId], references: [id])
+  tenant  Tenant   @relation(fields: [tenantId], references: [id])
+  branch  Branch   @relation(fields: [branchId], references: [id])
+  student Student? @relation(fields: [studentId], references: [id])
+  staff   Staff?   @relation(fields: [staffId], references: [id])
 
   @@unique([branchId, type, number])
   @@index([tenantId])

@@ -165,3 +165,19 @@ export async function importStudents(auth: RequestAuth, input: ImportStudentsInp
   });
   return { jobId };
 }
+
+/** Unit 46 — a multi-session ReportCard rollup, not a single-exam view (that's
+ * what ReportCard/getMyReportCards already cover). Every published report
+ * card the student has, across every session, oldest first. */
+export async function getStudentTranscript(auth: RequestAuth, id: string) {
+  const student = await getStudentOrThrow(auth, id);
+  assertBranchAccess(auth, student.branchId);
+
+  return withTenant(auth.tenantId, (tx) =>
+    tx.reportCard.findMany({
+      where: { studentId: id, publishedAt: { not: null } },
+      include: { session: true, exam: true },
+      orderBy: [{ session: { startDate: "asc" } }, { exam: { startDate: "asc" } }],
+    })
+  );
+}

@@ -17,11 +17,18 @@ enum AttendanceSource {
   IMPORT
 }
 
-/// One student's attendance for one day. `id` may be client-supplied (Unit
-/// 16's offline mobile sync uses this for idempotent upsert) or server-
-/// generated. `regularizedById`/`regularizeReason` are a small addition
-/// beyond data-model.md's sketch — needed to audit the correction path
+/// One student's attendance for one day, or (Unit 44) one period within a
+/// day when `periodId` is set. `id` may be client-supplied (Unit 16's
+/// offline mobile sync uses this for idempotent upsert) or server-generated.
+/// `regularizedById`/`regularizeReason` are a small addition beyond
+/// data-model.md's sketch — needed to audit the correction path
 /// (context/feature-specs/15's scope #4). Branch-owned — RLS-scoped.
+///
+/// Uniqueness is enforced by two partial indexes added in a raw-SQL
+/// migration (Prisma can't express partial uniques in-schema), not by
+/// `@@unique` here: one-row-per-day when `periodId IS NULL`, one-row-per-
+/// period when it isn't. `markedById` is nullable because Unit 44's
+/// device-scan endpoint creates records with no authenticated user behind them.
 model AttendanceRecord {
   id           String           @id @default(cuid())
   tenantId     String
@@ -30,8 +37,9 @@ model AttendanceRecord {
   sectionId    String
   studentId    String
   date         DateTime
+  periodId     String?
   status       AttendanceStatus
-  markedById   String
+  markedById   String?
   source       AttendanceSource @default(WEB)
   regularizedById String?
   regularizeReason String?
@@ -44,7 +52,8 @@ model AttendanceRecord {
   session AcademicSession @relation(fields: [sessionId], references: [id])
   section Section         @relation(fields: [sectionId], references: [id])
   student Student         @relation(fields: [studentId], references: [id])
+  period  TimetablePeriod? @relation(fields: [periodId], references: [id])
 
-  @@unique([studentId, date])
   @@index([tenantId])
+  @@index([studentId, date])
 }

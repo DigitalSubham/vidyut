@@ -1,8 +1,10 @@
 import { DEFAULT_ROLE_PERMISSIONS, ROLE_KEYS, type RoleKey, type StaffRoleKey } from "@vidyut/types";
 import { withTenant } from "./with-tenant";
 
+// CUSTOM is never auto-seeded — it's created on demand via Unit 36's
+// POST /roles, one per tenant, by the tenant itself.
 const TENANT_ROLE_KEYS = ROLE_KEYS.filter(
-  (key): key is Exclude<RoleKey, "SUPERADMIN"> => key !== "SUPERADMIN"
+  (key): key is Exclude<RoleKey, "SUPERADMIN" | "CUSTOM"> => key !== "SUPERADMIN" && key !== "CUSTOM"
 );
 
 /**
@@ -13,8 +15,8 @@ const TENANT_ROLE_KEYS = ROLE_KEYS.filter(
  */
 export async function seedDefaultRoles(
   tenantId: string
-): Promise<Record<Exclude<RoleKey, "SUPERADMIN">, string>> {
-  const roleByKey = {} as Record<Exclude<RoleKey, "SUPERADMIN">, string>;
+): Promise<Record<Exclude<RoleKey, "SUPERADMIN" | "CUSTOM">, string>> {
+  const roleByKey = {} as Record<Exclude<RoleKey, "SUPERADMIN" | "CUSTOM">, string>;
 
   for (const key of TENANT_ROLE_KEYS) {
     const role = await withTenant(tenantId, (tx) =>

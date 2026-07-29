@@ -40,13 +40,16 @@
       "PRESENT": "उपस्थित",
       "ABSENT": "अनुपस्थित",
       "LATE": "देर से"
-    }
+    },
+    "daily": "दैनिक",
+    "period": "पीरियड"
   },
   "teacherHome": {
     "tabs": {
       "attendance": "हाजिरी",
       "marks": "अंक",
-      "homework": "गृहकार्य"
+      "homework": "गृहकार्य",
+      "grading": "ग्रेडिंग"
     }
   },
   "marks": {
@@ -66,7 +69,14 @@
     "descriptionPlaceholder": "विवरण",
     "dueDatePlaceholder": "जमा करने की तारीख (YYYY-MM-DD)",
     "post": "पोस्ट करें",
-    "postedTitle": "गृहकार्य पोस्ट हो गया"
+    "postedTitle": "गृहकार्य पोस्ट हो गया",
+    "gradingTitle": "होमवर्क ग्रेड करें",
+    "gradePlaceholder": "ग्रेड",
+    "feedbackPlaceholder": "प्रतिक्रिया (वैकल्पिक)",
+    "save": "सहेजें",
+    "saving": "सहेजा जा रहा है…",
+    "gradeSavedTitle": "ग्रेड सहेजा गया",
+    "noSubmissions": "अभी तक कोई सबमिशन नहीं"
   },
   "me": {
     "tabs": {
@@ -75,7 +85,9 @@
       "reportCards": "रिपोर्ट कार्ड",
       "notices": "सूचनाएं",
       "homework": "गृहकार्य",
-      "timetable": "समय सारणी"
+      "timetable": "समय सारणी",
+      "calendar": "कैलेंडर",
+      "onlineExams": "ऑनलाइन परीक्षा"
     },
     "due": "जमा करने की तारीख",
     "day": "दिन",
@@ -85,6 +97,19 @@
       "payNow": "अभी भुगतान करें",
       "orderCreatedTitle": "भुगतान ऑर्डर बन गया",
       "orderCreatedBody": "ऑर्डर संदर्भ:"
-    }
+    },
+    "submit": "सबमिट करें",
+    "submitting": "सबमिट हो रहा है…",
+    "submitted": "सबमिट हो गया",
+    "homeworkSubmittedTitle": "होमवर्क सबमिट हुआ",
+    "dayOfMonth": "{{day}} तारीख़"
+  },
+  "onlineExams": {
+    "minutes": "मिनट",
+    "take": "परीक्षा दें",
+    "score": "स्कोर",
+    "cancel": "रद्द करें",
+    "submit": "जमा करें",
+    "submitting": "जमा हो रहा है…"
   }
 }

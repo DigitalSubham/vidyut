@@ -5,6 +5,7 @@ import { processDemoPing } from "./processors/demo-ping";
 import { processAppBuildGenerate } from "./processors/appbuild-generate";
 import { processStudentsImport } from "./processors/students-import";
 import { processGuardianInvite } from "./processors/guardian-invite";
+import { processStaffInvite } from "./processors/staff-invite";
 import { processReceiptGenerate } from "./processors/receipt-generate";
 import { processFeesReminderScan } from "./processors/fees-reminder-scan";
 import { processFeesReminderSend } from "./processors/fees-reminder-send";
@@ -28,6 +29,7 @@ const processors: Record<JobName, (job: Job) => Promise<unknown>> = {
   "appbuild.generate": processAppBuildGenerate,
   "students.import": processStudentsImport,
   "guardian.invite": processGuardianInvite,
+  "staff.invite": processStaffInvite,
   "receipt.generate": processReceiptGenerate,
   "fees.reminderScan": processFeesReminderScan,
   "fees.reminderSend": processFeesReminderSend,

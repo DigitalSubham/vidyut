@@ -186,12 +186,14 @@ describe("guardians — invite + self-scope resolver", () => {
 
     const inviteRes = await request(app)
       .post(`/api/v1/guardians/${guardian.id}/invite`)
-      .set("Authorization", `Bearer ${owner}`);
+      .set("Authorization", `Bearer ${owner}`)
+      .send({ consent: true });
     expect(inviteRes.status).toBe(200);
     expect(inviteRes.body.data.devCode).toBeTypeOf("string");
 
     const updatedGuardian = await withTenant(tenant.id, (tx) => tx.guardian.findUnique({ where: { id: guardian.id } }));
     expect(updatedGuardian?.userId).toBeTypeOf("string");
+    expect(updatedGuardian?.consentedAt).toBeTruthy(); // Unit 39 — DPDP consent captured at invite time
 
     const verifyRes = await request(app)
       .post("/api/v1/auth/otp/verify")

@@ -123,3 +123,67 @@ export const rolloverCommitSchema = z.object({
   decisions: z.array(rolloverDecisionSchema).min(1, "academic.errors.rolloverDecisionsRequired"),
 });
 export type RolloverCommitInput = z.infer<typeof rolloverCommitSchema>;
+
+// --- Unit 36: Branch management ---
+
+const boardValues = ["CBSE", "ICSE", "STATE_BIHAR", "OTHER"] as const;
+
+export const createBranchSchema = z.object({
+  name: z.string().trim().min(1, "academic.errors.nameRequired"),
+  code: z.string().trim().min(1, "academic.errors.branchCodeRequired"),
+  address: z.string().trim().min(1).optional(),
+  board: z.enum(boardValues).default("CBSE"),
+  logoUrl: z.string().trim().url().optional(),
+});
+export type CreateBranchInput = z.infer<typeof createBranchSchema>;
+
+export const patchBranchSchema = z.object({
+  name: z.string().trim().min(1).optional(),
+  address: z.string().trim().min(1).optional(),
+  board: z.enum(boardValues).optional(),
+  logoUrl: z.string().trim().url().optional(),
+  isActive: z.boolean().optional(),
+});
+export type PatchBranchInput = z.infer<typeof patchBranchSchema>;
+
+export const listBranchesQuerySchema = z.object({
+  ...pagination,
+});
+export type ListBranchesQueryInput = z.infer<typeof listBranchesQuerySchema>;
+
+// --- Unit 43: Academic Structure Depth (electives, houses) ---
+
+export const createElectiveGroupSchema = z.object({
+  branchId: z.string().min(1, "academic.errors.branchRequired"),
+  classId: z.string().min(1, "academic.errors.classRequired"),
+  name: z.string().trim().min(1, "academic.errors.nameRequired"),
+});
+export type CreateElectiveGroupInput = z.infer<typeof createElectiveGroupSchema>;
+
+export const listElectiveGroupsQuerySchema = z.object({
+  classId: z.string().min(1, "academic.errors.classRequired"),
+});
+export type ListElectiveGroupsQueryInput = z.infer<typeof listElectiveGroupsQuerySchema>;
+
+export const addElectiveOptionSchema = z.object({
+  classSubjectId: z.string().min(1, "academic.errors.subjectRequired"),
+});
+export type AddElectiveOptionInput = z.infer<typeof addElectiveOptionSchema>;
+
+export const chooseElectiveSchema = z.object({
+  studentId: z.string().min(1, "student.errors.studentRequired"),
+  classSubjectId: z.string().min(1, "academic.errors.subjectRequired"),
+});
+export type ChooseElectiveInput = z.infer<typeof chooseElectiveSchema>;
+
+export const createHouseSchema = z.object({
+  branchId: z.string().min(1, "academic.errors.branchRequired"),
+  name: z.string().trim().min(1, "academic.errors.nameRequired"),
+  color: z.string().trim().min(1).optional(),
+});
+export type CreateHouseInput = z.infer<typeof createHouseSchema>;
+
+export const listHousesQuerySchema = z.object({
+  branchId: z.string().min(1, "academic.errors.branchRequired"),
+});
+export type ListHousesQueryInput = z.infer<typeof listHousesQuerySchema>;

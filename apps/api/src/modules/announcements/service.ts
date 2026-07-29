@@ -24,15 +24,19 @@ export async function createAnnouncement(auth: RequestAuth, input: CreateAnnounc
         audience: input.audience as Prisma.InputJsonValue | undefined,
         attachmentUrl: input.attachmentUrl,
         createdById: auth.userId,
+        scheduledFor: input.scheduledFor,
       },
     })
   );
 
-  await enqueue("announcement.fanout", {
-    tenantId: auth.tenantId,
-    branchId: input.branchId,
-    announcementId: announcement.id,
-  });
+  // Unit 40, Open Question 4 — a delayed BullMQ enqueue instead of the
+  // immediate fan-out, reusing the existing processor unchanged.
+  const delay = input.scheduledFor ? Math.max(0, input.scheduledFor.getTime() - Date.now()) : undefined;
+  await enqueue(
+    "announcement.fanout",
+    { tenantId: auth.tenantId, branchId: input.branchId, announcementId: announcement.id },
+    delay ? { delay } : undefined
+  );
 
   return announcement;
 }

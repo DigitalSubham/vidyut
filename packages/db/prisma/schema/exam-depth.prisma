@@ -1,0 +1,145 @@
+// Exams & Report Cards Depth — Unit 46. See context/feature-specs/46-exams-
+// report-cards-depth.md. Builds on Units 17-19's Exam/ExamSubject/MarksEntry.
+// Board-specific ReportCardTemplate.layout schema extension (that spec's
+// scope #7 / Open Question 3) is deliberately NOT here — it needs a real
+// board report-card sample confirmed with the user first, same posture as
+// Unit 41's deferred admissions process.
+
+/// A subject's date/time slot within an Exam's overall schedule — distinct
+/// from Unit 22's per-week class `TimetablePeriod` (this is exam-specific,
+/// one-off per session, not a recurring weekly grid). Tenant-owned via the
+/// parent Exam — RLS-scoped.
+model ExamTimetable {
+  id        String   @id @default(cuid())
+  tenantId  String
+  examId    String
+  subjectId String
+  date      DateTime
+  startTime String
+  room      String?
+  createdAt DateTime @default(now())
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+  exam    Exam    @relation(fields: [examId], references: [id])
+  subject Subject @relation(fields: [subjectId], references: [id])
+
+  @@unique([examId, subjectId])
+  @@index([tenantId])
+}
+
+/// A discipline/activity grade alongside MarksEntry's scholastic marks
+/// (e.g. "Discipline" -> "A", "Sports" -> "B") — a separate table, not a
+/// MarksEntry row, since there's no ExamSubject/maxMarks concept here.
+/// Tenant-owned — RLS-scoped.
+model CoScholasticGrade {
+  id          String   @id @default(cuid())
+  tenantId    String
+  branchId    String
+  examId      String
+  studentId   String
+  activity    String
+  grade       String
+  enteredById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+  branch  Branch  @relation(fields: [branchId], references: [id])
+  exam    Exam    @relation(fields: [examId], references: [id])
+  student Student @relation(fields: [studentId], references: [id])
+
+  @@unique([examId, studentId, activity])
+  @@index([tenantId])
+}
+
+/// A single MCQ question, reusable across many OnlineExams once added to the
+/// bank (Open Question 2 — sequenced after OnlineExamQuestion exists).
+/// `options` is a JSON array of strings; `correctOptionIndex` indexes into
+/// it. Tenant-owned — RLS-scoped.
+model QuestionBankItem {
+  id                 String   @id @default(cuid())
+  tenantId           String
+  branchId           String
+  classId            String
+  subjectId          String
+  questionText       String
+  options            Json
+  correctOptionIndex Int
+  createdAt          DateTime @default(now())
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+  branch  Branch  @relation(fields: [branchId], references: [id])
+  class   Class   @relation(fields: [classId], references: [id])
+  subject Subject @relation(fields: [subjectId], references: [id])
+
+  @@index([tenantId])
+}
+
+/// An MCQ-only online exam (Open Question 1 — descriptive/subjective is a
+/// separate, bigger ask, out of scope). Standalone from the formal `Exam`
+/// model (different shape: options/timer/auto-grade, not marks-scheme-based).
+/// Tenant-owned — RLS-scoped.
+model OnlineExam {
+  id              String    @id @default(cuid())
+  tenantId        String
+  branchId        String
+  classId         String
+  subjectId       String
+  title           String
+  durationMinutes Int
+  startAt         DateTime?
+  endAt           DateTime?
+  isPublished     Boolean   @default(false)
+  createdById     String
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  tenant      Tenant                @relation(fields: [tenantId], references: [id])
+  branch      Branch                @relation(fields: [branchId], references: [id])
+  class       Class                 @relation(fields: [classId], references: [id])
+  subject     Subject               @relation(fields: [subjectId], references: [id])
+  questions   OnlineExamQuestion[]
+  submissions OnlineExamSubmission[]
+
+  @@index([tenantId])
+}
+
+/// One MCQ within an OnlineExam — either authored directly or copied in from
+/// a QuestionBankItem (copied, not referenced, so later bank edits never
+/// silently change an exam already in progress/published).
+model OnlineExamQuestion {
+  id                 String @id @default(cuid())
+  tenantId           String
+  onlineExamId       String
+  questionText       String
+  options            Json
+  correctOptionIndex Int
+  marks              Int    @default(1)
+  order              Int
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id])
+  onlineExam OnlineExam @relation(fields: [onlineExamId], references: [id])
+
+  @@index([tenantId])
+}
+
+/// A student's one-shot answer set + auto-graded score. `answers` is a JSON
+/// array of selected option indices, positionally matching the exam's
+/// question order at submission time. Tenant-owned — RLS-scoped.
+model OnlineExamSubmission {
+  id           String   @id @default(cuid())
+  tenantId     String
+  onlineExamId String
+  studentId    String
+  answers      Json
+  score        Int
+  maxScore     Int
+  submittedAt  DateTime @default(now())
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id])
+  onlineExam OnlineExam @relation(fields: [onlineExamId], references: [id])
+  student    Student    @relation(fields: [studentId], references: [id])
+
+  @@unique([onlineExamId, studentId])
+  @@index([tenantId])
+}

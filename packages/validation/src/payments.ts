@@ -57,3 +57,16 @@ export const createOpeningBalanceSchema = z.object({
   note: z.string().trim().min(1).optional(),
 });
 export type CreateOpeningBalanceInput = z.infer<typeof createOpeningBalanceSchema>;
+
+// --- Unit 38: Fee Reconciliation & Receipt Corrections ---
+
+export const reconciliationQuerySchema = z.object({
+  branchId: z.string().min(1, "fee.errors.branchRequired"),
+  date: z.coerce.date(),
+});
+export type ReconciliationQueryInput = z.infer<typeof reconciliationQuerySchema>;
+
+export const cancelReceiptSchema = z.object({
+  reason: z.string().trim().min(1, "fee.errors.cancelReasonRequired"),
+});
+export type CancelReceiptInput = z.infer<typeof cancelReceiptSchema>;

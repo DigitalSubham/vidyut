@@ -10,6 +10,12 @@ export const ROLE_KEYS = [
   "TEACHER",
   "PARENT",
   "STUDENT",
+  // Unit 36 — one tenant-created custom role per tenant (role.manage).
+  // ponytail: a single shared enum value means at most one custom role per
+  // tenant today (the `@@unique([tenantId, key])` constraint on Role would
+  // otherwise need to change); upgrade path if a school needs more than one:
+  // switch Role.key to a free-form string and re-key uniqueness on name.
+  "CUSTOM",
 ] as const;
 
 export type RoleKey = (typeof ROLE_KEYS)[number];

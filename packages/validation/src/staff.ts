@@ -82,3 +82,36 @@ export const listTeacherAssignmentsQuerySchema = z.object({
   ...pagination,
 });
 export type ListTeacherAssignmentsQueryInput = z.infer<typeof listTeacherAssignmentsQuerySchema>;
+
+// --- Unit 42: Staff HR Depth ---
+
+export const requestStaffDocumentUploadSchema = z.object({
+  label: z.string().trim().min(1, "staff.errors.documentLabelRequired"),
+  fileName: z.string().trim().min(1, "staff.errors.fileNameRequired"),
+  contentType: z.string().trim().min(1).optional(),
+});
+export type RequestStaffDocumentUploadInput = z.infer<typeof requestStaffDocumentUploadSchema>;
+
+const staffAttendanceStatusValues = ["PRESENT", "ABSENT", "LATE", "LEAVE", "HALF_DAY", "HOLIDAY"] as const;
+const staffAttendanceSourceValues = ["APP", "WEB", "BIOMETRIC", "IMPORT"] as const;
+
+export const markStaffAttendanceRecordSchema = z.object({
+  staffId: z.string().min(1, "staff.errors.staffRequired"),
+  status: z.enum(staffAttendanceStatusValues),
+});
+
+export const markStaffAttendanceSchema = z.object({
+  branchId: z.string().min(1, "staff.errors.branchRequired"),
+  date: z.coerce.date(),
+  source: z.enum(staffAttendanceSourceValues).default("WEB"),
+  records: z.array(markStaffAttendanceRecordSchema).min(1, "staff.errors.recordsRequired"),
+});
+export type MarkStaffAttendanceInput = z.infer<typeof markStaffAttendanceSchema>;
+
+export const listStaffAttendanceQuerySchema = z.object({
+  branchId: z.string().min(1, "staff.errors.branchRequired"),
+  staffId: z.string().min(1).optional(),
+  date: z.coerce.date().optional(),
+  ...pagination,
+});
+export type ListStaffAttendanceQueryInput = z.infer<typeof listStaffAttendanceQuerySchema>;

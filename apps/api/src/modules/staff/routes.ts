@@ -1,5 +1,12 @@
 import { Router } from "express";
-import { createStaffSchema, listStaffQuerySchema, patchStaffSchema } from "@vidyut/validation";
+import {
+  createStaffSchema,
+  listStaffAttendanceQuerySchema,
+  listStaffQuerySchema,
+  markStaffAttendanceSchema,
+  patchStaffSchema,
+  requestStaffDocumentUploadSchema,
+} from "@vidyut/validation";
 import { asyncHandler } from "../../core/envelope";
 import { authGuard } from "../../core/guards/auth-guard";
 import { tenantContext } from "../../core/guards/tenant-context";
@@ -34,6 +41,26 @@ staffRouter.get(
   asyncHandler(controller.listStaff)
 );
 
+// -- Unit 42: Staff HR Depth --------------------------------------------------
+// Registered before the "/:id" routes below — Express matches in
+// registration order, and "/:id" would otherwise swallow "/attendance".
+
+staffRouter.post(
+  "/attendance",
+  requireBranch(branchIdFromBody),
+  requirePermission("attendance.mark"),
+  validateBody(markStaffAttendanceSchema),
+  asyncHandler(controller.markStaffAttendance)
+);
+
+staffRouter.get(
+  "/attendance",
+  requireBranch(branchIdFromQuery),
+  requirePermission("attendance.view"),
+  validateQuery(listStaffAttendanceQuerySchema),
+  asyncHandler(controller.listStaffAttendance)
+);
+
 staffRouter.get("/:id", asyncHandler(controller.getStaff));
 
 staffRouter.patch(
@@ -41,4 +68,11 @@ staffRouter.patch(
   requirePermission("staff.manage"),
   validateBody(patchStaffSchema),
   asyncHandler(controller.patchStaff)
+);
+
+staffRouter.post(
+  "/:id/documents",
+  requirePermission("staff.manage"),
+  validateBody(requestStaffDocumentUploadSchema),
+  asyncHandler(controller.requestStaffDocumentUpload)
 );

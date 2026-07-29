@@ -1,5 +1,12 @@
 import { getCurrentSessionId, withTenant, type Prisma } from "@vidyut/db";
-import type { MyAttendanceQueryInput, MyStudentScopedQueryInput } from "@vidyut/validation";
+import type {
+  CreateDataDeletionRequestInput,
+  ListMyNotificationsQueryInput,
+  MyAttendanceQueryInput,
+  MyHomeworkCalendarQueryInput,
+  MyStudentScopedQueryInput,
+  RegisterPushTokenInput,
+} from "@vidyut/validation";
 import { AppError } from "../../core/errors";
 import { resolveSelfStudentIds } from "../../core/guards/require-self";
 import type { RequestAuth } from "../../core/guards/types";
@@ -118,6 +125,32 @@ export async function getMyHomework(auth: RequestAuth, query: MyStudentScopedQue
   });
 }
 
+/** Unit 45 — same data as getMyHomework, grouped by due-date day within one
+ * calendar month (spec's own scope #2: "same data ... grouped by due date"). */
+export async function getMyHomeworkCalendar(auth: RequestAuth, query: MyHomeworkCalendarQueryInput) {
+  await assertOwnStudent(auth, query.studentId);
+
+  return withTenant(auth.tenantId, async (tx) => {
+    const sectionId = await resolveCurrentSectionId(tx, query.studentId);
+    if (!sectionId) {
+      return {};
+    }
+    const monthStart = new Date(Date.UTC(query.year, query.month - 1, 1));
+    const monthEnd = new Date(Date.UTC(query.year, query.month, 1));
+    const homework = await tx.homework.findMany({
+      where: { sectionId, dueDate: { gte: monthStart, lt: monthEnd } },
+      orderBy: { dueDate: "asc" },
+    });
+
+    const byDay: Record<string, typeof homework> = {};
+    for (const item of homework) {
+      const day = String(item.dueDate.getUTCDate());
+      byDay[day] = [...(byDay[day] ?? []), item];
+    }
+    return byDay;
+  });
+}
+
 export async function getMyTimetable(auth: RequestAuth, query: MyStudentScopedQueryInput) {
   await assertOwnStudent(auth, query.studentId);
 
@@ -182,4 +215,55 @@ export async function getMyAnnouncements(auth: RequestAuth, query: MyStudentScop
       return false;
     });
   });
+}
+
+// --- Unit 39: DPDP delete-on-request ---
+
+/**
+ * Self-scoped delete request (DPDP compliance, Open Question 3) — creates a
+ * `DataDeletionRequest` for OWNER review; never deletes anything itself.
+ * Deleting attendance/marks/fee history has real business-record
+ * implications the school, not the parent, must ultimately authorize.
+ */
+export async function createDataDeletionRequest(auth: RequestAuth, input: CreateDataDeletionRequestInput) {
+  return withTenant(auth.tenantId, (tx) =>
+    tx.dataDeletionRequest.create({
+      data: { tenantId: auth.tenantId, requestedById: auth.userId, reason: input.reason },
+    })
+  );
+}
+
+// --- Unit 40: In-app inbox + push token registration ---
+
+/** Self-scoped by `toUserId = auth.userId` — never another user's notifications. */
+export async function getMyNotifications(auth: RequestAuth, query: ListMyNotificationsQueryInput) {
+  return withTenant(auth.tenantId, async (tx) => {
+    const where = { toUserId: auth.userId };
+    const [items, total] = await Promise.all([
+      tx.notificationLog.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip: (query.page - 1) * query.pageSize,
+        take: query.pageSize,
+      }),
+      tx.notificationLog.count({ where }),
+    ]);
+    return { items, total };
+  });
+}
+
+export async function markNotificationRead(auth: RequestAuth, id: string) {
+  return withTenant(auth.tenantId, async (tx) => {
+    const notification = await tx.notificationLog.findUnique({ where: { id } });
+    if (!notification || notification.toUserId !== auth.userId) {
+      throw new AppError("NOT_FOUND", "notification.errors.notFound");
+    }
+    return tx.notificationLog.update({ where: { id }, data: { readAt: notification.readAt ?? new Date() } });
+  });
+}
+
+export async function registerPushToken(auth: RequestAuth, input: RegisterPushTokenInput) {
+  return withTenant(auth.tenantId, (tx) =>
+    tx.user.update({ where: { id: auth.userId }, data: { pushToken: input.pushToken } })
+  );
 }

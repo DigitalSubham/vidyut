@@ -12,8 +12,12 @@ import type { Prisma } from "@prisma/client";
  * becomes a real contention point.
  */
 export async function nextInvoiceNumber(tx: Prisma.TransactionClient, branchId: string): Promise<string> {
-  const count = await tx.invoice.count({ where: { branchId } });
-  return `INV-${String(count + 1).padStart(6, "0")}`;
+  const [count, branch] = await Promise.all([
+    tx.invoice.count({ where: { branchId } }),
+    tx.branch.findUnique({ where: { id: branchId }, select: { tenant: { select: { invoiceNoPrefix: true } } } }),
+  ]);
+  const prefix = branch?.tenant.invoiceNoPrefix ?? "INV-";
+  return `${prefix}${String(count + 1).padStart(6, "0")}`;
 }
 
 export async function nextReceiptNumber(tx: Prisma.TransactionClient, branchId: string): Promise<string> {

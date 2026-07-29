@@ -96,6 +96,8 @@ export async function cleanupTenant(tenantId: string) {
     // AuditLog IS RLS-scoped (unlike the platform tables above) — must be
     // deleted inside withTenant, or the delete silently matches zero rows.
     await tx.auditLog.deleteMany({ where: { tenantId } });
+    await tx.dataDeletionRequest.deleteMany({ where: { tenantId } });
+    await tx.notificationTemplate.deleteMany({ where: { tenantId } });
     await tx.refreshToken.deleteMany({ where: { tenantId } });
     await tx.userRole.deleteMany({ where: { tenantId } });
     await tx.branchMembership.deleteMany({ where: { tenantId } });
@@ -105,12 +107,19 @@ export async function cleanupTenant(tenantId: string) {
     await tx.marksEntry.deleteMany({ where: { tenantId } });
     await tx.reportCard.deleteMany({ where: { tenantId } });
     await tx.reportCardTemplate.deleteMany({ where: { tenantId } });
+    await tx.onlineExamSubmission.deleteMany({ where: { tenantId } });
+    await tx.onlineExamQuestion.deleteMany({ where: { tenantId } });
+    await tx.onlineExam.deleteMany({ where: { tenantId } });
+    await tx.questionBankItem.deleteMany({ where: { tenantId } });
+    await tx.coScholasticGrade.deleteMany({ where: { tenantId } });
+    await tx.examTimetable.deleteMany({ where: { tenantId } });
     await tx.examSubject.deleteMany({ where: { tenantId } });
     await tx.exam.deleteMany({ where: { tenantId } });
     await tx.notificationLog.deleteMany({ where: { tenantId } });
     await tx.announcement.deleteMany({ where: { tenantId } });
     await tx.certificate.deleteMany({ where: { tenantId } });
     await tx.timetablePeriod.deleteMany({ where: { tenantId } });
+    await tx.homeworkSubmission.deleteMany({ where: { tenantId } });
     await tx.homework.deleteMany({ where: { tenantId } });
     await tx.refundRequest.deleteMany({ where: { tenantId } });
     await tx.receipt.deleteMany({ where: { tenantId } });
@@ -127,13 +136,17 @@ export async function cleanupTenant(tenantId: string) {
     await tx.enquiry.deleteMany({ where: { tenantId } });
     await tx.leaveRequest.deleteMany({ where: { tenantId } });
     await tx.teacherAssignment.deleteMany({ where: { tenantId } });
+    await tx.staffAttendanceRecord.deleteMany({ where: { tenantId } });
     await tx.staff.deleteMany({ where: { tenantId } });
     await tx.user.deleteMany({ where: { tenantId } });
+    await tx.studentElectiveChoice.deleteMany({ where: { tenantId } });
     await tx.classSubject.deleteMany({ where: { tenantId } });
+    await tx.electiveGroup.deleteMany({ where: { tenantId } });
     await tx.studentGuardian.deleteMany({ where: { tenantId } });
     await tx.guardian.deleteMany({ where: { tenantId } });
     await tx.enrollment.deleteMany({ where: { tenantId } });
     await tx.student.deleteMany({ where: { tenantId } });
+    await tx.house.deleteMany({ where: { tenantId } });
     await tx.section.deleteMany({ where: { tenantId } });
     await tx.class.deleteMany({ where: { tenantId } });
     await tx.subject.deleteMany({ where: { tenantId } });

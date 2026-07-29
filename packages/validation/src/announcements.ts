@@ -14,6 +14,8 @@ export const createAnnouncementSchema = z.object({
   body: z.string().trim().min(1, "announcement.errors.bodyRequired"),
   audience: announcementAudienceSchema.optional(),
   attachmentUrl: z.string().url().optional(),
+  // Unit 40 — a one-off future send time; fan-out is delayed, not the row's visibility.
+  scheduledFor: z.coerce.date().optional(),
 });
 export type CreateAnnouncementInput = z.infer<typeof createAnnouncementSchema>;
 

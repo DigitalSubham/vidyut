@@ -10,6 +10,8 @@ enum RoleKey {
   TEACHER
   PARENT
   STUDENT
+  // Unit 36 — one tenant-created custom role per tenant, never auto-seeded.
+  CUSTOM
 }
 
 enum UserStatus {
@@ -29,6 +31,11 @@ model User {
   status           UserStatus @default(ACTIVE)
   twoFactorEnabled Boolean    @default(false)
   locale           String     @default("en")
+  // Unit 40 — the mobile app's registered push token; without this a real
+  // PUSH send has nothing to target no matter how the provider is wired.
+  // Null means "no device registered," a real fallback-to-SMS signal, not
+  // just "userId exists."
+  pushToken        String?
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
   deletedAt        DateTime?
@@ -135,4 +142,32 @@ model RefreshToken {
 
   @@index([tenantId])
   @@index([userId])
+}
+
+enum DataDeletionRequestStatus {
+  PENDING
+  REJECTED
+  EXECUTED
+}
+
+/// Unit 39 (DPDP) — a self-scoped request to hard-delete the caller's data.
+/// Never auto-executes: an OWNER must review and explicitly execute, since
+/// deleting a student's attendance/fee/marks history has real business-
+/// record implications only the school can authorize. Tenant-owned — RLS-scoped.
+model DataDeletionRequest {
+  id            String                    @id @default(cuid())
+  tenantId      String
+  requestedById String
+  reason        String?
+  status        DataDeletionRequestStatus @default(PENDING)
+  reviewedById  String?
+  reviewedAt    DateTime?
+  reviewNote    String?
+  executedById  String?
+  executedAt    DateTime?
+  createdAt     DateTime                  @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
 }

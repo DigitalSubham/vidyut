@@ -1,8 +1,10 @@
 import { Router } from "express";
+import { patchTenantProfileSchema } from "@vidyut/validation";
 import { asyncHandler } from "../../core/envelope";
 import { authGuard } from "../../core/guards/auth-guard";
 import { tenantContext } from "../../core/guards/tenant-context";
 import { requirePermission } from "../../core/guards/require-permission";
+import { validateBody } from "../../core/guards/validate";
 import * as controller from "./controller";
 
 /** Mounted at /api/v1/tenants — public (no authGuard: this is how a client resolves *which* tenant to authenticate against). */
@@ -21,4 +23,14 @@ tenantsRouter.get(
   tenantContext,
   requirePermission("subscription.view"),
   asyncHandler(controller.getMySubscription)
+);
+
+/** Unit 36 — closes the `settings.manage` RBAC gap: school-group profile fields. */
+tenantsRouter.patch(
+  "/me/profile",
+  authGuard,
+  tenantContext,
+  requirePermission("settings.manage"),
+  validateBody(patchTenantProfileSchema),
+  asyncHandler(controller.patchMyProfile)
 );

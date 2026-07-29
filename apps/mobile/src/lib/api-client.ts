@@ -57,14 +57,29 @@ export interface AttendanceRecordPush {
   status: string;
 }
 
+/** `periodId` omitted/undefined marks daily attendance (Unit 44 — period-wise
+ * is an addition alongside daily, not a replacement for it). */
 export function pushAttendance(
   accessToken: string,
-  input: { branchId: string; sectionId: string; date: string; records: AttendanceRecordPush[] }
+  input: { branchId: string; sectionId: string; date: string; periodId?: string; records: AttendanceRecordPush[] }
 ) {
   return authedRequest(accessToken, "/attendance", {
     method: "POST",
     body: JSON.stringify({ ...input, source: "APP" }),
   });
+}
+
+export interface TimetablePeriodItem {
+  id: string;
+  dayOfWeek: number;
+  periodNo: number;
+  subjectId: string;
+  room: string | null;
+}
+
+/** Unit 44 — feeds the period picker on the teacher's attendance screen. */
+export function listTimetablePeriods(accessToken: string, sectionId: string) {
+  return authedRequest<TimetablePeriodItem[]>(accessToken, `/timetable?sectionId=${encodeURIComponent(sectionId)}`);
 }
 
 export interface ExamListItem {
@@ -92,6 +107,60 @@ export function submitMarks(
   input: { examSubjectId: string; entries: Array<{ studentId: string; marks?: number; isAbsent: boolean }> }
 ) {
   return authedRequest(accessToken, "/marks", { method: "POST", body: JSON.stringify(input) });
+}
+
+/** Unit 45 — teacher-facing homework list for a section, feeding the grading screen. */
+export interface SectionHomeworkItem {
+  id: string;
+  title: string;
+  dueDate: string;
+}
+
+export function listSectionHomework(accessToken: string, sectionId: string) {
+  return authedRequest<SectionHomeworkItem[]>(accessToken, `/homework?sectionId=${encodeURIComponent(sectionId)}`);
+}
+
+export interface HomeworkSubmissionItem {
+  id: string;
+  studentId: string;
+  fileUrl: string;
+  submittedAt: string;
+  grade: string | null;
+  feedback: string | null;
+}
+
+export function listHomeworkSubmissions(accessToken: string, homeworkId: string) {
+  return authedRequest<HomeworkSubmissionItem[]>(accessToken, `/homework/${encodeURIComponent(homeworkId)}/submissions`);
+}
+
+export function gradeHomeworkSubmission(accessToken: string, submissionId: string, input: { grade: string; feedback?: string }) {
+  return authedRequest<HomeworkSubmissionItem>(accessToken, `/homework/submissions/${encodeURIComponent(submissionId)}`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
+}
+
+/** Unit 45 — same two-step presigned-upload pattern as staff documents: get a
+ * signed URL, PUT the file straight to the bucket, done. */
+export function requestHomeworkSubmissionUpload(
+  accessToken: string,
+  homeworkId: string,
+  input: { studentId: string; fileName: string; contentType: string }
+) {
+  return authedRequest<HomeworkSubmissionItem & { uploadUrl: string }>(
+    accessToken,
+    `/homework/${encodeURIComponent(homeworkId)}/submissions`,
+    { method: "POST", body: JSON.stringify(input) }
+  );
+}
+
+export type MyHomeworkCalendar = Record<string, MyHomeworkItem[]>;
+
+export function getMyHomeworkCalendar(accessToken: string, studentId: string, month: number, year: number) {
+  return authedRequest<MyHomeworkCalendar>(
+    accessToken,
+    `/me/homework/calendar?studentId=${encodeURIComponent(studentId)}&month=${month}&year=${year}`
+  );
 }
 
 export function postHomework(
@@ -230,6 +299,56 @@ export function initiateOnlinePayment(
   input: { branchId: string; studentId: string; invoiceId?: string; amount: number; mode: "UPI" | "CARD" | "NETBANKING" | "WALLET" }
 ) {
   return authedRequest<OnlinePaymentOrder>(accessToken, "/payments/online/initiate", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+// -- Unit 46: MCQ online exams (student-facing) --------------------------------
+
+export interface MyOnlineExamListItem {
+  id: string;
+  title: string;
+  durationMinutes: number;
+  submitted: boolean;
+  score?: number;
+  maxScore?: number;
+}
+
+/** `GET /online-exams?branchId=` needs branch access a PARENT/STUDENT token
+ * doesn't carry, so the backend grew this self-scoped `/mine` variant
+ * alongside it purely to make this screen possible. */
+export function listMyOnlineExams(accessToken: string, studentId: string) {
+  return authedRequest<MyOnlineExamListItem[]>(accessToken, `/online-exams/mine?studentId=${encodeURIComponent(studentId)}`);
+}
+
+export interface OnlineExamQuestionForStudent {
+  id: string;
+  questionText: string;
+  options: string[];
+  marks: number;
+  order: number;
+}
+
+export function getOnlineExamToTake(accessToken: string, examId: string, studentId: string) {
+  return authedRequest<{
+    exam: { id: string; title: string; durationMinutes: number };
+    questions: OnlineExamQuestionForStudent[];
+  }>(accessToken, `/online-exams/${encodeURIComponent(examId)}/take?studentId=${encodeURIComponent(studentId)}`);
+}
+
+export interface OnlineExamSubmissionResult {
+  id: string;
+  score: number;
+  maxScore: number;
+}
+
+export function submitOnlineExam(
+  accessToken: string,
+  examId: string,
+  input: { studentId: string; answers: number[] }
+) {
+  return authedRequest<OnlineExamSubmissionResult>(accessToken, `/online-exams/${encodeURIComponent(examId)}/submit`, {
     method: "POST",
     body: JSON.stringify(input),
   });

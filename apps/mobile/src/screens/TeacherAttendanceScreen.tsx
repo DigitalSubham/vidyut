@@ -7,9 +7,11 @@ import { SectionPicker } from "../components/SectionPicker";
 import {
   listMyTeacherAssignments,
   listSectionStudents,
+  listTimetablePeriods,
   pushAttendance,
   type MyTeacherAssignment,
   type StudentListItem,
+  type TimetablePeriodItem,
 } from "../lib/api-client";
 import { database, AttendanceRecordModel } from "../lib/database";
 
@@ -20,11 +22,19 @@ function today(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+/** JS Date.getDay() is 0=Sunday..6=Saturday; the server's own dayOfWeek is
+ * 0=Monday..6=Sunday (context/feature-specs/22's own convention). */
+function todayServerDayOfWeek(): number {
+  return (new Date().getDay() + 6) % 7;
+}
+
 /**
  * Teacher's offline-first roster (context/feature-specs/16 scope #1-2).
  * Unit 26 replaces the manual branch/section entry with a real picker fed by
  * the caller's own assignments. Marks are written locally first, then
- * pushed on demand via Sync.
+ * pushed on demand via Sync. Unit 44 adds an optional period selector
+ * alongside the existing daily mode — `null` means daily, matching the
+ * server's own AttendanceRecord.periodId nullability.
  */
 export function TeacherAttendanceScreen() {
   const { t } = useTranslation();
@@ -32,6 +42,8 @@ export function TeacherAttendanceScreen() {
   const [assignments, setAssignments] = useState<MyTeacherAssignment[]>([]);
   const [active, setActive] = useState<MyTeacherAssignment | null>(null);
   const [students, setStudents] = useState<StudentListItem[]>([]);
+  const [periods, setPeriods] = useState<TimetablePeriodItem[]>([]);
+  const [periodId, setPeriodId] = useState<string | null>(null);
   const [marks, setMarks] = useState<Record<string, Status>>({});
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -45,6 +57,17 @@ export function TeacherAttendanceScreen() {
     });
   }, [session]);
 
+  useEffect(() => {
+    if (!session || !active) {
+      setPeriods([]);
+      return;
+    }
+    setPeriodId(null);
+    listTimetablePeriods(session.accessToken, active.sectionId)
+      .then((items) => setPeriods(items.filter((p) => p.dayOfWeek === todayServerDayOfWeek()).sort((a, b) => a.periodNo - b.periodNo)))
+      .catch(() => setPeriods([]));
+  }, [session, active]);
+
   const loadRoster = useCallback(async () => {
     if (!session || !active) return;
     setLoading(true);
@@ -54,7 +77,11 @@ export function TeacherAttendanceScreen() {
 
       const existing = await database
         .get<AttendanceRecordModel>("attendance_records")
-        .query(Q.where("section_id", active.sectionId), Q.where("date", date))
+        .query(
+          Q.where("section_id", active.sectionId),
+          Q.where("date", date),
+          Q.where("period_id", periodId)
+        )
         .fetch();
       const local: Record<string, Status> = {};
       for (const record of existing) {
@@ -66,7 +93,7 @@ export function TeacherAttendanceScreen() {
     } finally {
       setLoading(false);
     }
-  }, [session, active, date, t]);
+  }, [session, active, date, periodId, t]);
 
   const cycleStatus = useCallback(
     async (studentId: string) => {
@@ -78,7 +105,7 @@ export function TeacherAttendanceScreen() {
       await database.write(async () => {
         const existing = await database
           .get<AttendanceRecordModel>("attendance_records")
-          .query(Q.where("student_id", studentId), Q.where("date", date))
+          .query(Q.where("student_id", studentId), Q.where("date", date), Q.where("period_id", periodId))
           .fetch();
         if (existing[0]) {
           await existing[0].update((record) => {
@@ -91,20 +118,26 @@ export function TeacherAttendanceScreen() {
             record.sectionId = active.sectionId;
             record.studentId = studentId;
             record.date = date;
+            record.periodId = periodId;
             record.status = next;
             record.syncedAt = null;
           });
         }
       });
     },
-    [marks, active, date]
+    [marks, active, date, periodId]
   );
 
   const sync = useCallback(async () => {
     if (!session || !active) return;
     const unsynced = await database
       .get<AttendanceRecordModel>("attendance_records")
-      .query(Q.where("section_id", active.sectionId), Q.where("date", date), Q.where("synced_at", null))
+      .query(
+        Q.where("section_id", active.sectionId),
+        Q.where("date", date),
+        Q.where("period_id", periodId),
+        Q.where("synced_at", null)
+      )
       .fetch();
     if (unsynced.length === 0) return;
 
@@ -114,6 +147,7 @@ export function TeacherAttendanceScreen() {
         branchId: active.section.branchId,
         sectionId: active.sectionId,
         date,
+        periodId: periodId ?? undefined,
         records: unsynced.map((r) => ({ id: r.id, studentId: r.studentId, status: r.status })),
       });
       await database.write(async () => {
@@ -129,7 +163,7 @@ export function TeacherAttendanceScreen() {
     } finally {
       setSyncing(false);
     }
-  }, [session, active, date, t]);
+  }, [session, active, date, periodId, t]);
 
   useEffect(() => {
     void loadRoster();
@@ -145,6 +179,28 @@ export function TeacherAttendanceScreen() {
       </View>
 
       <SectionPicker assignments={assignments} activeAssignmentId={active?.id ?? null} onSelect={setActive} />
+
+      {periods.length > 0 ? (
+        <View style={styles.periodRow}>
+          <TouchableOpacity
+            style={[styles.periodChip, periodId === null ? styles.periodChipActive : null]}
+            onPress={() => setPeriodId(null)}
+          >
+            <Text>{t("attendance.daily")}</Text>
+          </TouchableOpacity>
+          {periods.map((p) => (
+            <TouchableOpacity
+              key={p.id}
+              style={[styles.periodChip, periodId === p.id ? styles.periodChipActive : null]}
+              onPress={() => setPeriodId(p.id)}
+            >
+              <Text>
+                {t("attendance.period")} {p.periodNo}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      ) : null}
 
       {loading ? (
         <ActivityIndicator />
@@ -183,6 +239,9 @@ const styles = StyleSheet.create({
   title: { fontSize: 20, fontWeight: "600", flex: 1 },
   logoutLink: { color: "#4F46E5", fontWeight: "600" },
   row: { flexDirection: "row", gap: 8, alignItems: "center" },
+  periodRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
+  periodChip: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: 999, backgroundColor: "#F3F4F6" },
+  periodChipActive: { backgroundColor: "#DCFCE7" },
   studentRow: {
     flexDirection: "row",
     justifyContent: "space-between",

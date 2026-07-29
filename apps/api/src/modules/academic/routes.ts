@@ -1,16 +1,25 @@
 import { Router } from "express";
 import {
+  addElectiveOptionSchema,
+  chooseElectiveSchema,
+  createBranchSchema,
   createClassSchema,
   createClassSubjectSchema,
+  createElectiveGroupSchema,
+  createHouseSchema,
   createSectionSchema,
   createSessionSchema,
   createSubjectSchema,
   createTeacherAssignmentSchema,
+  listBranchesQuerySchema,
   listClassesQuerySchema,
+  listElectiveGroupsQuerySchema,
+  listHousesQuerySchema,
   listSectionsQuerySchema,
   listSessionsQuerySchema,
   listSubjectsQuerySchema,
   listTeacherAssignmentsQuerySchema,
+  patchBranchSchema,
   patchClassSchema,
   patchSectionSchema,
   patchSessionSchema,
@@ -208,3 +217,77 @@ academicRouter.post(
   validateBody(rolloverCommitSchema),
   asyncHandler(controller.commitRollover)
 );
+
+// -- Branch management (Unit 36) — closes the `branch.manage` RBAC gap. -----
+// No requireBranch on create (there's no existing branchId to check yet);
+// branch.manage is OWNER-only per rbac.md's default grid, so requirePermission
+// alone is the correct gate.
+
+academicRouter.post(
+  "/branches",
+  requirePermission("branch.manage"),
+  validateBody(createBranchSchema),
+  asyncHandler(controller.createBranch)
+);
+
+academicRouter.get(
+  "/branches",
+  validateQuery(listBranchesQuerySchema),
+  asyncHandler(controller.listBranches)
+);
+
+academicRouter.patch(
+  "/branches/:id",
+  requirePermission("branch.manage"),
+  validateBody(patchBranchSchema),
+  asyncHandler(controller.patchBranch)
+);
+
+// -- Unit 43: Elective baskets ------------------------------------------------
+
+academicRouter.post(
+  "/elective-groups",
+  requireBranch(branchIdFromBody),
+  requirePermission("class.manage"),
+  validateBody(createElectiveGroupSchema),
+  asyncHandler(controller.createElectiveGroup)
+);
+
+academicRouter.get(
+  "/elective-groups",
+  validateQuery(listElectiveGroupsQuerySchema),
+  asyncHandler(controller.listElectiveGroups)
+);
+
+academicRouter.post(
+  "/elective-groups/:id/options",
+  requirePermission("class.manage"),
+  validateBody(addElectiveOptionSchema),
+  asyncHandler(controller.addElectiveOption)
+);
+
+academicRouter.post(
+  "/elective-groups/:id/choice",
+  requirePermission("class.manage"),
+  validateBody(chooseElectiveSchema),
+  asyncHandler(controller.chooseElective)
+);
+
+// -- Unit 43: Houses -----------------------------------------------------------
+
+academicRouter.post(
+  "/houses",
+  requireBranch(branchIdFromBody),
+  requirePermission("class.manage"),
+  validateBody(createHouseSchema),
+  asyncHandler(controller.createHouse)
+);
+
+academicRouter.get(
+  "/houses",
+  requireBranch(branchIdFromQuery),
+  validateQuery(listHousesQuerySchema),
+  asyncHandler(controller.listHouses)
+);
+
+academicRouter.get("/houses/:id/roster", asyncHandler(controller.getHouseRoster));

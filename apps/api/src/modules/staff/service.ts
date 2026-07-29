@@ -1,9 +1,18 @@
+import { randomUUID } from "node:crypto";
 import { Prisma, withTenant } from "@vidyut/db";
-import type { CreateStaffInput, ListStaffQueryInput, PatchStaffInput } from "@vidyut/validation";
+import type {
+  CreateStaffInput,
+  ListStaffAttendanceQueryInput,
+  ListStaffQueryInput,
+  MarkStaffAttendanceInput,
+  PatchStaffInput,
+  RequestStaffDocumentUploadInput,
+} from "@vidyut/validation";
 import { AppError } from "../../core/errors";
 import { branchAccessAllowed } from "../../core/guards/branch-scope";
 import type { RequestAuth } from "../../core/guards/types";
 import { hashPassword } from "../../core/auth/password";
+import { getUploadUrl } from "../../core/storage";
 
 function assertBranchAccess(auth: RequestAuth, branchId: string): void {
   if (!branchAccessAllowed(auth, branchId)) {
@@ -124,4 +133,79 @@ export async function patchStaff(auth: RequestAuth, id: string, input: PatchStaf
 /** Resolves the authenticated user's own Staff row — used by the leave module's ownership check. */
 export async function getStaffByUserId(tenantId: string, userId: string) {
   return withTenant(tenantId, (tx) => tx.staff.findUnique({ where: { userId } }));
+}
+
+// ---------------------------------------------------------------------------
+// Unit 42 — Staff HR Depth
+// ---------------------------------------------------------------------------
+
+interface StaffDocument {
+  key: string;
+  label: string;
+}
+
+/** Presigned upload via Unit 04's existing S3 wrapper — {key, label} is appended to Staff.docs immediately, matching Unit 07's import-upload two-step pattern (client uploads directly to the returned URL). */
+export async function requestStaffDocumentUpload(auth: RequestAuth, id: string, input: RequestStaffDocumentUploadInput) {
+  const staff = await getStaffOrThrow(auth, id);
+  assertBranchAccess(auth, staff.branchId);
+
+  const key = `staff-documents/${auth.tenantId}/${staff.branchId}/${id}/${randomUUID()}-${input.fileName}`;
+  const uploadUrl = await getUploadUrl(key, input.contentType);
+
+  const existingDocs = Array.isArray(staff.docs) ? (staff.docs as unknown as StaffDocument[]) : [];
+  await withTenant(auth.tenantId, (tx) =>
+    tx.staff.update({
+      where: { id },
+      data: { docs: [...existingDocs, { key, label: input.label }] as unknown as Prisma.InputJsonValue },
+    })
+  );
+
+  return { key, uploadUrl };
+}
+
+export async function markStaffAttendance(auth: RequestAuth, input: MarkStaffAttendanceInput) {
+  assertBranchAccess(auth, input.branchId);
+
+  return withTenant(auth.tenantId, async (tx) => {
+    const results = [];
+    for (const record of input.records) {
+      const row = await tx.staffAttendanceRecord.upsert({
+        where: { staffId_date: { staffId: record.staffId, date: input.date } },
+        update: { status: record.status, markedById: auth.userId, source: input.source },
+        create: {
+          tenantId: auth.tenantId,
+          branchId: input.branchId,
+          staffId: record.staffId,
+          date: input.date,
+          status: record.status,
+          markedById: auth.userId,
+          source: input.source,
+        },
+      });
+      results.push(row);
+    }
+    return results;
+  });
+}
+
+export async function listStaffAttendance(auth: RequestAuth, query: ListStaffAttendanceQueryInput) {
+  assertBranchAccess(auth, query.branchId);
+
+  return withTenant(auth.tenantId, async (tx) => {
+    const where: Prisma.StaffAttendanceRecordWhereInput = {
+      branchId: query.branchId,
+      ...(query.staffId ? { staffId: query.staffId } : {}),
+      ...(query.date ? { date: query.date } : {}),
+    };
+    const [items, total] = await Promise.all([
+      tx.staffAttendanceRecord.findMany({
+        where,
+        orderBy: { date: "desc" },
+        skip: (query.page - 1) * query.pageSize,
+        take: query.pageSize,
+      }),
+      tx.staffAttendanceRecord.count({ where }),
+    ]);
+    return { items, total };
+  });
 }

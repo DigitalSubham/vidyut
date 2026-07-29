@@ -15,3 +15,35 @@ export const listNotificationsQuerySchema = z.object({
   ...pagination,
 });
 export type ListNotificationsQueryInput = z.infer<typeof listNotificationsQuerySchema>;
+
+// --- Unit 40: Notification Templates ---
+
+const templateChannelValues = ["PUSH", "SMS", "WHATSAPP", "EMAIL"] as const;
+
+export const createNotificationTemplateSchema = z.object({
+  templateKey: z.string().trim().min(1, "notification.errors.templateKeyRequired"),
+  channel: z.enum(templateChannelValues),
+  body: z.string().trim().min(1, "notification.errors.bodyRequired"),
+  dltId: z.string().trim().min(1).optional(),
+});
+export type CreateNotificationTemplateInput = z.infer<typeof createNotificationTemplateSchema>;
+
+export const patchNotificationTemplateSchema = z.object({
+  body: z.string().trim().min(1).optional(),
+  dltId: z.string().trim().min(1).optional(),
+});
+export type PatchNotificationTemplateInput = z.infer<typeof patchNotificationTemplateSchema>;
+
+// --- Unit 40: In-app inbox ---
+
+export const listMyNotificationsQuerySchema = z.object({
+  ...pagination,
+});
+export type ListMyNotificationsQueryInput = z.infer<typeof listMyNotificationsQuerySchema>;
+
+// --- Unit 40: Push token registration ---
+
+export const registerPushTokenSchema = z.object({
+  pushToken: z.string().trim().min(1, "notification.errors.pushTokenRequired"),
+});
+export type RegisterPushTokenInput = z.infer<typeof registerPushTokenSchema>;

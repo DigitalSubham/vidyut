@@ -27,6 +27,11 @@ export async function getStudent(req: Request, res: Response): Promise<void> {
   ok(res, student);
 }
 
+export async function getStudentTranscript(req: Request, res: Response): Promise<void> {
+  const reportCards = await service.getStudentTranscript(req.auth!, req.params.id!);
+  ok(res, reportCards);
+}
+
 export async function patchStudent(req: Request, res: Response): Promise<void> {
   const student = await service.patchStudent(req.auth!, req.params.id!, req.body as PatchStudentInput);
   ok(res, student);

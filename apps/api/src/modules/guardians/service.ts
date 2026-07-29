@@ -119,8 +119,17 @@ export async function unlinkGuardianFromStudent(
   );
 }
 
+/**
+ * Unit 39 (DPDP) — `inviteGuardianSchema` requires `consent === true` before
+ * this runs; `Guardian.consentedAt` is only ever set here, from a real
+ * confirmed checkbox, never backfilled or assumed for existing rows.
+ */
 export async function inviteGuardian(auth: RequestAuth, guardianId: string) {
   const guardian = await getGuardianOrThrow(auth, guardianId);
+
+  await withTenant(auth.tenantId, (tx) =>
+    tx.guardian.update({ where: { id: guardianId }, data: { consentedAt: new Date() } })
+  );
 
   const userId = await withTenant(auth.tenantId, async (tx) => {
     if (guardian.userId) {

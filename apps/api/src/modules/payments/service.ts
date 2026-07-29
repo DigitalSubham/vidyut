@@ -1,10 +1,12 @@
 import { nextInvoiceNumber, Prisma, withTenant } from "@vidyut/db";
 import type {
+  CancelReceiptInput,
   CreateOpeningBalanceInput,
   CreatePaymentInput,
   FeeReportsQueryInput,
   ListInvoicesQueryInput,
   ListPaymentsQueryInput,
+  ReconciliationQueryInput,
 } from "@vidyut/validation";
 import { AppError } from "../../core/errors";
 import { branchAccessAllowed } from "../../core/guards/branch-scope";
@@ -394,5 +396,83 @@ export async function createOpeningBalance(
       },
       include: { items: true },
     });
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Unit 38 — Fee Reconciliation & Receipt Corrections
+// ---------------------------------------------------------------------------
+
+/** Modes that go through the Unit 13 online-payment/webhook flow — a payment in one of these without a `gatewayOrderId` was recorded manually and never confirmed by the gateway, a real data-quality flag. */
+const ONLINE_MODES = ["CARD", "UPI", "NETBANKING", "WALLET"] as const;
+
+export async function getReconciliation(auth: RequestAuth, query: ReconciliationQueryInput) {
+  assertBranchAccess(auth, query.branchId);
+
+  // `query.date` is already UTC midnight (Zod's z.coerce.date() on a plain
+  // "YYYY-MM-DD" string) — mutate via getTime()/epoch math, never
+  // setHours()/setDate(), which reinterpret in the server's local timezone
+  // and silently shift the window (a real bug caught by this unit's own
+  // test on a UTC+5:30 dev machine).
+  const start = new Date(query.date);
+  const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+
+  return withTenant(auth.tenantId, async (tx) => {
+    const payments = await tx.payment.findMany({
+      where: {
+        branchId: query.branchId,
+        status: "SUCCESS",
+        createdAt: { gte: start, lt: end },
+      },
+      include: { receipt: { select: { id: true, number: true, cancelledAt: true } } },
+      orderBy: { createdAt: "asc" },
+    });
+
+    const online = payments
+      .filter((p) => (ONLINE_MODES as readonly string[]).includes(p.mode))
+      .map((p) => ({ ...p, needsReview: !p.gatewayOrderId }));
+    const counter = payments.filter((p) => !(ONLINE_MODES as readonly string[]).includes(p.mode));
+
+    return { online, counter };
+  });
+}
+
+async function getReceiptOrThrow(auth: RequestAuth, id: string) {
+  const receipt = await withTenant(auth.tenantId, (tx) => tx.receipt.findUnique({ where: { id } }));
+  if (!receipt) {
+    throw new AppError("NOT_FOUND", "fee.errors.receiptNotFound");
+  }
+  return receipt;
+}
+
+/** Sets `Receipt.cancelledAt`/`cancelReason` only — never touches `Payment`/`Invoice` status (Open Question 2: a human decides separately, via the existing refund flow if money needs to move). Idempotent — cancelling an already-cancelled receipt is a clean no-op, not an error. */
+export async function cancelReceipt(auth: RequestAuth, id: string, input: CancelReceiptInput) {
+  const receipt = await getReceiptOrThrow(auth, id);
+  assertBranchAccess(auth, receipt.branchId);
+
+  if (receipt.cancelledAt) {
+    return receipt;
+  }
+
+  return withTenant(auth.tenantId, async (tx) => {
+    const updated = await tx.receipt.update({
+      where: { id },
+      data: { cancelledAt: new Date(), cancelReason: input.reason },
+    });
+
+    await tx.auditLog.create({
+      data: {
+        tenantId: auth.tenantId,
+        branchId: receipt.branchId,
+        actorId: auth.userId,
+        action: "receipt.cancel",
+        entity: "Receipt",
+        entityId: id,
+        before: { cancelledAt: null } as Prisma.InputJsonValue,
+        after: { cancelledAt: updated.cancelledAt, cancelReason: input.reason } as Prisma.InputJsonValue,
+      },
+    });
+
+    return updated;
   });
 }

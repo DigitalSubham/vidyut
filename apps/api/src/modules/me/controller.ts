@@ -1,6 +1,13 @@
 import type { Request, Response } from "express";
-import type { MyAttendanceQueryInput, MyStudentScopedQueryInput } from "@vidyut/validation";
-import { ok } from "../../core/envelope";
+import type {
+  CreateDataDeletionRequestInput,
+  ListMyNotificationsQueryInput,
+  MyAttendanceQueryInput,
+  MyHomeworkCalendarQueryInput,
+  MyStudentScopedQueryInput,
+  RegisterPushTokenInput,
+} from "@vidyut/validation";
+import { created, list, ok } from "../../core/envelope";
 import * as service from "./service";
 
 export async function getMyStudents(req: Request, res: Response): Promise<void> {
@@ -26,6 +33,12 @@ export async function getMyHomework(req: Request, res: Response): Promise<void> 
   ok(res, homework);
 }
 
+export async function getMyHomeworkCalendar(req: Request, res: Response): Promise<void> {
+  const query = res.locals.query as MyHomeworkCalendarQueryInput;
+  const calendar = await service.getMyHomeworkCalendar(req.auth!, query);
+  ok(res, calendar);
+}
+
 export async function getMyTimetable(req: Request, res: Response): Promise<void> {
   const query = res.locals.query as MyStudentScopedQueryInput;
   const periods = await service.getMyTimetable(req.auth!, query);
@@ -47,4 +60,25 @@ export async function getMyAnnouncements(req: Request, res: Response): Promise<v
 export async function getMyDataExport(req: Request, res: Response): Promise<void> {
   const data = await service.getMyDataExport(req.auth!);
   ok(res, data);
+}
+
+export async function createDataDeletionRequest(req: Request, res: Response): Promise<void> {
+  const request = await service.createDataDeletionRequest(req.auth!, req.body as CreateDataDeletionRequestInput);
+  created(res, request);
+}
+
+export async function getMyNotifications(req: Request, res: Response): Promise<void> {
+  const query = res.locals.query as ListMyNotificationsQueryInput;
+  const { items, total } = await service.getMyNotifications(req.auth!, query);
+  list(res, items, { page: query.page, pageSize: query.pageSize, total });
+}
+
+export async function markNotificationRead(req: Request, res: Response): Promise<void> {
+  const notification = await service.markNotificationRead(req.auth!, req.params.id!);
+  ok(res, notification);
+}
+
+export async function registerPushToken(req: Request, res: Response): Promise<void> {
+  const user = await service.registerPushToken(req.auth!, req.body as RegisterPushTokenInput);
+  ok(res, { id: user.id });
 }

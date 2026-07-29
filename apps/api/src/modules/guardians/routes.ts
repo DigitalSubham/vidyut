@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   createGuardianSchema,
+  inviteGuardianSchema,
   linkGuardianSchema,
   listGuardiansQuerySchema,
   patchGuardianSchema,
@@ -47,6 +48,7 @@ guardiansRouter.patch(
 guardiansRouter.post(
   "/:id/invite",
   requirePermission("guardian.manage"),
+  validateBody(inviteGuardianSchema),
   asyncHandler(controller.inviteGuardian)
 );
 

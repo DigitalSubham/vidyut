@@ -1,7 +1,9 @@
 import type { Request, Response } from "express";
 import type {
+  AttendanceAnalyticsQueryInput,
   AttendanceDefaultersQueryInput,
   AttendanceRegisterQueryInput,
+  DeviceScanInput,
   ListAttendanceQueryInput,
   MarkAttendanceInput,
   RegularizeAttendanceInput,
@@ -39,4 +41,20 @@ export async function getDefaulters(req: Request, res: Response): Promise<void> 
   const query = res.locals.query as AttendanceDefaultersQueryInput;
   const rows = await service.getDefaulters(req.auth!, query);
   ok(res, rows);
+}
+
+export async function rotateDeviceToken(req: Request, res: Response): Promise<void> {
+  const result = await service.rotateAttendanceDeviceToken(req.auth!, req.params.branchId!);
+  ok(res, result);
+}
+
+export async function deviceScan(req: Request, res: Response): Promise<void> {
+  const record = await service.deviceScan(req.body as DeviceScanInput);
+  created(res, record);
+}
+
+export async function getAnalytics(req: Request, res: Response): Promise<void> {
+  const query = res.locals.query as AttendanceAnalyticsQueryInput;
+  const result = await service.getAnalytics(req.auth!, query);
+  ok(res, result);
 }

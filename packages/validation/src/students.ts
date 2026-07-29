@@ -40,6 +40,8 @@ export const patchStudentSchema = z.object({
   address: z.string().trim().min(1).optional(),
   status: z.enum(studentStatusValues).optional(),
   customFields: z.record(z.unknown()).optional(),
+  // Unit 43 — simple house tagging.
+  houseId: z.string().min(1).nullable().optional(),
 });
 export type PatchStudentInput = z.infer<typeof patchStudentSchema>;
 

@@ -1,11 +1,15 @@
 import { Router } from "express";
-import { listNotificationsQuerySchema } from "@vidyut/validation";
+import {
+  createNotificationTemplateSchema,
+  listNotificationsQuerySchema,
+  patchNotificationTemplateSchema,
+} from "@vidyut/validation";
 import { asyncHandler } from "../../core/envelope";
 import { authGuard } from "../../core/guards/auth-guard";
 import { tenantContext } from "../../core/guards/tenant-context";
 import { requireBranch } from "../../core/guards/branch-scope";
 import { requirePermission } from "../../core/guards/require-permission";
-import { validateQuery } from "../../core/guards/validate";
+import { validateBody, validateQuery } from "../../core/guards/validate";
 import * as controller from "./controller";
 
 const branchIdFromQuery = (req: { query: { branchId?: unknown } }) =>
@@ -27,4 +31,24 @@ notificationsRouter.get(
   requirePermission("fee.view"),
   validateQuery(listNotificationsQuerySchema),
   asyncHandler(controller.listNotifications)
+);
+
+// -- Unit 40: Notification Templates -----------------------------------------
+
+notificationsRouter.post(
+  "/templates",
+  requirePermission("notification.send"),
+  validateBody(createNotificationTemplateSchema),
+  asyncHandler(controller.createNotificationTemplate)
+);
+notificationsRouter.get(
+  "/templates",
+  requirePermission("notification.send"),
+  asyncHandler(controller.listNotificationTemplates)
+);
+notificationsRouter.patch(
+  "/templates/:id",
+  requirePermission("notification.send"),
+  validateBody(patchNotificationTemplateSchema),
+  asyncHandler(controller.patchNotificationTemplate)
 );

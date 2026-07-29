@@ -6,6 +6,7 @@ export const JOB_NAMES = [
   "appbuild.generate",
   "students.import",
   "guardian.invite",
+  "staff.invite",
   "receipt.generate",
   "fees.reminderScan",
   "fees.reminderSend",
@@ -56,6 +57,12 @@ export interface StudentsImportResult {
 export interface GuardianInvitePayload {
   phone: string;
   code: string;
+}
+
+/** context/feature-specs/36-platform-configuration.md — the email "send" step for a staff invite's temp password. */
+export interface StaffInvitePayload {
+  email: string;
+  tempPassword: string;
 }
 
 /**

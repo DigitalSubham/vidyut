@@ -1,5 +1,9 @@
 import { withTenant } from "@vidyut/db";
-import type { ListNotificationsQueryInput } from "@vidyut/validation";
+import type {
+  CreateNotificationTemplateInput,
+  ListNotificationsQueryInput,
+  PatchNotificationTemplateInput,
+} from "@vidyut/validation";
 import { branchAccessAllowed } from "../../core/guards/branch-scope";
 import type { RequestAuth } from "../../core/guards/types";
 import { AppError } from "../../core/errors";
@@ -37,4 +41,43 @@ export async function listNotifications(auth: RequestAuth, query: ListNotificati
     ]);
     return { items, total };
   });
+}
+
+// --- Unit 40: Notification Templates ---
+// A lookup the real send functions consult instead of hardcoded strings
+// (Scope item 2). `dltId` records a DLT-approved template ID once the user
+// has registered one — this repo can't self-certify DLT compliance
+// (Open Question 2).
+
+export async function createNotificationTemplate(auth: RequestAuth, input: CreateNotificationTemplateInput) {
+  return withTenant(auth.tenantId, async (tx) => {
+    const existing = await tx.notificationTemplate.findUnique({
+      where: { tenantId_templateKey_channel: { tenantId: auth.tenantId, templateKey: input.templateKey, channel: input.channel } },
+    });
+    if (existing) {
+      throw new AppError("CONFLICT", "notification.errors.templateAlreadyExists");
+    }
+    return tx.notificationTemplate.create({
+      data: { tenantId: auth.tenantId, templateKey: input.templateKey, channel: input.channel, body: input.body, dltId: input.dltId },
+    });
+  });
+}
+
+export async function listNotificationTemplates(auth: RequestAuth) {
+  return withTenant(auth.tenantId, (tx) =>
+    tx.notificationTemplate.findMany({ orderBy: { templateKey: "asc" } })
+  );
+}
+
+async function getTemplateOrThrow(auth: RequestAuth, id: string) {
+  const template = await withTenant(auth.tenantId, (tx) => tx.notificationTemplate.findUnique({ where: { id } }));
+  if (!template) {
+    throw new AppError("NOT_FOUND", "notification.errors.templateNotFound");
+  }
+  return template;
+}
+
+export async function patchNotificationTemplate(auth: RequestAuth, id: string, input: PatchNotificationTemplateInput) {
+  await getTemplateOrThrow(auth, id);
+  return withTenant(auth.tenantId, (tx) => tx.notificationTemplate.update({ where: { id }, data: input }));
 }

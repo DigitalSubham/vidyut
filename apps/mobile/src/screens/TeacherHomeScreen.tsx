@@ -4,10 +4,13 @@ import { useTranslation } from "react-i18next";
 import { TeacherAttendanceScreen } from "./TeacherAttendanceScreen";
 import { MarksEntryScreen } from "./MarksEntryScreen";
 import { HomeworkPostScreen } from "./HomeworkPostScreen";
+import { HomeworkGradingScreen } from "./HomeworkGradingScreen";
 
-type Tab = "attendance" | "marks" | "homework";
+type Tab = "attendance" | "marks" | "homework" | "grading";
 
-/** Unit 26 — the teacher's three surfaces (attendance already built in Unit 16, marks + homework new) behind one tab row. */
+/** Unit 26 — the teacher's three surfaces (attendance already built in Unit
+ * 16, marks + homework new) behind one tab row. Unit 45 adds a fourth:
+ * grading student homework submissions. */
 export function TeacherHomeScreen() {
   const { t } = useTranslation();
   const [tab, setTab] = useState<Tab>("attendance");
@@ -15,7 +18,7 @@ export function TeacherHomeScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.tabRow}>
-        {(["attendance", "marks", "homework"] as Tab[]).map((key) => (
+        {(["attendance", "marks", "homework", "grading"] as Tab[]).map((key) => (
           <TouchableOpacity key={key} style={[styles.tab, tab === key ? styles.tabActive : null]} onPress={() => setTab(key)}>
             <Text>{t(`teacherHome.tabs.${key}`)}</Text>
           </TouchableOpacity>
@@ -25,6 +28,7 @@ export function TeacherHomeScreen() {
         {tab === "attendance" ? <TeacherAttendanceScreen /> : null}
         {tab === "marks" ? <MarksEntryScreen /> : null}
         {tab === "homework" ? <HomeworkPostScreen /> : null}
+        {tab === "grading" ? <HomeworkGradingScreen /> : null}
       </View>
     </View>
   );

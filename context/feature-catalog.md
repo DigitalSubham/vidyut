@@ -42,8 +42,8 @@
 3. **No real AWS environment.** The deployment runbook is written but has never been executed against a real staging/production environment.
 
 **Within the product itself, the confirmed gaps are:**
-- **Settings/configuration, branch management, user & role management** — no API or UI exists for any of these, confirmed by a repo-wide audit (Unit 34), not just unobserved.
-- **Global search**, **fee reconciliation**, **DPDP consent/retention/delete** (export works, the rest doesn't).
+- **Settings/configuration, branch management, user & role management** — ✅ **built and tested (Unit 36)**, closing the gap Unit 34's repo-wide audit confirmed. One caveat: custom roles are capped at one per tenant today (a real, disclosed schema constraint — see Unit 36's progress-tracker entry).
+- **Global search** ✅, **fee reconciliation** ✅ (Unit 37/38), **DPDP consent/retention/delete** ✅ (Unit 39 — mechanism built; consent text and retention windows still need real legal sign-off, see `context/dpdp-policy.md`).
 - **Web admin panel** only has UI for 4 of ~14 modules (students, fees, attendance, dashboard) — the rest are API-only.
 - **Offline support** covers attendance only — marks entry and homework posting need a live connection.
 - Everything in Parts B2–B4, D1–D4/D6, F (beyond the owner dashboard), G, and most of E5–E7 is **untouched by design** — these are On-Demand modules, built only when a paying school asks (`build-approach.md` §6), not gaps in the current build.
@@ -109,10 +109,10 @@
 | Employee ID + role assignment | ✅ | `employeeNo` + RBAC role — built (Unit 09) | ADM, SA | P0 |
 | Teaching vs non-teaching classification | ✅ | `StaffType` enum (TEACHING/NON_TEACHING) — built (Unit 09) | HR | P1 |
 | Subject/class allocation to teacher | ✅ | `TeacherAssignment` — built (Unit 09) | PRIN | P0 |
-| Staff documents | ⚠️ | `Staff.docs` JSONB field exists; no upload UI/storage-key management built around it | HR | P1 |
-| Staff attendance | ❌ | Biometric/app/manual — not built (separate from student attendance) | HR, PRIN | P1 |
+| Staff documents | ✅ | Presigned upload via Unit 04's S3 wrapper, `{key,label}` in `Staff.docs` — built and tested (Unit 42) | HR | P1 |
+| Staff attendance | ✅ | Manual/app/web (same shape as student attendance) — built and tested (Unit 42, `StaffAttendanceRecord`); biometric/RFID device integration still not built | HR, PRIN | P1 |
 | Leave management | ✅ | Types, balances, apply/approve workflow — built and tested (Unit 09, `LeaveRequest`) | HR, TCH | P1 |
-| Staff ID card | ❌ | Templated — not built (`Certificate.studentId` is required, so the certificates module can't issue a staff-facing ID) | HR | P2 |
+| Staff ID card | ✅ | Issues through the same certificates register as student certificates — built and tested (Unit 42, `Certificate.staffId`) | HR | P2 |
 | Recruitment/onboarding | ❌ | Applicant tracking, joining — not built | HR | P3 |
 | Appraisal / performance | ❌ | Reviews, ratings — not built | PRIN, HR | P3 |
 | Staff directory | ✅ | Searchable list endpoint — built (Unit 09) | PRIN, ADM | P1 |
@@ -123,26 +123,26 @@
 | Academic session/year | ✅ | Create, set active, roll over — built and tested (Unit 06 + Unit 33 rollover) | ADM, PRIN | P0 |
 | Class/grade management | ✅ | Nursery → XII — built (Unit 06) | ADM | P0 |
 | Section management | ✅ | A/B/C, capacity — built (Unit 06) | ADM | P0 |
-| Stream/group (XI–XII) | ❌ | Science/Commerce/Arts, electives — not built (`Class` is flat, no stream concept) | ADM | P1 |
+| Stream/group (XI–XII) | ✅ | Science/Commerce/Arts — confirmed with the user as a separate `Class` row per stream (e.g. "Class 11 Science"), zero new schema; elective baskets built and tested (Unit 43, `ElectiveGroup`/`StudentElectiveChoice`) | ADM | P1 |
 | Subject management | ✅ | Subjects per branch, core/elective — built (Unit 06) | ADM, PRIN | P0 |
 | Subject groups / combinations | ❌ | Elective baskets — not built | PRIN | P2 |
 | Teacher-subject-class mapping | ✅ | `TeacherAssignment` grid — built (Unit 09) | PRIN | P0 |
 | Class teacher assignment | ✅ | One per section (`Section.classTeacherId`) — built (Unit 09) | PRIN | P0 |
-| House system | ❌ | Houses for events/discipline — not built | PRIN | P3 |
+| House system | ✅ | Simple house tagging + roster (no scoring engine, D6 territory) — built and tested (Unit 43) | PRIN | P3 |
 
 ## A6. Attendance `[P0]`
 | Feature | Status | Detail | Roles | Phase |
 |---|---|---|---|---|
 | Student daily attendance | ✅ | Mark present/absent/late/leave/half-day — built and tested (Unit 15) | TCH | P0 |
-| Period-wise attendance | ❌ | Per subject/period — not built (attendance is daily-only, not per-period) | TCH | P2 |
+| Period-wise attendance | ✅ | Per subject/period — `AttendanceRecord.periodId` (nullable, references `TimetablePeriod`), coexists with daily attendance via partial unique indexes; mobile teacher screen has a period picker alongside daily (Unit 44) | TCH | P2 |
 | Parent absence alert | ✅ | Auto alert when marked absent — built and tested (Unit 16, PUSH/SMS-fallback hardened Unit 32); the send itself is stubbed | PAR | P0 |
 | Attendance via mobile app | ✅ | Teacher app, real offline queue (WatermelonDB) — built (Unit 16), idempotent-retry-safe + delta-synced (Unit 32) | TCH | P0 |
-| Biometric/RFID integration | ❌ | Device sync — not built | ADM, TRN | P2 |
+| Biometric/RFID integration | ⚠️ | Generic `POST /attendance/device-scan` webhook-shaped ingestion endpoint built (Unit 44), device-token authenticated; no specific ESSL/Mantra vendor SDK wired — no real device to test against | ADM, TRN | P2 |
 | Face-recognition attendance | ❌ | Camera-based — not built | ADM | P3 |
 | Bulk / holiday marking | ✅ | Whole-class batch marking, `HOLIDAY` status — built (Unit 15) | TCH, ADM | P0 |
 | Attendance registers/reports | ✅ | Daily, monthly %, defaulters — built and tested (Unit 15) | TCH, PRIN | P0 |
-| Attendance analytics | ⚠️ | Defaulter list exists; no trend charts/chronic-absentee analytics beyond the threshold list | PRIN | P1 |
-| Staff attendance | ❌ | (see A4) — not built | HR | P1 |
+| Attendance analytics | ✅ | `GET /attendance/analytics` — real day-by-day percent trend + chronic-absentee list (`>= N` absences in a date range), reusing the defaulter list's percent logic (Unit 44) | PRIN | P1 |
+| Staff attendance | ✅ | (see A4) — built and tested (Unit 42) | HR | P1 |
 | Leave/attendance regularization | ✅ | Correct wrong marks, audited — built and tested (Unit 15) | TCH, ADM | P1 |
 
 ## A7. Homework / Assignments `[P1]`
@@ -150,27 +150,27 @@
 |---|---|---|---|---|
 | Assign homework | ✅ | Per class/subject, attachments — built (Unit 23) | TCH | P1 |
 | Parent/student view | ✅ | On app, due dates — built (Unit 24/25, `/me/homework`) | PAR, STU | P1 |
-| Submission (digital) | ❌ | Upload answers — not built | STU | P2 |
-| Grading/feedback | ❌ | Marks + comments — not built | TCH | P2 |
-| Homework calendar | ⚠️ | List view exists, no calendar UI | STU, PAR | P1 |
+| Submission (digital) | ✅ | Presigned upload, self-scoped to the caller's own child; upsert on resubmission; mobile Parent/Student app has a real Submit button (`expo-document-picker`) (Unit 45) | STU | P2 |
+| Grading/feedback | ✅ | Grade + feedback per submission, distinct from exam `MarksEntry`; mobile Teacher app has a Grading tab (Unit 45) | TCH | P2 |
+| Homework calendar | ✅ | `GET /me/homework/calendar` — same data as the list, grouped by due-date day within a month; mobile Calendar tab (Unit 45) | STU, PAR | P1 |
 
 ## A8. Examination & Assessment `[P0]`
 | Feature | Status | Detail | Roles | Phase |
 |---|---|---|---|---|
 | Exam/term setup | ✅ | Unit tests, half-yearly, annual — built (Unit 17) | PRIN, ADM | P0 |
 | Grading schemes | ✅ | Marks, grades, CBSE CCE, CGPA, percentage — built (Unit 17/18, CBSE 9-band grading) | PRIN | P0 |
-| Exam timetable | ❌ | Dates, rooms — not built (Unit 22 built a class-period timetable, not an exam datesheet) | ADM | P1 |
+| Exam timetable | ✅ | Dates, rooms — `ExamTimetable`, distinct from Unit 22's class-period timetable (Unit 46) | ADM | P1 |
 | Marks entry | ✅ | Per subject, by teacher; app + web — built (Unit 18) | TCH | P0 |
 | Marks moderation/lock | ✅ | Approve & lock — built (Unit 18, `lockMarksEntry`) | PRIN | P1 |
 | Report card generation | ✅ | Configurable templates, school logo — built (Unit 19); PDF render is a stub job | ADM, PRIN | P0 |
 | CBSE/ICSE/State-board formats | ⚠️ | CBSE grading built; template is generic, not board-specific layouts | PRIN | P0/P1 |
-| Co-scholastic / grades | ❌ | Discipline, activities, remarks — not built | TCH | P1 |
+| Co-scholastic / grades | ✅ | Discipline, activities via `CoScholasticGrade`, alongside scholastic `MarksEntry` (Unit 46) | TCH | P1 |
 | Auto teacher remarks | ❌ | Templated/AI comments — not built | TCH | P2 |
-| Consolidated result / rank | ❌ | Class rank, toppers — not built | PRIN | P1 |
-| Transcripts / cumulative record | ❌ | Multi-year — not built | ADM | P2 |
+| Consolidated result / rank | ✅ | `GET /exams/:id/results/rank` — computed from existing `MarksEntry`, no new input data (Unit 46) | PRIN | P1 |
+| Transcripts / cumulative record | ✅ | `GET /students/:id/transcript` — multi-session published-`ReportCard` rollup (Unit 46) | ADM | P2 |
 | Progress reports to parents | ✅ | Publish to app; download PDF — built (Unit 24/25, only `publishedAt`-set rows show; PDF is a stub) | PAR | P0 |
-| Online examination | ❌ | MCQ/subjective, timer, auto-grade — not built | TCH, STU | P2 |
-| Question bank | ❌ | Reusable questions — not built | TCH | P3 |
+| Online examination | ✅ | MCQ-only (`OnlineExam`/`OnlineExamQuestion`/`OnlineExamSubmission`), auto-graded on submit; mobile student-facing take/submit flow via a new self-scoped `GET /online-exams/mine` discovery endpoint; descriptive/subjective out of scope (Unit 46) | TCH, STU | P2 |
+| Question bank | ✅ | `QuestionBankItem`, filterable by class/subject, copied (not referenced) into an `OnlineExam` (Unit 46) | TCH | P3 |
 | Admit card / hall ticket | ✅ | Generate for exams — built (Unit 21, `ADMIT_CARD` certificate type) | ADM | P1 |
 | Grade/result analytics | ❌ | Subject-wise, pass %, weak areas — not built | PRIN | P1 |
 
@@ -217,8 +217,8 @@
 | Automated fee reminders | ⚠️ | Cron scan + queue built (Unit 14); actual SMS send is stubbed | PAR | P0/P1 |
 | Fee ledger per student | ✅ | Full history — built (Unit 12) | ACC, PAR | P0 |
 | Refunds / adjustments | ✅ | With approval + audit — built (Unit 13, `RefundRequest`) | ACC | P1 |
-| Reconciliation | ❌ | Match gateway/bank to receipts — not built | ACC | P1 |
-| Cancellation / correction of receipt | ❌ | Audited — not built | ACC | P1 |
+| Reconciliation | ✅ | Daily online/counter checklist, flags online payments with no gateway confirmation — built and tested (Unit 38). No automated bank-statement matching (disclosed out-of-scope, real fintech infra not justified yet) | ACC | P1 |
+| Cancellation / correction of receipt | ✅ | Audited, idempotent, requires a reason — built and tested (Unit 38) | ACC | P1 |
 | Opening balances (migration) | ✅ | Carry legacy dues at onboarding — built (Unit 12) | ACC | P0 |
 | Fee reports | ✅ | Daily collection, head-wise, mode-wise, outstanding — built (Unit 12) | ACC, OWN | P0 |
 | Cheque/PDC tracking | ❌ | Cheque status, bounce — not built | ACC | P2 |
@@ -462,14 +462,14 @@ Full management UI for OWN/PRIN/ADM/ACC/HR — surfaces all enabled modules abov
 | **Audit logs** | ✅ | Who changed what, when — built (`AuditLog`: tenant provisioning/patch, impersonation, attendance regularization, payment completion) | P0/P1 |
 | **Academic-year rollover** | ✅ | Clean session migration — built and tested (Unit 33) | P0/P1 |
 | **Offline mode + sync (mobile)** | ⚠️ | Attendance is real and hardened (Unit 16/32); marks entry and homework posting are not offline | P0/P1 |
-| **Notifications engine** | ⚠️ | (see Part C1) — real queue/log pipeline, PUSH/SMS-fallback routing hardened (Unit 32); actual send is still stubbed | P0 |
-| **Search (global)** | ❌ | Students, staff, invoices — not built | P1 |
-| **Settings & configuration** | ❌ | School profile, sessions, numbering, templates — confirmed genuinely unbuilt by Unit 34's audit: `settings.manage`/`user.manage`/`role.manage` are documented in `rbac.md` but no API exists anywhere to enforce them against | P0 |
+| **Notifications engine** | ⚠️ | Real queue/log pipeline, PUSH/SMS-fallback routing hardened (Unit 32); real provider-calling code for SMS (MSG91)/WhatsApp (Gupshup)/Push (FCM)/Email (SES) built and gated behind env vars, template registry, in-app inbox, scheduled sends — all built and tested (Unit 40). Still ⚠️: no real provider account exists yet, so every send is honestly still a stub in this environment; DLT template approval is the user's to complete | P0 |
+| **Search (global)** | ✅ | Students, staff, invoices — built and tested (Unit 37, Postgres `pg_trgm` + `ILIKE`, branch-scoped, dropdown in the web admin header) | P1 |
+| **Settings & configuration** | ✅ | School profile, branch mgmt, user invite/deactivate, custom-role permission editing — built and tested (Unit 36); `settings.manage`/`branch.manage`/`user.manage`/`role.manage` now enforced. Custom roles capped at one per tenant (disclosed schema constraint, see progress-tracker) | P0 |
 | **Module/plan feature flags** | ✅ | Toggle features by subscription — built and tested (Unit 05) | P0 |
 | **White-labeling / branding** | ⚠️ | App-identity pipeline partial (Unit 31); no admin UI, no real build ever run | P2 |
 | **Security: 2FA, encryption, session control** | ⚠️ | 2FA built (staff login, Unit 03); JWT rotation built; encryption-in-transit assumed at the infra layer (unverifiable without a real AWS/TLS setup); password policy not audited | P1 |
-| **DPDP / data-privacy compliance** | ⚠️ | Export ✅ built and tested (Unit 34); consent capture, retention policy, delete-on-request not built | P1 |
-| **Integrations / API** | ⚠️ | Payment (Razorpay) ✅ real; SMS/WhatsApp/biometric/Google/Zoom/Tally/e-sign — none built | P0→P2 |
+| **DPDP / data-privacy compliance** | ⚠️ | Export ✅ (Unit 34); consent capture at invite time, documented retention policy, and a request→review→execute delete pipeline ✅ built and tested (Unit 39). Still ⚠️ overall: the consent checkbox has no legally-reviewed text bound to it yet, and retention windows are engineering defaults, not confirmed legal numbers — see `context/dpdp-policy.md` | P1 |
+| **Integrations / API** | ⚠️ | Payment (Razorpay) ✅ real; SMS (MSG91)/WhatsApp (Gupshup)/Push (FCM)/Email (SES) real-call code ✅ built (Unit 40), gated on accounts that don't exist yet; biometric/Google/Zoom/Tally/e-sign — none built | P0→P2 |
 | **Webhooks / developer API** | ❌ | For partners/large schools — not built | P3 |
 | **In-app help / onboarding tours** | ❌ | Reduce support load — not built | P1 |
 | **Feedback & feature requests** | ❌ | In-product — not built | P2 |
@@ -516,7 +516,7 @@ Added after auditing this catalog against **Fedena's full 72-module feature tour
 
 1. **Platform foundation:** multi-tenancy ✅ · RBAC ✅ · Hindi/Hinglish UI ⚠️ · settings ❌ · notifications engine ⚠️ (real pipeline, stubbed send) · import/export ⚠️ (export ✅, import untested on real data) · backups ⚠️ (manual drill done, no automation) · super-admin console ✅.
 2. **Student records** ✅ + bulk import ⚠️ + ID basics ⚠️.
-3. **Fee management** ✅ across heads/structures/installments/discounts/collection/receipts/dues/ledger/opening balances/reports/online payment. **Reconciliation ❌.**
+3. **Fee management** ✅ across heads/structures/installments/discounts/collection/receipts/dues/ledger/opening balances/reports/online payment/reconciliation/receipt cancellation (Unit 38).
 4. **Attendance** ✅ daily marking + offline + absence alerts + reports. **Marks entry NOT offline.**
 5. **Exams & report cards** ✅ term setup, grading, marks entry, report cards, publish to parents. **Academic-year rollover ✅.**
 6. **Communication:** queue/log pipeline ⚠️, announcements ✅, SMS wallet ✅ (real recharge + real debit, tested) — **actual SMS/WhatsApp/push send is still a stub.**
@@ -530,3 +530,80 @@ Added after auditing this catalog against **Fedena's full 72-module feature tour
 ---
 
 *Priorities reflect the Patna/Bihar market research (`../docs/market-research/`). Re-validate the MSP against real pilot feedback (`../docs/market-research/CUSTOMER_DISCOVERY_PLAN.md`) before locking further build decisions.*
+
+---
+
+# PART J — Extended Competitor Feature Research (2025–26 addendum)
+
+Added after a deeper competitor scan (Fedena, MyClassBoard, Entab, Teachmint, Campus365, Vidyalaya, Edumarshal, Compass, Vawsum, plus India-gov sources). Focus: features that emerged/became competitive **since the original catalog** — especially **India government/compliance integrations** (which the earlier catalog under-weighted) and the **AI wave**. Phase tags `[0]–[3]` as before, **plus a "Vidyut priority" note** where the CBSE-first + Bihar context changes the priority vs. a generic build.
+
+> **Why this matters for Vidyut:** our ICP is **CBSE / CBSE-aspiring** schools. Several India-compliance items below (DigiLocker, UDISE/APAAR, Holistic Progress Card) are shifting from "nice-to-have" to **expected/mandated for CBSE schools**, so they are **elevated** from the "later/premium" bucket a generic ERP would use. They're also a credibility/differentiation wedge vs. weak local Patna vendors.
+
+## J1. India government & compliance integrations `[elevated for Vidyut]`
+
+| Feature | Detail | Generic phase | **Vidyut priority** |
+|---|---|---|---|
+| **UDISE+ / PEN integration** | Sync school + student data to UDISE+; capture **PEN (Permanent Education Number)**. Foundation for APAAR. | P2 | **P1–P2** (needed before APAAR; CBSE schools file UDISE) |
+| **APAAR ID** | Generate/link the 12-digit **"One Nation, One Student ID"** (Automated Permanent Academic Account Registry); requires verified UDISE data; accessible via DigiLocker. | P3 | **P2** (increasingly expected; strong differentiator locally) |
+| **DigiLocker integration** | Issue/push report cards, TC, marksheets, certificates to students' **DigiLocker**; pull verified docs at admission. Partner-account API. | P3 | **P2** (CBSE issues results to DigiLocker; big trust signal) |
+| **NEP 2020 Holistic Progress Card (HPC / PARAKH)** | 360° competency-based report: **self + peer + teacher + parent** assessment across cognitive, affective, socio-emotional, psychomotor domains; stage-wise (Foundational/Preparatory/Middle/Secondary) formats + rubrics from PARAKH/CBSE. | P3 | **P2** (CBSE rolling out HPC — becomes a required report-card format, not just marks) |
+| **ABC (Academic Bank of Credits)** | Credit ledger; mainly higher-ed but linked to APAAR. | P3 | P3 (skip for K-12 now) |
+| **RTE compliance reporting** | 25% EWS quota tracking + state RTE reports/reimbursement. | P2 | P2 (relevant to Bihar private schools) |
+| **CBSE board integrations** | Registration/LOC upload, result import, affiliation data. | P2/P3 | P2 (CBSE-specific value) |
+
+**Takeaway:** build the report-card engine (Unit 19) **HPC-ready** (config-driven, supports qualitative + 360° inputs, not just marks), and design the certificate/document layer so **DigiLocker issuance** and **UDISE/APAAR** hooks can attach — even if the actual integrations ship as a fast-follow. Retro-fitting these into a marks-only report card later is expensive.
+
+## J2. AI & automation (expanded — the current competitive wave) `[mostly P3]`
+
+Competitors now market AI heavily (Teachmint "AI connected classroom", Entab/Smart School "predictive analytics + auto-grading", MICM "AI facial recognition + timetable optimization + smart fees"). Full list to be aware of:
+- Predictive analytics: **dropout risk, performance prediction, fee-default prediction** `[P3]`
+- **Automated grading / auto-assessment** (objective + assisted subjective) `[P3]`
+- **Personalized learning recommendations** / adaptive content `[P3]`
+- **AI report-card / HPC narrative generation** (turn indicators into prose remarks) `[P2/P3 — pairs with HPC]`
+- **AI facial-recognition attendance** `[P3]`
+- **AI timetable optimization** (constraint solver) `[P3]`
+- **Smart fee collection** (AI-timed reminders, propensity-to-pay) `[P3]`
+- **AI admission CRM** (lead scoring, next-best-action) `[P3]`
+- **WhatsApp AI assistant / chatbot** (parents query fees/attendance/results) `[P3 — but WhatsApp itself is P0/P1]`
+
+**Vidyut stance unchanged:** AI is **not** a buying driver for the Bihar ICP today — keep it P3/premium. The one exception worth watching: **AI-assisted HPC remarks**, because HPC's qualitative burden on teachers is real, and AI that drafts the narrative is a genuine time-saver that could sell alongside HPC.
+
+## J3. Wellbeing, counseling & safety (newer modules) `[P3]`
+
+NEP's socio-emotional emphasis + safety expectations have spawned modules the original catalog only partially covered:
+- **Student wellbeing / counseling** — counselor notes, referrals, mood/behaviour tracking, confidential records `[P3]`
+- **Behaviour / discipline with positive reinforcement** — merit/demerit, house points (have discipline; add positive-reinforcement + wellbeing lens) `[P2/P3]`
+- **Incident / safety reporting** — log incidents, anti-bullying, escalation `[P3]`
+- **Panic / SOS button** (staff + transport) `[P3]`
+- **CCTV integration** (surface feeds/links; not core) `[P3]`
+- **Health: vaccination/immunization records, health cards, checkup camps** (extends the health module) `[P3]`
+
+## J4. Community, alumni & fundraising `[P3]`
+
+- **Alumni network** — self-register (employer, social links), directory, events, verification (extends A1 alumni) `[P3]`
+- **Fundraising / donations / grant management** — campaigns, receipts, 80G, donor records `[P3]`
+- **School community / engagement** — parent community, volunteering, polls (extends comms) `[P3]`
+
+## J5. Other operational adds confirmed by the scan `[P2/P3]`
+
+- **Cashless canteen** with **online ordering + prepaid wallet + menu/nutrition** (extends canteen) `[P3]`
+- **Gate pass for students/visitors/parents** with QR + full in/out log (extends front-office) `[P2]`
+- **Fuel + vehicle-maintenance tracking** in transport (extends transport) `[P3]`
+- **Substitute-teacher auto-suggestion** (extends timetable) `[P3]`
+- **Question-paper generator with blueprint/Bloom's mapping** (extends exams) `[P3]`
+- **Multi-regional-language UI** beyond Hindi/English (extends i18n) `[P3]`
+
+## J-verdict for Vidyut
+
+1. **Elevate the India-compliance cluster** (UDISE/PEN → APAAR → DigiLocker → HPC-ready report cards) from "P3/later" to **P1–P2**, and **design the report-card + document/certificate engines now to accommodate them** even if integrations ship as fast-follows. This is the single most important addition from this research — it's both increasingly required for CBSE and a differentiation wedge over local vendors.
+2. **Keep AI at P3** except **AI-assisted HPC remarks**, which pairs naturally with HPC.
+3. **Wellbeing, alumni, fundraising, safety/panic, cashless canteen** stay **P3/on-demand** — real but not core to the Bihar ICP; build when a paying school asks.
+4. Nothing here changes the **MSP** (Part I). It changes what to **design-for** (HPC-ready report cards, DigiLocker-ready certificates) and what to **sequence early as fast-follow** (DigiLocker/UDISE/APAAR).
+
+### Sources (2025–26)
+- APAAR — Ministry of Education: https://apaar.education.gov.in/faqs · guide: https://www.myleadingcampus.com/blogview/what-is-apaar-id-complete-guide-for-schools-and-colleges-2026/
+- APAAR/DigiLocker/UDISE/PEN linkage — Careers360: https://school.careers360.com/articles/how-to-get-pen-number-online-student-from-digilocker-apaar-id-udise
+- HPC / PARAKH (NCERT/CBSE): https://parakh.ncert.gov.in/hpc · https://cbseacademic.nic.in/hpc.html · https://www.education.gov.in/shikshakparv/docs/holistic_progress.pdf · guide: https://www.myleadingcampus.com/blogview/holistic-progress-card-hpc-nep-2020-complete-guide-for-schools-2026
+- India ERP feature trends 2025 — MyLeadingCampus: https://www.myleadingcampus.com/blogview/top-10-musthave-features-in-a-school-erp-software-for-indian-schools-in-2025
+- Module breadth (50+) — Edumarshal: https://edumarshal.com/school-erp-modules/ · Compass Education: https://www.compass.education/features/ · EduYug: https://eduyug.com/modules
+- AI/competitor positioning — Decentro: https://decentro.tech/blog/best-school-erp-software/ · Entab: https://www.entab.in/top-10-best-school-erp-software-in-india.html · Teachmint: https://www.softwaresuggest.com/teachmint

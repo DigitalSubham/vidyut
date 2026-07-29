@@ -34,6 +34,13 @@ model Tenant {
   planId    String?
   appType   AppDelivery  @default(SHARED)
   locale    String       @default("en")
+  // Unit 36 — school-group-level profile (settings.manage). Per-branch
+  // address/board/logo already exist on Branch; these are the group-wide
+  // defaults shown on the tenant's own "Settings" screen.
+  address           String?
+  logoUrl           String?
+  admissionNoPrefix String?
+  invoiceNoPrefix   String?
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
   deletedAt DateTime?
@@ -83,13 +90,26 @@ model Tenant {
   certificates      Certificate[]
   timetablePeriods  TimetablePeriod[]
   homework          Homework[]
+  homeworkSubmissions HomeworkSubmission[]
   walletTxns        WalletTxn[]
   attendanceRecords AttendanceRecord[]
+  staffAttendanceRecords StaffAttendanceRecord[]
   exams             Exam[]
   examSubjects      ExamSubject[]
   marksEntries      MarksEntry[]
   reportCardTemplates ReportCardTemplate[]
   reportCards       ReportCard[]
+  examTimetables    ExamTimetable[]
+  coScholasticGrades CoScholasticGrade[]
+  questionBankItems QuestionBankItem[]
+  onlineExams       OnlineExam[]
+  onlineExamQuestions OnlineExamQuestion[]
+  onlineExamSubmissions OnlineExamSubmission[]
+  dataDeletionRequests DataDeletionRequest[]
+  notificationTemplates NotificationTemplate[]
+  electiveGroups        ElectiveGroup[]
+  studentElectiveChoices StudentElectiveChoice[]
+  houses                House[]
 }
 
 /// A physical school under the tenant. Tenant-owned — RLS-scoped.
@@ -102,6 +122,9 @@ model Branch {
   board     Board     @default(CBSE)
   logoUrl   String?
   isActive  Boolean   @default(true)
+  /// Unit 44 device-scan ingestion — a biometric/RFID device authenticates
+  /// with this token instead of a user JWT (a device isn't a user).
+  attendanceDeviceToken String? @unique
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
@@ -135,10 +158,17 @@ model Branch {
   timetablePeriods  TimetablePeriod[]
   homework          Homework[]
   attendanceRecords AttendanceRecord[]
+  staffAttendanceRecords StaffAttendanceRecord[]
   exams             Exam[]
   marksEntries      MarksEntry[]
   reportCardTemplates ReportCardTemplate[]
   reportCards       ReportCard[]
+  electiveGroups        ElectiveGroup[]
+  studentElectiveChoices StudentElectiveChoice[]
+  houses                House[]
+  coScholasticGrades    CoScholasticGrade[]
+  questionBankItems     QuestionBankItem[]
+  onlineExams           OnlineExam[]
 
   @@unique([tenantId, code])
   @@index([tenantId])

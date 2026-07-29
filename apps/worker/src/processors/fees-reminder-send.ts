@@ -1,14 +1,18 @@
 import type { Job } from "bullmq";
 import { prisma, withTenant } from "@vidyut/db";
 import type { FeesReminderSendPayload } from "@vidyut/types";
+import { sendSms } from "../providers/sms";
+import { resolveTemplateBody } from "../providers/resolve-template";
 
 const SMS_COST_PAISE = Number(process.env.SMS_COST_PAISE ?? 20);
 
 /**
- * Sends (stub) one fee reminder to one guardian, deducting from the
- * tenant's SmsWallet — skips (and logs FAILED) if the balance is
- * insufficient rather than letting it go negative (context/feature-specs/14's
- * Open Questions).
+ * Sends one fee reminder to one guardian via the real `sendSms` adapter
+ * (Unit 40 — falls back to the same honest stub as before when
+ * `MSG91_API_KEY` isn't configured, matching this environment's real
+ * state), deducting from the tenant's SmsWallet — skips (and logs FAILED)
+ * if the balance is insufficient rather than letting it go negative
+ * (context/feature-specs/14's Open Questions).
  */
 export async function processFeesReminderSend(job: Job<FeesReminderSendPayload>) {
   const { tenantId, branchId, invoiceId, guardianId, phone } = job.data;
@@ -34,8 +38,12 @@ export async function processFeesReminderSend(job: Job<FeesReminderSendPayload>)
     return { sent: false, reason: "insufficient_wallet_balance" };
   }
 
-  // eslint-disable-next-line no-console
-  console.log(`[worker] fee reminder SMS to ${phone} for invoice ${invoiceId} (stub)`);
+  const message = await withTenant(tenantId, (tx) =>
+    resolveTemplateBody(tx, tenantId, "fee.reminder", "SMS", "A fee payment is due. Please pay at the earliest.", {
+      invoiceId,
+    })
+  );
+  const result = await sendSms(phone, message);
 
   await prisma.$transaction([
     prisma.smsWallet.update({ where: { tenantId }, data: { balancePaise: { decrement: SMS_COST_PAISE } } }),
@@ -52,12 +60,12 @@ export async function processFeesReminderSend(job: Job<FeesReminderSendPayload>)
         channel: "SMS",
         templateKey: "fee.reminder",
         toPhone: phone,
-        status: "SENT",
-        payload: { invoiceId, guardianId },
-        sentAt: new Date(),
+        status: result.sent || result.stubbed ? "SENT" : "FAILED",
+        payload: { invoiceId, guardianId, ...(result.error ? { error: result.error } : {}) },
+        sentAt: result.sent || result.stubbed ? new Date() : undefined,
       },
     })
   );
 
-  return { sent: true };
+  return { sent: result.sent, stubbed: result.stubbed };
 }

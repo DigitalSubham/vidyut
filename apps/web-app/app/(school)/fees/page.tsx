@@ -14,9 +14,104 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { adminApi, getAdminBranchId, AdminApiError, type InvoiceItem } from "@/lib/admin-client";
 
 const PAYMENT_MODES = ["CASH", "CHEQUE", "UPI", "CARD", "NETBANKING", "BANK", "WALLET"] as const;
+
+function formatPaise(amount: number): string {
+  return `₹${(amount / 100).toFixed(2)}`;
+}
+
+function ReconciliationTab() {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const branchId = getAdminBranchId() ?? "";
+  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["reconciliation", branchId, date],
+    queryFn: () => adminApi.getReconciliation(branchId, date),
+    enabled: !!branchId,
+  });
+  const result = data?.data;
+
+  async function cancel(receiptId: string) {
+    const reason = window.prompt(t("school.fees.cancelReasonPrompt") as string);
+    if (!reason) return;
+    await adminApi.cancelReceipt(receiptId, reason);
+    await queryClient.invalidateQueries({ queryKey: ["reconciliation", branchId, date] });
+  }
+
+  function renderRows(payments: NonNullable<typeof result>["online" | "counter"]) {
+    return payments.map((p) => (
+      <TableRow key={p.id}>
+        <TableCell>{p.mode}</TableCell>
+        <TableCell>{formatPaise(p.amount)}</TableCell>
+        <TableCell>{p.reference ?? "—"}</TableCell>
+        <TableCell>
+          {p.needsReview ? <Badge variant="secondary">{t("school.fees.needsReview")}</Badge> : null}
+        </TableCell>
+        <TableCell>
+          {p.receipt ? (
+            p.receipt.cancelledAt ? (
+              <Badge variant="secondary">{t("school.fees.cancelled")}</Badge>
+            ) : (
+              <Button variant="outline" size="sm" onClick={() => cancel(p.receipt!.id)}>
+                {t("school.fees.cancelReceipt")}
+              </Button>
+            )
+          ) : null}
+        </TableCell>
+      </TableRow>
+    ));
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <Input type="date" className="max-w-xs" value={date} onChange={(e) => setDate(e.target.value)} />
+
+      {!branchId ? (
+        <p className="text-text-secondary">{t("school.branchIdPlaceholder")}</p>
+      ) : isLoading ? (
+        <p className="text-text-secondary">{t("school.common.loading")}</p>
+      ) : (
+        <>
+          <div>
+            <h2 className="mb-2 font-heading text-lg font-semibold text-text-primary">{t("school.fees.online")}</h2>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t("school.fees.mode")}</TableHead>
+                  <TableHead>{t("school.fees.amount")}</TableHead>
+                  <TableHead>{t("school.fees.reference")}</TableHead>
+                  <TableHead />
+                  <TableHead />
+                </TableRow>
+              </TableHeader>
+              <TableBody>{renderRows(result?.online ?? [])}</TableBody>
+            </Table>
+          </div>
+          <div>
+            <h2 className="mb-2 font-heading text-lg font-semibold text-text-primary">{t("school.fees.counter")}</h2>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t("school.fees.mode")}</TableHead>
+                  <TableHead>{t("school.fees.amount")}</TableHead>
+                  <TableHead>{t("school.fees.reference")}</TableHead>
+                  <TableHead />
+                  <TableHead />
+                </TableRow>
+              </TableHeader>
+              <TableBody>{renderRows(result?.counter ?? [])}</TableBody>
+            </Table>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 export default function FeesPage() {
   const { t } = useTranslation();
@@ -61,40 +156,51 @@ export default function FeesPage() {
     <div className="flex flex-col gap-4">
       <h1 className="font-heading text-2xl font-semibold text-text-primary">{t("school.fees.title")}</h1>
 
-      {!branchId ? (
-        <p className="text-text-secondary">{t("school.branchIdPlaceholder")}</p>
-      ) : isLoading ? (
-        <p className="text-text-secondary">{t("school.common.loading")}</p>
-      ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>{t("school.fees.invoiceNumber")}</TableHead>
-              <TableHead>{t("school.fees.period")}</TableHead>
-              <TableHead>{t("school.fees.status")}</TableHead>
-              <TableHead />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {invoices.map((invoice) => (
-              <TableRow key={invoice.id}>
-                <TableCell className="font-medium">{invoice.number}</TableCell>
-                <TableCell>{invoice.periodLabel}</TableCell>
-                <TableCell>
-                  <Badge variant={invoice.status === "PAID" ? "default" : "secondary"}>{invoice.status}</Badge>
-                </TableCell>
-                <TableCell>
-                  {invoice.status !== "PAID" ? (
-                    <Button size="sm" onClick={() => setCollecting(invoice)}>
-                      {t("school.fees.collectPayment")}
-                    </Button>
-                  ) : null}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
+      <Tabs defaultValue="invoices">
+        <TabsList>
+          <TabsTrigger value="invoices">{t("school.fees.invoicesTab")}</TabsTrigger>
+          <TabsTrigger value="reconciliation">{t("school.fees.reconciliationTab")}</TabsTrigger>
+        </TabsList>
+        <TabsContent value="invoices">
+          {!branchId ? (
+            <p className="text-text-secondary">{t("school.branchIdPlaceholder")}</p>
+          ) : isLoading ? (
+            <p className="text-text-secondary">{t("school.common.loading")}</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t("school.fees.invoiceNumber")}</TableHead>
+                  <TableHead>{t("school.fees.period")}</TableHead>
+                  <TableHead>{t("school.fees.status")}</TableHead>
+                  <TableHead />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {invoices.map((invoice) => (
+                  <TableRow key={invoice.id}>
+                    <TableCell className="font-medium">{invoice.number}</TableCell>
+                    <TableCell>{invoice.periodLabel}</TableCell>
+                    <TableCell>
+                      <Badge variant={invoice.status === "PAID" ? "default" : "secondary"}>{invoice.status}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      {invoice.status !== "PAID" ? (
+                        <Button size="sm" onClick={() => setCollecting(invoice)}>
+                          {t("school.fees.collectPayment")}
+                        </Button>
+                      ) : null}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </TabsContent>
+        <TabsContent value="reconciliation">
+          <ReconciliationTab />
+        </TabsContent>
+      </Tabs>
 
       <Dialog open={!!collecting} onOpenChange={(open) => !open && setCollecting(null)}>
         <DialogContent>

@@ -1,8 +1,12 @@
 import type { Job } from "bullmq";
 import { prisma, withTenant } from "@vidyut/db";
 import type { AnnouncementFanoutPayload } from "@vidyut/types";
+import { sendPush } from "../providers/push";
+import { sendSms } from "../providers/sms";
+import { resolveTemplateBody } from "../providers/resolve-template";
 
 const SMS_COST_PAISE = Number(process.env.SMS_COST_PAISE ?? 20);
+const PUSH_TITLE = "Announcement";
 
 interface Audience {
   roles?: string[];
@@ -16,12 +20,13 @@ interface Audience {
  * this job only fans out to matched roles/classes, staff already see every
  * announcement via GET /announcements regardless of audience.
  *
- * Unit 32's PUSH-then-SMS-fallback: role-matched staff always have a User
- * account, so they stay PUSH-only. classId-matched guardians without a
- * linked User (Guardian.userId unset) were previously silently skipped —
- * a real gap, since a phone-only guardian never got announcements at all.
- * Fixed to fall back to SMS via the same SmsWallet-gated path Unit 14/32
- * already use, rather than duplicating the wallet-check logic.
+ * Unit 32's PUSH-then-SMS-fallback, hardened in Unit 40: a `pushToken`
+ * (new this unit) is required for a real PUSH attempt, not just a linked
+ * User — role-matched staff with no registered device get a real (failed)
+ * push attempt logged, no SMS fallback (matches existing behavior, staff
+ * aren't guaranteed a guardian-style phone number). classId-matched
+ * guardians without a linked User/pushToken fall back to SMS via the same
+ * SmsWallet-gated path Unit 14/32 already use.
  */
 export async function processAnnouncementFanout(job: Job<AnnouncementFanoutPayload>) {
   const { tenantId, branchId, announcementId } = job.data;
@@ -31,6 +36,15 @@ export async function processAnnouncementFanout(job: Job<AnnouncementFanoutPaylo
     if (!announcement) {
       return { notified: 0 };
     }
+
+    const message = await resolveTemplateBody(
+      tx,
+      tenantId,
+      "announcement.published",
+      "SMS",
+      announcement.title,
+      { announcementId }
+    );
 
     const audience = (announcement.audience as Audience | null) ?? {};
     const pushUserIds = new Set<string>();
@@ -63,7 +77,10 @@ export async function processAnnouncementFanout(job: Job<AnnouncementFanoutPaylo
       }
     }
 
+    let pushSent = 0;
     for (const userId of pushUserIds) {
+      const user = await tx.user.findUnique({ where: { id: userId }, select: { pushToken: true } });
+      const pushResult = await sendPush(user?.pushToken ?? null, PUSH_TITLE, message);
       await tx.notificationLog.create({
         data: {
           tenantId,
@@ -71,11 +88,12 @@ export async function processAnnouncementFanout(job: Job<AnnouncementFanoutPaylo
           channel: "PUSH",
           templateKey: "announcement.published",
           toUserId: userId,
-          status: "SENT",
-          payload: { announcementId },
-          sentAt: new Date(),
+          status: pushResult.sent || pushResult.stubbed ? "SENT" : "FAILED",
+          payload: { announcementId, ...(pushResult.error ? { error: pushResult.error } : {}) },
+          sentAt: pushResult.sent || pushResult.stubbed ? new Date() : undefined,
         },
       });
+      if (pushResult.sent || pushResult.stubbed) pushSent += 1;
     }
 
     let smsSent = 0;
@@ -98,6 +116,8 @@ export async function processAnnouncementFanout(job: Job<AnnouncementFanoutPaylo
         continue;
       }
 
+      const smsResult = await sendSms(phone, message);
+
       await prisma.$transaction([
         prisma.smsWallet.update({ where: { tenantId }, data: { balancePaise: { decrement: SMS_COST_PAISE } } }),
         prisma.walletTxn.create({
@@ -111,14 +131,14 @@ export async function processAnnouncementFanout(job: Job<AnnouncementFanoutPaylo
           channel: "SMS",
           templateKey: "announcement.published",
           toPhone: phone,
-          status: "SENT",
-          payload: { announcementId },
-          sentAt: new Date(),
+          status: smsResult.sent || smsResult.stubbed ? "SENT" : "FAILED",
+          payload: { announcementId, ...(smsResult.error ? { error: smsResult.error } : {}) },
+          sentAt: smsResult.sent || smsResult.stubbed ? new Date() : undefined,
         },
       });
       smsSent += 1;
     }
 
-    return { notified: pushUserIds.size + smsSent, pushSent: pushUserIds.size, smsSent, smsSkipped };
+    return { notified: pushSent + smsSent, pushSent, smsSent, smsSkipped };
   });
 }

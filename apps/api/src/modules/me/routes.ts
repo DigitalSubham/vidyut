@@ -1,9 +1,16 @@
 import { Router } from "express";
-import { myAttendanceQuerySchema, myStudentScopedQuerySchema } from "@vidyut/validation";
+import {
+  createDataDeletionRequestSchema,
+  listMyNotificationsQuerySchema,
+  myAttendanceQuerySchema,
+  myHomeworkCalendarQuerySchema,
+  myStudentScopedQuerySchema,
+  registerPushTokenSchema,
+} from "@vidyut/validation";
 import { asyncHandler } from "../../core/envelope";
 import { authGuard } from "../../core/guards/auth-guard";
 import { tenantContext } from "../../core/guards/tenant-context";
-import { validateQuery } from "../../core/guards/validate";
+import { validateBody, validateQuery } from "../../core/guards/validate";
 import * as controller from "./controller";
 
 export const meRouter = Router();
@@ -18,6 +25,11 @@ meRouter.get(
   asyncHandler(controller.getMyReportCards)
 );
 meRouter.get("/homework", validateQuery(myStudentScopedQuerySchema), asyncHandler(controller.getMyHomework));
+meRouter.get(
+  "/homework/calendar",
+  validateQuery(myHomeworkCalendarQuerySchema),
+  asyncHandler(controller.getMyHomeworkCalendar)
+);
 meRouter.get("/timetable", validateQuery(myStudentScopedQuerySchema), asyncHandler(controller.getMyTimetable));
 meRouter.get("/fees/ledger", validateQuery(myStudentScopedQuerySchema), asyncHandler(controller.getMyFeeLedger));
 meRouter.get(
@@ -26,3 +38,19 @@ meRouter.get(
   asyncHandler(controller.getMyAnnouncements)
 );
 meRouter.get("/data-export", asyncHandler(controller.getMyDataExport));
+meRouter.post(
+  "/data-delete-request",
+  validateBody(createDataDeletionRequestSchema),
+  asyncHandler(controller.createDataDeletionRequest)
+);
+meRouter.get(
+  "/notifications",
+  validateQuery(listMyNotificationsQuerySchema),
+  asyncHandler(controller.getMyNotifications)
+);
+meRouter.patch("/notifications/:id/read", asyncHandler(controller.markNotificationRead));
+meRouter.patch(
+  "/push-token",
+  validateBody(registerPushTokenSchema),
+  asyncHandler(controller.registerPushToken)
+);

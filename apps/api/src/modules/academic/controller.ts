@@ -1,16 +1,25 @@
 import type { Request, Response } from "express";
 import type {
+  AddElectiveOptionInput,
+  ChooseElectiveInput,
+  CreateBranchInput,
   CreateClassInput,
   CreateClassSubjectInput,
+  CreateElectiveGroupInput,
+  CreateHouseInput,
   CreateSectionInput,
   CreateSessionInput,
   CreateSubjectInput,
   CreateTeacherAssignmentInput,
+  ListBranchesQueryInput,
   ListClassesQueryInput,
+  ListElectiveGroupsQueryInput,
+  ListHousesQueryInput,
   ListSectionsQueryInput,
   ListSessionsQueryInput,
   ListSubjectsQueryInput,
   ListTeacherAssignmentsQueryInput,
+  PatchBranchInput,
   PatchClassInput,
   PatchSectionInput,
   PatchSessionInput,
@@ -160,4 +169,57 @@ export async function previewRollover(req: Request, res: Response): Promise<void
 export async function commitRollover(req: Request, res: Response): Promise<void> {
   const result = await service.commitRollover(req.auth!, req.body as RolloverCommitInput);
   ok(res, result);
+}
+
+export async function createBranch(req: Request, res: Response): Promise<void> {
+  const branch = await service.createBranch(req.auth!, req.body as CreateBranchInput);
+  created(res, branch);
+}
+
+export async function listBranches(req: Request, res: Response): Promise<void> {
+  const query = res.locals.query as ListBranchesQueryInput;
+  const { items, total } = await service.listBranches(req.auth!, query);
+  list(res, items, { page: query.page, pageSize: query.pageSize, total });
+}
+
+export async function patchBranch(req: Request, res: Response): Promise<void> {
+  const branch = await service.patchBranch(req.auth!, req.params.id!, req.body as PatchBranchInput);
+  ok(res, branch);
+}
+
+export async function createElectiveGroup(req: Request, res: Response): Promise<void> {
+  const group = await service.createElectiveGroup(req.auth!, req.body as CreateElectiveGroupInput);
+  created(res, group);
+}
+
+export async function listElectiveGroups(req: Request, res: Response): Promise<void> {
+  const query = res.locals.query as ListElectiveGroupsQueryInput;
+  const groups = await service.listElectiveGroups(req.auth!, query);
+  ok(res, groups);
+}
+
+export async function addElectiveOption(req: Request, res: Response): Promise<void> {
+  const option = await service.addElectiveOption(req.auth!, req.params.id!, req.body as AddElectiveOptionInput);
+  ok(res, option);
+}
+
+export async function chooseElective(req: Request, res: Response): Promise<void> {
+  const choice = await service.chooseElective(req.auth!, req.params.id!, req.body as ChooseElectiveInput);
+  ok(res, choice);
+}
+
+export async function createHouse(req: Request, res: Response): Promise<void> {
+  const house = await service.createHouse(req.auth!, req.body as CreateHouseInput);
+  created(res, house);
+}
+
+export async function listHouses(req: Request, res: Response): Promise<void> {
+  const query = res.locals.query as ListHousesQueryInput;
+  const houses = await service.listHouses(req.auth!, query);
+  ok(res, houses);
+}
+
+export async function getHouseRoster(req: Request, res: Response): Promise<void> {
+  const roster = await service.getHouseRoster(req.auth!, req.params.id!);
+  ok(res, roster);
 }

@@ -37,3 +37,9 @@ export const linkGuardianSchema = z.object({
   canPay: z.boolean().default(false),
 });
 export type LinkGuardianInput = z.infer<typeof linkGuardianSchema>;
+
+/** Unit 39 (DPDP) — the invite checkbox: consent must be explicitly true, not just present. */
+export const inviteGuardianSchema = z.object({
+  consent: z.boolean().refine((v) => v === true, "guardian.errors.consentRequired"),
+});
+export type InviteGuardianInput = z.infer<typeof inviteGuardianSchema>;

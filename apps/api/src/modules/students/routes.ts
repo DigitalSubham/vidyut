@@ -57,6 +57,12 @@ studentsRouter.post(
 
 studentsRouter.get("/:id", requirePermission("student.view"), asyncHandler(controller.getStudent));
 
+studentsRouter.get(
+  "/:id/transcript",
+  requirePermission("student.view"),
+  asyncHandler(controller.getStudentTranscript)
+);
+
 studentsRouter.patch(
   "/:id",
   requirePermission("student.edit"),

@@ -40,13 +40,16 @@
       "PRESENT": "Present",
       "ABSENT": "Absent",
       "LATE": "Late"
-    }
+    },
+    "daily": "Daily",
+    "period": "Period"
   },
   "teacherHome": {
     "tabs": {
       "attendance": "Attendance",
       "marks": "Marks",
-      "homework": "Homework"
+      "homework": "Homework",
+      "grading": "Grading"
     }
   },
   "marks": {
@@ -66,7 +69,14 @@
     "descriptionPlaceholder": "Description",
     "dueDatePlaceholder": "Due date (YYYY-MM-DD)",
     "post": "Post",
-    "postedTitle": "Homework posted"
+    "postedTitle": "Homework posted",
+    "gradingTitle": "Grade Homework",
+    "gradePlaceholder": "Grade",
+    "feedbackPlaceholder": "Feedback (optional)",
+    "save": "Save",
+    "saving": "Saving…",
+    "gradeSavedTitle": "Grade saved",
+    "noSubmissions": "No submissions yet"
   },
   "me": {
     "tabs": {
@@ -75,7 +85,9 @@
       "reportCards": "Report Cards",
       "notices": "Notices",
       "homework": "Homework",
-      "timetable": "Timetable"
+      "timetable": "Timetable",
+      "calendar": "Calendar",
+      "onlineExams": "Online Exams"
     },
     "due": "due",
     "day": "Day",
@@ -85,6 +97,19 @@
       "payNow": "Pay Now",
       "orderCreatedTitle": "Payment order created",
       "orderCreatedBody": "Order reference:"
-    }
+    },
+    "submit": "Submit",
+    "submitting": "Submitting…",
+    "submitted": "Submitted",
+    "homeworkSubmittedTitle": "Homework submitted",
+    "dayOfMonth": "Day {{day}}"
+  },
+  "onlineExams": {
+    "minutes": "min",
+    "take": "Take",
+    "score": "Score",
+    "cancel": "Cancel",
+    "submit": "Submit",
+    "submitting": "Submitting…"
   }
 }

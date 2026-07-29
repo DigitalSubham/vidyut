@@ -38,6 +38,9 @@ model Student {
   // given one; access is normally mediated through a Guardian's login.
   userId       String?       @unique
   customFields Json?
+  // Unit 43 — simple house tagging (events/discipline points); no house-vs-
+  // house scoring engine here (that's Discipline module territory, D6).
+  houseId      String?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   deletedAt    DateTime?
@@ -45,6 +48,7 @@ model Student {
   tenant           Tenant            @relation(fields: [tenantId], references: [id])
   branch           Branch            @relation(fields: [branchId], references: [id])
   user             User?             @relation(fields: [userId], references: [id])
+  house            House?            @relation(fields: [houseId], references: [id])
   enrollments      Enrollment[]
   studentGuardians StudentGuardian[]
   applications     Application[]
@@ -56,6 +60,10 @@ model Student {
   marksEntries      MarksEntry[]
   reportCards       ReportCard[]
   certificates      Certificate[]
+  electiveChoices   StudentElectiveChoice[]
+  homeworkSubmissions HomeworkSubmission[]
+  coScholasticGrades CoScholasticGrade[]
+  onlineExamSubmissions OnlineExamSubmission[]
 
   @@unique([branchId, admissionNo])
   @@index([tenantId])

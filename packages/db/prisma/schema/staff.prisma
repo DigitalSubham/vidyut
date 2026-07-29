@@ -46,6 +46,8 @@ model Staff {
   teacherAssignments TeacherAssignment[]
   classTeacherOf     Section[]           @relation("SectionClassTeacher")
   timetablePeriods   TimetablePeriod[]
+  certificates          Certificate[]
+  staffAttendanceRecords StaffAttendanceRecord[]
 
   @@unique([branchId, employeeNo])
   @@unique([userId])
@@ -71,5 +73,29 @@ model LeaveRequest {
   branch Branch @relation(fields: [branchId], references: [id])
   staff  Staff  @relation(fields: [staffId], references: [id])
 
+  @@index([tenantId])
+}
+
+/// Unit 42 — one staff member's attendance for one day, mirroring
+/// `AttendanceRecord`'s shape (context/feature-specs/15) so reports/UI can
+/// reuse the same patterns. No `sectionId`/`sessionId` — staff attendance
+/// isn't tied to a class section. Branch-owned — RLS-scoped.
+model StaffAttendanceRecord {
+  id         String           @id @default(cuid())
+  tenantId   String
+  branchId   String
+  staffId    String
+  date       DateTime
+  status     AttendanceStatus
+  markedById String
+  source     AttendanceSource @default(WEB)
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  branch Branch @relation(fields: [branchId], references: [id])
+  staff  Staff  @relation(fields: [staffId], references: [id])
+
+  @@unique([staffId, date])
   @@index([tenantId])
 }

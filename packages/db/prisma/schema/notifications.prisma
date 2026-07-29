@@ -29,11 +29,35 @@ model NotificationLog {
   status      NotifStatus  @default(QUEUED)
   payload     Json?
   sentAt      DateTime?
+  // Unit 40 — the in-app inbox's read/unread state.
+  readAt      DateTime?
   createdAt   DateTime     @default(now())
 
   tenant Tenant @relation(fields: [tenantId], references: [id])
   branch Branch @relation(fields: [branchId], references: [id])
 
+  @@index([tenantId])
+}
+
+/// Unit 40 — a lookup the real send functions consult instead of hardcoded
+/// strings. `dltId` records a DLT-approved template ID once the user has
+/// registered one with their SMS/WhatsApp operator (India's TRAI DLT regime
+/// — a legal/telecom process this repo can't self-certify, per this unit's
+/// own Open Question 2); null until then. Branch-less (a tenant-wide
+/// registry, not per-branch) — tenant-owned, RLS-scoped.
+model NotificationTemplate {
+  id          String       @id @default(cuid())
+  tenantId    String
+  templateKey String
+  channel     NotifChannel
+  dltId       String?
+  body        String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, templateKey, channel])
   @@index([tenantId])
 }
 
@@ -56,6 +80,9 @@ model Announcement {
   publishedAt   DateTime  @default(now())
   createdById   String
   createdAt     DateTime  @default(now())
+  // Unit 40 — a one-off future send time; if set, fan-out is enqueued with a
+  // BullMQ delay instead of running immediately (Open Question 4).
+  scheduledFor  DateTime?
 
   tenant Tenant @relation(fields: [tenantId], references: [id])
   branch Branch @relation(fields: [branchId], references: [id])

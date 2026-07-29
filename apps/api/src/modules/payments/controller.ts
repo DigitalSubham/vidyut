@@ -1,9 +1,11 @@
 import type { Request, Response } from "express";
 import type {
+  CancelReceiptInput,
   CreateOpeningBalanceInput,
   CreatePaymentInput,
   FeeReportsQueryInput,
   ListInvoicesQueryInput,
+  ReconciliationQueryInput,
   ListPaymentsQueryInput,
 } from "@vidyut/validation";
 import { AppError } from "../../core/errors";
@@ -74,4 +76,15 @@ export async function createOpeningBalance(req: Request, res: Response): Promise
     req.body as CreateOpeningBalanceInput
   );
   created(res, invoice);
+}
+
+export async function getReconciliation(req: Request, res: Response): Promise<void> {
+  const query = res.locals.query as ReconciliationQueryInput;
+  const result = await service.getReconciliation(req.auth!, query);
+  ok(res, result);
+}
+
+export async function cancelReceipt(req: Request, res: Response): Promise<void> {
+  const receipt = await service.cancelReceipt(req.auth!, req.params.id!, req.body as CancelReceiptInput);
+  ok(res, receipt);
 }

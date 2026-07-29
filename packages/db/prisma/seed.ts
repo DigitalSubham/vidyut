@@ -400,21 +400,24 @@ async function seedDemoAcademicData(
     for (const day of days) {
       for (const [i, student] of students.entries()) {
         const status = day === "2026-07-22" && i === 1 ? "ABSENT" : "PRESENT";
-        await tx.attendanceRecord.upsert({
-          where: { studentId_date: { studentId: student.id, date: new Date(day) } },
-          update: {},
-          create: {
-            tenantId,
-            branchId,
-            sessionId: session.id,
-            sectionId: section9A.id,
-            studentId: student.id,
-            date: new Date(day),
-            status,
-            markedById: teacherUser.id,
-            source: "WEB",
-          },
+        const existing = await tx.attendanceRecord.findFirst({
+          where: { studentId: student.id, date: new Date(day), periodId: null },
         });
+        if (!existing) {
+          await tx.attendanceRecord.create({
+            data: {
+              tenantId,
+              branchId,
+              sessionId: session.id,
+              sectionId: section9A.id,
+              studentId: student.id,
+              date: new Date(day),
+              status,
+              markedById: teacherUser.id,
+              source: "WEB",
+            },
+          });
+        }
       }
     }
   });

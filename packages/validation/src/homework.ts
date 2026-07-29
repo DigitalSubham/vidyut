@@ -28,3 +28,27 @@ export const listHomeworkQuerySchema = z.object({
   since: z.coerce.date().optional(),
 });
 export type ListHomeworkQueryInput = z.infer<typeof listHomeworkQuerySchema>;
+
+// -- Unit 45: submissions + grading -------------------------------------------
+
+export const requestHomeworkSubmissionUploadSchema = z.object({
+  studentId: z.string().min(1, "homework.errors.studentRequired"),
+  fileName: z.string().trim().min(1, "homework.errors.fileNameRequired"),
+  contentType: z.string().trim().min(1, "homework.errors.contentTypeRequired"),
+});
+export type RequestHomeworkSubmissionUploadInput = z.infer<typeof requestHomeworkSubmissionUploadSchema>;
+
+export const gradeHomeworkSubmissionSchema = z.object({
+  grade: z.string().trim().min(1, "homework.errors.gradeRequired"),
+  feedback: z.string().trim().min(1).optional(),
+});
+export type GradeHomeworkSubmissionInput = z.infer<typeof gradeHomeworkSubmissionSchema>;
+
+// -- Unit 45: calendar (reuses /me's studentId self-scope, but grouped by month) --
+
+export const myHomeworkCalendarQuerySchema = z.object({
+  studentId: z.string().min(1, "me.errors.studentRequired"),
+  month: z.coerce.number().int().min(1).max(12),
+  year: z.coerce.number().int().min(2000),
+});
+export type MyHomeworkCalendarQueryInput = z.infer<typeof myHomeworkCalendarQuerySchema>;

@@ -21,6 +21,10 @@ model Guardian {
   phone      String
   email      String?
   occupation String?
+  // Unit 39 — DPDP consent capture at invite time (Open Question 1). Set
+  // only when the guardian confirms the consent checkbox during invite;
+  // never backfilled or assumed.
+  consentedAt DateTime?
   createdAt  DateTime         @default(now())
   updatedAt  DateTime         @updatedAt
 
