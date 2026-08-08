@@ -3,6 +3,7 @@ import {
   createDataDeletionRequestSchema,
   listMyNotificationsQuerySchema,
   myAttendanceQuerySchema,
+  myCalendarQuerySchema,
   myHomeworkCalendarQuerySchema,
   myStudentScopedQuerySchema,
   registerPushTokenSchema,
@@ -37,6 +38,9 @@ meRouter.get(
   validateQuery(myStudentScopedQuerySchema),
   asyncHandler(controller.getMyAnnouncements)
 );
+meRouter.get("/guardian", asyncHandler(controller.getMyGuardian));
+meRouter.get("/circulars", validateQuery(myStudentScopedQuerySchema), asyncHandler(controller.getMyCirculars));
+meRouter.get("/calendar", validateQuery(myCalendarQuerySchema), asyncHandler(controller.getMyCalendar));
 meRouter.get("/data-export", asyncHandler(controller.getMyDataExport));
 meRouter.post(
   "/data-delete-request",

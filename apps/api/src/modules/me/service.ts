@@ -3,6 +3,7 @@ import type {
   CreateDataDeletionRequestInput,
   ListMyNotificationsQueryInput,
   MyAttendanceQueryInput,
+  MyCalendarQueryInput,
   MyHomeworkCalendarQueryInput,
   MyStudentScopedQueryInput,
   RegisterPushTokenInput,
@@ -11,6 +12,7 @@ import { AppError } from "../../core/errors";
 import { resolveSelfStudentIds } from "../../core/guards/require-self";
 import type { RequestAuth } from "../../core/guards/types";
 import { buildStudentFeeLedgerEntries } from "../payments/service";
+import { getMergedCalendar } from "../calendar/service";
 
 // --- Unit 34: DPDP data export ---
 
@@ -215,6 +217,74 @@ export async function getMyAnnouncements(auth: RequestAuth, query: MyStudentScop
       return false;
     });
   });
+}
+
+// --- Unit 49: Messaging & Engagement (self-scoped reads) ---
+
+/** The caller's own Guardian id, if they are one — used mobile-side to identify themselves as a conversation participant (Message.guardianId), since a PARENT token carries no guardianId claim of its own. */
+export async function getMyGuardian(auth: RequestAuth) {
+  const guardian = await withTenant(auth.tenantId, (tx) => tx.guardian.findFirst({ where: { userId: auth.userId } }));
+  if (!guardian) {
+    throw new AppError("NOT_FOUND", "engagement.errors.notGuardian");
+  }
+  return { id: guardian.id };
+}
+
+interface CircularAudience {
+  classIds?: string[];
+}
+
+/** Same audience-matching pattern as getMyAnnouncements above, plus whether the caller has already acked each circular. */
+export async function getMyCirculars(auth: RequestAuth, query: MyStudentScopedQueryInput) {
+  await assertOwnStudent(auth, query.studentId);
+
+  return withTenant(auth.tenantId, async (tx) => {
+    const student = await tx.student.findUnique({ where: { id: query.studentId } });
+    if (!student) {
+      return [];
+    }
+    const sessionId = await getCurrentSessionId(tx, student.branchId);
+    const enrollment = sessionId
+      ? await tx.enrollment.findFirst({ where: { studentId: query.studentId, sessionId } })
+      : null;
+
+    const circulars = await tx.circular.findMany({
+      where: { branchId: student.branchId },
+      orderBy: { publishedAt: "desc" },
+    });
+    const visible = circulars.filter((c) => {
+      const audience = (c.audience as CircularAudience | null) ?? {};
+      if (!audience.classIds?.length) return true;
+      return enrollment ? audience.classIds.includes(enrollment.classId) : false;
+    });
+
+    const acks = await tx.circularAck.findMany({
+      where: { circularId: { in: visible.map((c) => c.id) }, userId: auth.userId },
+    });
+    const ackedIds = new Set(acks.map((a) => a.circularId));
+
+    return visible.map((c) => ({ ...c, acked: ackedIds.has(c.id) }));
+  });
+}
+
+/** Delegates the actual merge to calendar/service.ts, after resolving the caller's own class/section (self-scope verified via assertOwnStudent first). */
+export async function getMyCalendar(auth: RequestAuth, query: MyCalendarQueryInput) {
+  await assertOwnStudent(auth, query.studentId);
+
+  const sectionInfo = await withTenant(auth.tenantId, async (tx) => {
+    const student = await tx.student.findUnique({ where: { id: query.studentId } });
+    if (!student) return null;
+    const sessionId = await getCurrentSessionId(tx, student.branchId);
+    if (!sessionId) return null;
+    const enrollment = await tx.enrollment.findFirst({ where: { studentId: query.studentId, sessionId } });
+    if (!enrollment) return null;
+    return { branchId: student.branchId, classId: enrollment.classId, sectionId: enrollment.sectionId };
+  });
+  if (!sectionInfo) {
+    return [];
+  }
+
+  return getMergedCalendar(auth, { ...sectionInfo, month: query.month, year: query.year });
 }
 
 // --- Unit 39: DPDP delete-on-request ---

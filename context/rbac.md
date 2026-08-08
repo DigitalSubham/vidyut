@@ -56,6 +56,7 @@ Parents/students are **self-scoped**: they read only their own (children's) data
 | `homework.manage` | | ✓ | | | ✓ |
 | `announcement.send` | ✓ | ✓ | ✓ | | |
 | `notification.send` | ✓ | ✓ | ✓ | ✓ | |
+| `engagement.manage` (Unit 49 — circulars, PTM slots, complaint resolution, surveys, gallery) | ✓ | ✓ | ✓ | | |
 | `dashboard.owner` | ✓ | | | | |
 | `dashboard.principal` | ✓ | ✓ | | | |
 | `subscription.view` | ✓ | | | | |

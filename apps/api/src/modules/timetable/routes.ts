@@ -1,5 +1,10 @@
 import { Router } from "express";
-import { bulkUpsertTimetableSchema, listTimetableQuerySchema } from "@vidyut/validation";
+import {
+  bulkUpsertTimetableSchema,
+  createSubstitutionSchema,
+  listTimetableQuerySchema,
+  substitutionsTodayQuerySchema,
+} from "@vidyut/validation";
 import { asyncHandler } from "../../core/envelope";
 import { authGuard } from "../../core/guards/auth-guard";
 import { tenantContext } from "../../core/guards/tenant-context";
@@ -24,6 +29,19 @@ timetableRouter.post(
 );
 
 timetableRouter.get("/", validateQuery(listTimetableQuerySchema), asyncHandler(controller.listTimetable));
+
+timetableRouter.post(
+  "/substitutions",
+  requirePermission("timetable.manage"),
+  validateBody(createSubstitutionSchema),
+  asyncHandler(controller.createSubstitution)
+);
+
+timetableRouter.get(
+  "/substitutions/today",
+  validateQuery(substitutionsTodayQuerySchema),
+  asyncHandler(controller.listSubstitutionsToday)
+);
 
 timetableRouter.delete(
   "/:id",

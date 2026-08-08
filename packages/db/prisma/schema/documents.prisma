@@ -1,0 +1,30 @@
+// Documents (DMS) — Unit 50 scope item 3. Unit 07/42's ad-hoc `docs`/`Json?`
+// fields on Student/Staff were kept deliberately simple; this is the actual
+// central store. Those fields are not migrated to reference this model —
+// out of scope for this unit.
+
+enum DocumentOwnerType {
+  STUDENT
+  STAFF
+}
+
+/// A tagged file reference — metadata only, the blob lives in object storage
+/// (invariant #4). Branch-owned — RLS-scoped.
+model Document {
+  id           String            @id @default(cuid())
+  tenantId     String
+  branchId     String
+  ownerType    DocumentOwnerType
+  ownerId      String
+  key          String
+  label        String
+  tags         String[]
+  uploadedById String
+  createdAt    DateTime          @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  branch Branch @relation(fields: [branchId], references: [id])
+
+  @@index([tenantId])
+  @@index([branchId, ownerType, ownerId])
+}

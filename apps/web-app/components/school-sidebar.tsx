@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslation } from "react-i18next";
-import { Users, Wallet, CalendarCheck, LayoutDashboard, Settings, BadgeCheck, Layers, GraduationCap } from "lucide-react";
+import { Users, Wallet, CalendarCheck, LayoutDashboard, Settings, BadgeCheck, Layers, GraduationCap, CalendarClock, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getAdminRoles } from "@/lib/admin-client";
 
@@ -13,8 +13,8 @@ import { getAdminRoles } from "@/lib/admin-client";
  * endpoint exists yet to fetch effective permissions, see admin-client.ts).
  * Units 42/43/44/46 added their own screens (staff, academic structure,
  * exams) on top of the original students/fees/attendance/settings set;
- * guardians/admissions/announcements/certificates/timetable/homework remain
- * fast-follow work, not built here.
+ * guardians/admissions/announcements/certificates/homework remain
+ * fast-follow work, not built here. Unit 47 added timetable (substitutions).
  */
 const NAV_ITEMS = [
   { key: "dashboard", href: "/dashboard", icon: LayoutDashboard, roles: ["OWNER", "PRINCIPAL"] },
@@ -24,6 +24,8 @@ const NAV_ITEMS = [
   { key: "attendance", href: "/attendance", icon: CalendarCheck, roles: ["OWNER", "PRINCIPAL", "ADMIN", "TEACHER"] },
   { key: "academicStructure", href: "/academic-structure", icon: Layers, roles: ["OWNER", "PRINCIPAL", "ADMIN"] },
   { key: "exams", href: "/exams", icon: GraduationCap, roles: ["OWNER", "PRINCIPAL", "ADMIN", "TEACHER"] },
+  { key: "timetable", href: "/timetable", icon: CalendarClock, roles: ["OWNER", "PRINCIPAL", "ADMIN"] },
+  { key: "engagement", href: "/engagement", icon: MessageSquare, roles: ["OWNER", "PRINCIPAL", "ADMIN"] },
   { key: "settings", href: "/settings", icon: Settings, roles: ["OWNER", "PRINCIPAL"] },
 ] as const;
 

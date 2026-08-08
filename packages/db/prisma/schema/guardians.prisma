@@ -31,6 +31,8 @@ model Guardian {
   tenant           Tenant           @relation(fields: [tenantId], references: [id])
   user             User?            @relation(fields: [userId], references: [id])
   studentGuardians StudentGuardian[]
+  ptmSlots         PTMSlot[]
+  messages         Message[]
 
   @@index([tenantId])
 }

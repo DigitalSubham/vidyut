@@ -21,3 +21,18 @@ export const listTimetableQuerySchema = z.object({
   staffId: z.string().min(1).optional(),
 });
 export type ListTimetableQueryInput = z.infer<typeof listTimetableQuerySchema>;
+
+// Unit 47 — same-day substitution for one recurring period.
+export const createSubstitutionSchema = z.object({
+  timetablePeriodId: z.string().min(1, "timetable.errors.periodRequired"),
+  date: z.coerce.date(),
+  substituteStaffId: z.string().min(1, "timetable.errors.staffRequired"),
+  room: z.string().trim().min(1).optional(),
+  reason: z.string().trim().min(1).optional(),
+});
+export type CreateSubstitutionInput = z.infer<typeof createSubstitutionSchema>;
+
+export const substitutionsTodayQuerySchema = z.object({
+  branchId: z.string().min(1, "timetable.errors.branchRequired"),
+});
+export type SubstitutionsTodayQueryInput = z.infer<typeof substitutionsTodayQuerySchema>;

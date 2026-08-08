@@ -179,9 +179,9 @@
 |---|---|---|---|---|
 | Class timetable | ✅ | Period grid per section — built (Unit 22) | PRIN, ADM | P1 |
 | Teacher timetable | ✅ | Per teacher view — built (Unit 22, via `/me`) | TCH | P1 |
-| Auto/smart timetable generation | ❌ | Constraint-based generator — not built | PRIN | P3 |
-| Substitution management | ❌ | Cover absent teachers — not built | PRIN | P2 |
-| Room/lab allocation | ❌ | Resource scheduling — not built | ADM | P3 |
+| Auto/smart timetable generation | ❌ | Constraint-based generator — explicitly deferred, no validated demand (Unit 47's own Open Question 1) | PRIN | P3 |
+| Substitution management | ✅ | Same-day per-period override, doesn't touch the recurring grid — `Substitution` model, double-booking guard on substitute teacher + room, web-only UI (principal's "today" view + assign form) (Unit 47) | PRIN | P2 |
+| Room/lab allocation | ✅ | Room kept as free text (not a full `Room` model — no capacity/type management asked for), clash-checked at substitution time (Unit 47) | ADM | P3 |
 | Timetable on app | ✅ | Parent/student/teacher view — built (Unit 24/25, `/me/timetable`) | all | P1 |
 
 ## A10. Lesson Planning, Curriculum & LMS `[P2/P3]`
@@ -221,8 +221,8 @@
 | Cancellation / correction of receipt | ✅ | Audited, idempotent, requires a reason — built and tested (Unit 38) | ACC | P1 |
 | Opening balances (migration) | ✅ | Carry legacy dues at onboarding — built (Unit 12) | ACC | P0 |
 | Fee reports | ✅ | Daily collection, head-wise, mode-wise, outstanding — built (Unit 12) | ACC, OWN | P0 |
-| Cheque/PDC tracking | ❌ | Cheque status, bounce — not built | ACC | P2 |
-| Multi-currency | ❌ | (rarely needed) — not built | ACC | P3 |
+| Cheque/PDC tracking | ✅ | Cheque status (pending/cleared/bounced), a bounce reopens the invoice — `ChequePayment` attached to a `Payment(mode: CHEQUE)` row, web-only UI on the Fees page's Cheques tab (Unit 48) | ACC | P2 |
+| Multi-currency | ❌ | (rarely needed) — explicitly skipped as pure speculation (Unit 48's own Open Question 1) | ACC | P3 |
 | Payment-gateway platform fee | ✅ | Our revenue on transactions — built (Unit 13, `Payment.platformFeeAmount`); revenue summary built (Unit 30) | SA | P1 |
 
 ## B2. Accounting & Finance `[P2 — On-Demand, not built]`
@@ -283,17 +283,17 @@
 | Feature | Status | Detail | Roles | Phase |
 |---|---|---|---|---|
 | Announcements / notice board | ✅ | School-wide or targeted — built (Unit 20, role/class-audience matching, PUSH/SMS-fallback fan-out hardened Unit 32) | PRIN, ADM | P0/P1 |
-| Circulars (with attachments) | ❌ | PDF, acknowledge — not built | ADM, PAR | P1 |
-| Parent-teacher messaging/chat | ❌ | 1:1 or class, moderated — not built | TCH, PAR | P2 |
+| Circulars (with attachments) | ✅ | Attachment URL + audience match (same shape as Announcements) + per-user ack tracking — `Circular`/`CircularAck`, web create/ack-count + mobile list/ack (Unit 49) | ADM, PAR | P1 |
+| Parent-teacher messaging/chat | ✅ | Async/REST-polled 1:1, not real-time (deliberate — no websocket infra for the demand level) — `Message`, mobile `MessagesScreen` shared by teacher + parent apps (Unit 49) | TCH, PAR | P2 |
 | Class/group broadcast | ⚠️ | Announcements cover this in practice (class-audience targeting); no dedicated "broadcast" UX | TCH | P1 |
-| PTM scheduling | ❌ | Slots, booking, reminders — not built | TCH, PAR | P2 |
-| Events & school calendar | ❌ | Holidays, events, exams — not built | all | P1 |
-| Complaint / grievance / feedback | ❌ | Raise & track — not built | PAR, ADM | P2 |
-| Surveys / polls / feedback forms | ❌ | Collect input — not built | PRIN, PAR | P2 |
+| PTM scheduling | ⚠️ | `PTMSlot` + booking endpoint built, web management (offer/list) built; **mobile parent-side booking UI not built** — a real, stated gap (Unit 49) | TCH, PAR | P2 |
+| Events & school calendar | ✅ | `CalendarEvent` merged at read time with exam dates + homework due-dates into one `GET /me/calendar` — replaced the old homework-only mobile calendar (Unit 49) | all | P1 |
+| Complaint / grievance / feedback | ✅ | Raise (self-scoped, branch-verified via own student) + staff resolve — web + mobile (Unit 49) | PAR, ADM | P2 |
+| Surveys / polls / feedback forms | ⚠️ | Single-choice/text only, no branching — create/respond/tally-results built; **mobile response UI not built**, web-only (Unit 49) | PRIN, PAR | P2 |
 | Newsletter | ❌ | Periodic, rich content — not built | ADM | P3 |
-| Gallery / photos / achievements | ❌ | Share media — not built | ADM, PAR | P2 |
+| Gallery / photos / achievements | ⚠️ | S3-backed album/photo upload built (web); **mobile viewing UI not built** (Unit 49) | ADM, PAR | P2 |
 | Birthday / greeting automation | ❌ | Auto wishes — not built | PAR | P3 |
-| Emergency / SOS broadcast | ❌ | Instant all-parent alert — not built (announcements could serve this in a pinch, no dedicated SOS UX) | PRIN | P2 |
+| Emergency / SOS broadcast | ❌ | Instant all-parent alert — **deliberately not built**, needs the user's sign-off on bypassing the SMS-wallet balance check (a real billing-impact policy call, Unit 49's own Open Question 3) | PRIN | P2 |
 
 ---
 
@@ -393,7 +393,7 @@
 ## E2. School Web Admin Panel 🖥️ `[P0]`
 Full management UI for OWN/PRIN/ADM/ACC/HR — surfaces all enabled modules above, role-scoped.
 
-**Status ⚠️ partial** (Unit 27): shell + login + 4 modules have UI (students, fees, attendance, dashboard). Guardians, staff, admissions, exams, marks, report cards, announcements, certificates, timetable, homework all have working APIs but **no web UI** — same shell/table/form pattern each time, deferred as fast-follow.
+**Status ⚠️ partial** (Unit 27, extended by Units 42/43/44/46/47): shell + login + students/fees/attendance/dashboard/staff/academic-structure/exams/timetable now have UI. Guardians, admissions, announcements, certificates all have working APIs but **no web UI** yet — same shell/table/form pattern each time, deferred as fast-follow. Homework is correctly API-only by design (mobile-first, no admin web screen warranted).
 
 > **Note (locked decision):** E3–E5 are **role experiences inside ONE role-based mobile app** (parent · teacher/staff · student), **not separate apps**. Same codebase/binary. See `architecture-context.md` §0.
 

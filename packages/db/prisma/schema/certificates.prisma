@@ -14,6 +14,39 @@ enum CertificateType {
   CUSTOM
 }
 
+/// Unit 50 — e-sign lifecycle on a Certificate. NONE until a signature is
+/// requested; REQUESTED while pending the (gated-stub) provider; SIGNED once
+/// the provider's webhook confirms it.
+enum SignatureStatus {
+  NONE
+  REQUESTED
+  SIGNED
+}
+
+/// Unit 50 (Open Question 1) — a reusable, token-based certificate/ID body.
+/// `body` is plain-text/simple-HTML containing `{{token}}` placeholders
+/// (studentName, className, issueDate, ...), substituted at generation time
+/// by `renderCertificateTemplate()` — not a visual designer. `branchId`
+/// nullable = tenant-wide default, same convention as `ReportCardTemplate`.
+model CertificateTemplate {
+  id        String           @id @default(cuid())
+  tenantId  String
+  branchId  String?
+  type      CertificateType
+  name      String
+  body      String
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  deletedAt DateTime?
+
+  tenant Tenant  @relation(fields: [tenantId], references: [id])
+  branch Branch? @relation(fields: [branchId], references: [id])
+
+  certificates Certificate[]
+
+  @@index([tenantId])
+}
+
 /// A numbered, issued document — the issue register/log. `pdfUrl` stays null
 /// until a real PDF pipeline exists (stub job, same posture as Unit 12's
 /// Receipt/Unit 19's ReportCard). `issuedById` is a small addition beyond the
@@ -26,22 +59,28 @@ enum CertificateType {
 /// `staffId` must be set — enforced at the app layer (service.ts), not a DB
 /// constraint Postgres can express cleanly for an XOR across two nullable FKs.
 model Certificate {
-  id           String          @id @default(cuid())
-  tenantId     String
-  branchId     String
-  studentId    String?
-  staffId      String?
-  type         CertificateType
-  customTitle  String?
-  number       String
-  pdfUrl       String?
-  issuedAt     DateTime        @default(now())
-  issuedById   String
+  id                   String          @id @default(cuid())
+  tenantId             String
+  branchId             String
+  studentId            String?
+  staffId              String?
+  templateId           String?
+  type                 CertificateType
+  customTitle          String?
+  number               String
+  pdfUrl               String?
+  issuedAt             DateTime        @default(now())
+  issuedById           String
+  signatureStatus      SignatureStatus @default(NONE)
+  signatureRequestedAt DateTime?
+  signedAt             DateTime?
+  signedPdfUrl         String?
 
-  tenant  Tenant   @relation(fields: [tenantId], references: [id])
-  branch  Branch   @relation(fields: [branchId], references: [id])
-  student Student? @relation(fields: [studentId], references: [id])
-  staff   Staff?   @relation(fields: [staffId], references: [id])
+  tenant   Tenant               @relation(fields: [tenantId], references: [id])
+  branch   Branch               @relation(fields: [branchId], references: [id])
+  student  Student?             @relation(fields: [studentId], references: [id])
+  staff    Staff?               @relation(fields: [staffId], references: [id])
+  template CertificateTemplate? @relation(fields: [templateId], references: [id])
 
   @@unique([branchId, type, number])
   @@index([tenantId])

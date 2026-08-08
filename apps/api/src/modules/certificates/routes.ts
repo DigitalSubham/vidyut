@@ -1,5 +1,12 @@
 import { Router } from "express";
-import { issueCertificateSchema, listCertificatesQuerySchema } from "@vidyut/validation";
+import {
+  bulkIdsQuerySchema,
+  createCertificateTemplateSchema,
+  esignWebhookSchema,
+  issueCertificateSchema,
+  listCertificatesQuerySchema,
+  listCertificateTemplatesQuerySchema,
+} from "@vidyut/validation";
 import { asyncHandler } from "../../core/envelope";
 import { authGuard } from "../../core/guards/auth-guard";
 import { tenantContext } from "../../core/guards/tenant-context";
@@ -24,3 +31,34 @@ certificatesRouter.get(
   validateQuery(listCertificatesQuerySchema),
   asyncHandler(controller.listCertificates)
 );
+
+certificatesRouter.post(
+  "/templates",
+  requirePermission("certificate.issue"),
+  validateBody(createCertificateTemplateSchema),
+  asyncHandler(controller.createCertificateTemplate)
+);
+
+certificatesRouter.get(
+  "/templates",
+  requirePermission("certificate.issue"),
+  validateQuery(listCertificateTemplatesQuerySchema),
+  asyncHandler(controller.listCertificateTemplates)
+);
+
+certificatesRouter.post(
+  "/bulk-ids",
+  requirePermission("certificate.issue"),
+  validateQuery(bulkIdsQuerySchema),
+  asyncHandler(controller.generateBulkIds)
+);
+
+certificatesRouter.post(
+  "/:id/request-signature",
+  requirePermission("certificate.issue"),
+  asyncHandler(controller.requestSignature)
+);
+
+/** Mounted at /api/v1/webhooks/esign — public, no authGuard (the provider doesn't send our JWTs). Same posture as Unit 13's razorpayWebhookRouter. */
+export const esignWebhookRouter = Router();
+esignWebhookRouter.post("/", validateBody(esignWebhookSchema), asyncHandler(controller.esignWebhook));

@@ -1,0 +1,225 @@
+// Unit 49 — Messaging & Engagement. See context/feature-specs/49-messaging-engagement.md.
+// SOS broadcast (spec scope #8) deliberately NOT built — needs the user's
+// sign-off on bypassing the SMS-wallet balance check, a real billing-impact
+// policy call, not an engineering default (spec's own Definition of Done).
+// Real-time chat explicitly out of scope (Open Question 1) — Message below
+// is async/REST-polled, no websocket infra.
+
+enum ComplaintStatus {
+  OPEN
+  RESOLVED
+}
+
+enum SurveyQuestionType {
+  SINGLE_CHOICE
+  TEXT
+}
+
+enum CalendarEventType {
+  HOLIDAY
+  EVENT
+  OTHER
+}
+
+/// A school circular — same audience-matching JSON shape as Announcement
+/// (Unit 20), but with per-user acknowledgement tracking, which Announcement
+/// doesn't have. Deliberately no SMS/push fan-out of its own — Announcement
+/// already owns that pipeline; a circular is a notice-board item you must
+/// acknowledge, not a broadcast message. Branch-owned — RLS-scoped.
+model Circular {
+  id            String    @id @default(cuid())
+  tenantId      String
+  branchId      String
+  title         String
+  body          String
+  attachmentUrl String?
+  audience      Json?
+  createdById   String
+  publishedAt   DateTime  @default(now())
+
+  tenant Tenant        @relation(fields: [tenantId], references: [id])
+  branch Branch        @relation(fields: [branchId], references: [id])
+  acks   CircularAck[]
+
+  @@index([tenantId])
+}
+
+/// One user's acknowledgement of one circular. Tenant-owned — RLS-scoped.
+model CircularAck {
+  id         String   @id @default(cuid())
+  tenantId   String
+  circularId String
+  userId     String
+  ackedAt    DateTime @default(now())
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+  circular Circular @relation(fields: [circularId], references: [id])
+
+  @@unique([circularId, userId])
+  @@index([tenantId])
+}
+
+/// A teacher-offered PTM slot, open until a guardian books it. Branch-owned — RLS-scoped.
+model PTMSlot {
+  id                String   @id @default(cuid())
+  tenantId          String
+  branchId          String
+  staffId           String
+  startTime         DateTime
+  endTime           DateTime
+  bookedByGuardianId String?
+  createdAt         DateTime @default(now())
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id])
+  branch   Branch    @relation(fields: [branchId], references: [id])
+  staff    Staff     @relation(fields: [staffId], references: [id])
+  guardian Guardian? @relation(fields: [bookedByGuardianId], references: [id])
+
+  @@index([tenantId])
+}
+
+/// A holiday/generic school-calendar entry — merged at read time with exam
+/// dates and homework due-dates into one `GET /me/calendar` response (Open
+/// Question 2), not a separate per-source calendar UI. Branch-owned — RLS-scoped.
+model CalendarEvent {
+  id          String            @id @default(cuid())
+  tenantId    String
+  branchId    String
+  title       String
+  date        DateTime
+  type        CalendarEventType @default(EVENT)
+  description String?
+  createdById String
+  createdAt   DateTime          @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  branch Branch @relation(fields: [branchId], references: [id])
+
+  @@index([tenantId])
+}
+
+/// A complaint raised by any authenticated user, resolved by staff.
+/// Branch-owned — RLS-scoped.
+model Complaint {
+  id             String          @id @default(cuid())
+  tenantId       String
+  branchId       String
+  raisedByUserId String
+  category       String
+  body           String
+  status         ComplaintStatus @default(OPEN)
+  resolution     String?
+  resolvedById   String?
+  resolvedAt     DateTime?
+  createdAt      DateTime        @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  branch Branch @relation(fields: [branchId], references: [id])
+
+  @@index([tenantId])
+}
+
+/// A simple single-choice/text survey — no branching logic (spec scope #6). Branch-owned — RLS-scoped.
+model Survey {
+  id          String   @id @default(cuid())
+  tenantId    String
+  branchId    String
+  title       String
+  audience    Json?
+  createdById String
+  createdAt   DateTime @default(now())
+
+  tenant    Tenant           @relation(fields: [tenantId], references: [id])
+  branch    Branch           @relation(fields: [branchId], references: [id])
+  questions SurveyQuestion[]
+
+  @@index([tenantId])
+}
+
+model SurveyQuestion {
+  id           String             @id @default(cuid())
+  tenantId     String
+  surveyId     String
+  questionText String
+  type         SurveyQuestionType
+  options      Json?
+  order        Int
+
+  tenant    Tenant           @relation(fields: [tenantId], references: [id])
+  survey    Survey           @relation(fields: [surveyId], references: [id])
+  responses SurveyResponse[]
+
+  @@index([tenantId])
+}
+
+/// One user's answer to one survey question. `answer` holds free text or the
+/// chosen option's literal string (kept denormalized — simplest thing that
+/// works for a single-choice tally, no separate option-id indirection).
+/// Tenant-owned — RLS-scoped.
+model SurveyResponse {
+  id               String   @id @default(cuid())
+  tenantId         String
+  questionId       String
+  respondedByUserId String
+  answer           String
+  createdAt        DateTime @default(now())
+
+  tenant   Tenant         @relation(fields: [tenantId], references: [id])
+  question SurveyQuestion @relation(fields: [questionId], references: [id])
+
+  @@unique([questionId, respondedByUserId])
+  @@index([tenantId])
+}
+
+/// Branch-owned — RLS-scoped.
+model GalleryAlbum {
+  id        String   @id @default(cuid())
+  tenantId  String
+  branchId  String
+  title     String
+  createdAt DateTime @default(now())
+
+  tenant Tenant         @relation(fields: [tenantId], references: [id])
+  branch Branch         @relation(fields: [branchId], references: [id])
+  photos GalleryPhoto[]
+
+  @@index([tenantId])
+}
+
+/// `key` is the S3 object key (Unit 04's storage wrapper), same
+/// presigned-upload pattern as staff documents — the API never touches the
+/// file bytes. Tenant-owned — RLS-scoped.
+model GalleryPhoto {
+  id         String   @id @default(cuid())
+  tenantId   String
+  albumId    String
+  key        String
+  caption    String?
+  uploadedAt DateTime @default(now())
+
+  tenant Tenant       @relation(fields: [tenantId], references: [id])
+  album  GalleryAlbum @relation(fields: [albumId], references: [id])
+
+  @@index([tenantId])
+}
+
+/// One message in an async (not real-time — Open Question 1) parent-teacher
+/// conversation, keyed by the (staffId, guardianId) pair. Branch-owned — RLS-scoped.
+model Message {
+  id         String   @id @default(cuid())
+  tenantId   String
+  branchId   String
+  staffId    String
+  guardianId String
+  senderId   String
+  body       String
+  createdAt  DateTime @default(now())
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+  branch   Branch   @relation(fields: [branchId], references: [id])
+  staff    Staff    @relation(fields: [staffId], references: [id])
+  guardian Guardian @relation(fields: [guardianId], references: [id])
+
+  @@index([tenantId])
+  @@index([staffId, guardianId, createdAt])
+}

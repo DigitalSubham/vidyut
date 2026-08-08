@@ -4,9 +4,11 @@ import type {
   CreateOpeningBalanceInput,
   CreatePaymentInput,
   FeeReportsQueryInput,
+  ListChequesQueryInput,
   ListInvoicesQueryInput,
   ReconciliationQueryInput,
   ListPaymentsQueryInput,
+  UpdateChequeStatusInput,
 } from "@vidyut/validation";
 import { AppError } from "../../core/errors";
 import { created, list, ok } from "../../core/envelope";
@@ -87,4 +89,19 @@ export async function getReconciliation(req: Request, res: Response): Promise<vo
 export async function cancelReceipt(req: Request, res: Response): Promise<void> {
   const receipt = await service.cancelReceipt(req.auth!, req.params.id!, req.body as CancelReceiptInput);
   ok(res, receipt);
+}
+
+export async function updateChequeStatus(req: Request, res: Response): Promise<void> {
+  const chequePayment = await service.updateChequeStatus(
+    req.auth!,
+    req.params.id!,
+    req.body as UpdateChequeStatusInput
+  );
+  ok(res, chequePayment);
+}
+
+export async function listCheques(req: Request, res: Response): Promise<void> {
+  const query = res.locals.query as ListChequesQueryInput;
+  const rows = await service.listCheques(req.auth!, query);
+  ok(res, rows);
 }

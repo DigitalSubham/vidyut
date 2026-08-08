@@ -49,7 +49,8 @@
       "attendance": "Attendance",
       "marks": "Marks",
       "homework": "Homework",
-      "grading": "Grading"
+      "grading": "Grading",
+      "messages": "Messages"
     }
   },
   "marks": {
@@ -87,7 +88,10 @@
       "homework": "Homework",
       "timetable": "Timetable",
       "calendar": "Calendar",
-      "onlineExams": "Online Exams"
+      "onlineExams": "Online Exams",
+      "circulars": "Circulars",
+      "complaints": "Complaints",
+      "messages": "Messages"
     },
     "due": "due",
     "day": "Day",
@@ -102,7 +106,19 @@
     "submitting": "Submitting…",
     "submitted": "Submitted",
     "homeworkSubmittedTitle": "Homework submitted",
-    "dayOfMonth": "Day {{day}}"
+    "dayOfMonth": "Day {{day}}",
+    "acked": "Acknowledged",
+    "ack": "Acknowledge",
+    "complaintCategory": "Category",
+    "complaintBody": "Describe the issue",
+    "raiseComplaint": "Submit complaint",
+    "resolution": "Resolution",
+    "messagesUnavailable": "Messaging isn't available for this account.",
+    "calendarType": {
+      "event": "Event",
+      "exam": "Exam",
+      "homework": "Homework"
+    }
   },
   "onlineExams": {
     "minutes": "min",
@@ -111,5 +127,15 @@
     "cancel": "Cancel",
     "submit": "Submit",
     "submitting": "Submitting…"
+  },
+  "messages": {
+    "back": "Back",
+    "placeholder": "Type a message",
+    "sending": "Sending…",
+    "send": "Send",
+    "guardianIdPlaceholder": "Guardian ID to message",
+    "staffIdPlaceholder": "Teacher/Staff ID to message",
+    "open": "Open",
+    "noThreads": "No conversations yet."
   }
 }

@@ -17,6 +17,81 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { adminApi, getAdminBranchId, AdminApiError, type InvoiceItem } from "@/lib/admin-client";
 
+function ChequesTab() {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const branchId = getAdminBranchId() ?? "";
+  const [statusFilter, setStatusFilter] = useState<"PENDING" | "CLEARED" | "BOUNCED">("PENDING");
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["cheques", branchId, statusFilter],
+    queryFn: () => adminApi.listCheques(branchId, statusFilter),
+    enabled: !!branchId,
+  });
+  const cheques = data?.data ?? [];
+
+  async function decide(paymentId: string, status: "CLEARED" | "BOUNCED") {
+    await adminApi.updateChequeStatus(paymentId, status);
+    await queryClient.invalidateQueries({ queryKey: ["cheques", branchId, statusFilter] });
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <select
+        className="w-fit rounded-md border border-border bg-bg-surface px-3 py-2 text-sm"
+        value={statusFilter}
+        onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
+      >
+        <option value="PENDING">{t("school.fees.chequeStatusPending")}</option>
+        <option value="CLEARED">{t("school.fees.chequeStatusCleared")}</option>
+        <option value="BOUNCED">{t("school.fees.chequeStatusBounced")}</option>
+      </select>
+
+      {!branchId ? (
+        <p className="text-text-secondary">{t("school.branchIdPlaceholder")}</p>
+      ) : isLoading ? (
+        <p className="text-text-secondary">{t("school.common.loading")}</p>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>{t("school.fees.chequeNo")}</TableHead>
+              <TableHead>{t("school.fees.bankName")}</TableHead>
+              <TableHead>{t("school.fees.chequeDueDate")}</TableHead>
+              <TableHead>{t("school.fees.amount")}</TableHead>
+              <TableHead />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {cheques.map((c) => (
+              <TableRow key={c.id}>
+                <TableCell className="font-medium">{c.chequeNo}</TableCell>
+                <TableCell>{c.bankName}</TableCell>
+                <TableCell>{new Date(c.dueDate).toLocaleDateString()}</TableCell>
+                <TableCell>{formatPaise(c.payment.amount)}</TableCell>
+                <TableCell>
+                  {c.status === "PENDING" ? (
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={() => decide(c.paymentId, "CLEARED")}>
+                        {t("school.fees.markCleared")}
+                      </Button>
+                      <Button size="sm" variant="destructive" onClick={() => decide(c.paymentId, "BOUNCED")}>
+                        {t("school.fees.markBounced")}
+                      </Button>
+                    </div>
+                  ) : (
+                    <Badge variant={c.status === "CLEARED" ? "default" : "secondary"}>{c.status}</Badge>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
+    </div>
+  );
+}
+
 const PAYMENT_MODES = ["CASH", "CHEQUE", "UPI", "CARD", "NETBANKING", "BANK", "WALLET"] as const;
 
 function formatPaise(amount: number): string {
@@ -120,6 +195,9 @@ export default function FeesPage() {
   const [collecting, setCollecting] = useState<InvoiceItem | null>(null);
   const [amount, setAmount] = useState("");
   const [mode, setMode] = useState<(typeof PAYMENT_MODES)[number]>("CASH");
+  const [chequeNo, setChequeNo] = useState("");
+  const [bankName, setBankName] = useState("");
+  const [chequeDueDate, setChequeDueDate] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -141,9 +219,13 @@ export default function FeesPage() {
         invoiceId: collecting.id,
         amount: Math.round(Number(amount) * 100),
         mode,
+        ...(mode === "CHEQUE" ? { chequeNo, bankName, chequeDueDate } : {}),
       });
       setCollecting(null);
       setAmount("");
+      setChequeNo("");
+      setBankName("");
+      setChequeDueDate("");
       await queryClient.invalidateQueries({ queryKey: ["invoices", branchId] });
     } catch (err) {
       setError(err instanceof AdminApiError ? `${err.code}: ${err.message}` : t("platform.errors.unknown"));
@@ -160,6 +242,7 @@ export default function FeesPage() {
         <TabsList>
           <TabsTrigger value="invoices">{t("school.fees.invoicesTab")}</TabsTrigger>
           <TabsTrigger value="reconciliation">{t("school.fees.reconciliationTab")}</TabsTrigger>
+          <TabsTrigger value="cheques">{t("school.fees.chequesTab")}</TabsTrigger>
         </TabsList>
         <TabsContent value="invoices">
           {!branchId ? (
@@ -200,6 +283,9 @@ export default function FeesPage() {
         <TabsContent value="reconciliation">
           <ReconciliationTab />
         </TabsContent>
+        <TabsContent value="cheques">
+          <ChequesTab />
+        </TabsContent>
       </Tabs>
 
       <Dialog open={!!collecting} onOpenChange={(open) => !open && setCollecting(null)}>
@@ -226,8 +312,34 @@ export default function FeesPage() {
                 ))}
               </select>
             </div>
+            {mode === "CHEQUE" ? (
+              <>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="chequeNo">{t("school.fees.chequeNo")}</Label>
+                  <Input id="chequeNo" value={chequeNo} onChange={(e) => setChequeNo(e.target.value)} />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="bankName">{t("school.fees.bankName")}</Label>
+                  <Input id="bankName" value={bankName} onChange={(e) => setBankName(e.target.value)} />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="chequeDueDate">{t("school.fees.chequeDueDate")}</Label>
+                  <Input
+                    id="chequeDueDate"
+                    type="date"
+                    value={chequeDueDate}
+                    onChange={(e) => setChequeDueDate(e.target.value)}
+                  />
+                </div>
+              </>
+            ) : null}
             {error && <p className="text-sm text-danger">{error}</p>}
-            <Button onClick={submitPayment} disabled={submitting || !amount}>
+            <Button
+              onClick={submitPayment}
+              disabled={
+                submitting || !amount || (mode === "CHEQUE" && (!chequeNo || !bankName || !chequeDueDate))
+              }
+            >
               {submitting ? t("school.common.loading") : t("school.fees.submit")}
             </Button>
           </div>

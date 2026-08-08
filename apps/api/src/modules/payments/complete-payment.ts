@@ -6,6 +6,26 @@ function invoiceTotal(items: { amount: number; discount: number; fine: number }[
   return items.reduce((sum, item) => sum + item.amount - item.discount + item.fine, 0);
 }
 
+/**
+ * Recomputes an invoice's status from its current SUCCESS payments, from
+ * scratch — works whether the triggering change added a payment (Unit 12) or
+ * removed one from the successful set (Unit 48's cheque bounce). Never
+ * touches a CANCELLED invoice (a human decision, not derivable from totals).
+ */
+export async function recomputeInvoiceStatus(tx: Prisma.TransactionClient, invoiceId: string): Promise<void> {
+  const invoice = await tx.invoice.findUnique({ where: { id: invoiceId }, include: { items: true } });
+  if (!invoice || invoice.status === "CANCELLED") return;
+
+  const successfulPayments = await tx.payment.findMany({ where: { invoiceId, status: "SUCCESS" } });
+  const totalPaid = successfulPayments.reduce((sum, p) => sum + p.amount, 0);
+  const total = invoiceTotal(invoice.items);
+  const status = totalPaid >= total ? "PAID" : totalPaid > 0 ? "PARTIAL" : "PENDING";
+
+  if (status !== invoice.status) {
+    await tx.invoice.update({ where: { id: invoiceId }, data: { status } });
+  }
+}
+
 export interface FinalizePaymentSuccessParams {
   tenantId: string;
   branchId: string;
@@ -28,16 +48,7 @@ export async function finalizePaymentSuccess(
   params: FinalizePaymentSuccessParams
 ): Promise<void> {
   if (params.invoiceId) {
-    const invoice = await tx.invoice.findUnique({ where: { id: params.invoiceId }, include: { items: true } });
-    if (invoice) {
-      const successfulPayments = await tx.payment.findMany({
-        where: { invoiceId: invoice.id, status: "SUCCESS" },
-      });
-      const totalPaid = successfulPayments.reduce((sum, p) => sum + p.amount, 0);
-      const total = invoiceTotal(invoice.items);
-      const status = totalPaid >= total ? "PAID" : totalPaid > 0 ? "PARTIAL" : invoice.status;
-      await tx.invoice.update({ where: { id: invoice.id }, data: { status } });
-    }
+    await recomputeInvoiceStatus(tx, params.invoiceId);
   }
 
   const receiptNumber = await nextReceiptNumber(tx, params.branchId);

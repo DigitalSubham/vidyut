@@ -48,6 +48,9 @@ model Staff {
   timetablePeriods   TimetablePeriod[]
   certificates          Certificate[]
   staffAttendanceRecords StaffAttendanceRecord[]
+  substitutions          Substitution[]
+  ptmSlots               PTMSlot[]
+  messages               Message[]
 
   @@unique([branchId, employeeNo])
   @@unique([userId])

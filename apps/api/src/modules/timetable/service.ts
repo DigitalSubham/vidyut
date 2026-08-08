@@ -1,8 +1,19 @@
 import { withTenant } from "@vidyut/db";
-import type { BulkUpsertTimetableInput, ListTimetableQueryInput } from "@vidyut/validation";
+import type {
+  BulkUpsertTimetableInput,
+  CreateSubstitutionInput,
+  ListTimetableQueryInput,
+  SubstitutionsTodayQueryInput,
+} from "@vidyut/validation";
 import { AppError } from "../../core/errors";
 import { branchAccessAllowed } from "../../core/guards/branch-scope";
 import type { RequestAuth } from "../../core/guards/types";
+
+/** JS Date.getDay() is 0=Sunday..6=Saturday; the server's own dayOfWeek is
+ * 0=Monday..6=Sunday (context/feature-specs/22's own convention). */
+function serverDayOfWeek(date: Date): number {
+  return (date.getDay() + 6) % 7;
+}
 
 function assertBranchAccess(auth: RequestAuth, branchId: string): void {
   if (!branchAccessAllowed(auth, branchId)) {
@@ -110,6 +121,96 @@ export async function listTimetable(auth: RequestAuth, query: ListTimetableQuery
       orderBy: [{ dayOfWeek: "asc" }, { periodNo: "asc" }],
     });
   });
+}
+
+export async function createSubstitution(auth: RequestAuth, input: CreateSubstitutionInput) {
+  return withTenant(auth.tenantId, async (tx) => {
+    const period = await tx.timetablePeriod.findUnique({ where: { id: input.timetablePeriodId } });
+    if (!period) {
+      throw new AppError("NOT_FOUND", "timetable.errors.periodNotFound");
+    }
+    assertBranchAccess(auth, period.branchId);
+
+    if (serverDayOfWeek(input.date) !== period.dayOfWeek) {
+      throw new AppError("VALIDATION_ERROR", "timetable.errors.dateDayMismatch");
+    }
+
+    const substitute = await tx.staff.findUnique({ where: { id: input.substituteStaffId } });
+    if (!substitute || substitute.deletedAt || substitute.branchId !== period.branchId) {
+      throw new AppError("VALIDATION_ERROR", "staff.errors.staffNotFoundInBranch");
+    }
+
+    const room = input.room ?? period.room ?? undefined;
+
+    // Same double-booking guard shape as Unit 22's bulk upsert: reject if the
+    // substitute teacher is already covering (or already teaching) another
+    // section's period in this exact slot that day, or if the room clashes.
+    const [substitutionConflict, recurringConflict, roomConflict] = await Promise.all([
+      tx.substitution.findFirst({
+        where: {
+          date: input.date,
+          substituteStaffId: input.substituteStaffId,
+          timetablePeriodId: { not: input.timetablePeriodId },
+          timetablePeriod: { periodNo: period.periodNo },
+        },
+      }),
+      tx.timetablePeriod.findFirst({
+        where: {
+          staffId: input.substituteStaffId,
+          dayOfWeek: period.dayOfWeek,
+          periodNo: period.periodNo,
+          id: { not: input.timetablePeriodId },
+        },
+      }),
+      room
+        ? tx.substitution.findFirst({
+            where: { date: input.date, room, timetablePeriodId: { not: input.timetablePeriodId }, timetablePeriod: { periodNo: period.periodNo } },
+          })
+        : Promise.resolve(null),
+    ]);
+    if (substitutionConflict || recurringConflict) {
+      throw new AppError("CONFLICT", "timetable.errors.staffDoubleBooked");
+    }
+    if (roomConflict) {
+      throw new AppError("CONFLICT", "timetable.errors.roomDoubleBooked");
+    }
+
+    return tx.substitution.upsert({
+      where: { timetablePeriodId_date: { timetablePeriodId: input.timetablePeriodId, date: input.date } },
+      create: {
+        tenantId: auth.tenantId,
+        branchId: period.branchId,
+        timetablePeriodId: input.timetablePeriodId,
+        date: input.date,
+        substituteStaffId: input.substituteStaffId,
+        room: input.room,
+        reason: input.reason,
+      },
+      update: {
+        substituteStaffId: input.substituteStaffId,
+        room: input.room,
+        reason: input.reason,
+      },
+    });
+  });
+}
+
+export async function listSubstitutionsToday(auth: RequestAuth, query: SubstitutionsTodayQueryInput) {
+  assertBranchAccess(auth, query.branchId);
+
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+
+  return withTenant(auth.tenantId, (tx) =>
+    tx.substitution.findMany({
+      where: { branchId: query.branchId, date: today },
+      include: {
+        timetablePeriod: { include: { section: true, subject: true, staff: { include: { user: true } } } },
+        substituteStaff: { include: { user: true } },
+      },
+      orderBy: [{ timetablePeriod: { periodNo: "asc" } }],
+    })
+  );
 }
 
 export async function deleteTimetablePeriod(auth: RequestAuth, id: string): Promise<void> {

@@ -118,11 +118,13 @@ export async function cleanupTenant(tenantId: string) {
     await tx.notificationLog.deleteMany({ where: { tenantId } });
     await tx.announcement.deleteMany({ where: { tenantId } });
     await tx.certificate.deleteMany({ where: { tenantId } });
+    await tx.substitution.deleteMany({ where: { tenantId } });
     await tx.timetablePeriod.deleteMany({ where: { tenantId } });
     await tx.homeworkSubmission.deleteMany({ where: { tenantId } });
     await tx.homework.deleteMany({ where: { tenantId } });
     await tx.refundRequest.deleteMany({ where: { tenantId } });
     await tx.receipt.deleteMany({ where: { tenantId } });
+    await tx.chequePayment.deleteMany({ where: { tenantId } });
     await tx.payment.deleteMany({ where: { tenantId } });
     await tx.invoiceItem.deleteMany({ where: { tenantId } });
     await tx.invoice.deleteMany({ where: { tenantId } });
@@ -135,6 +137,19 @@ export async function cleanupTenant(tenantId: string) {
     await tx.application.deleteMany({ where: { tenantId } });
     await tx.enquiry.deleteMany({ where: { tenantId } });
     await tx.leaveRequest.deleteMany({ where: { tenantId } });
+    // Unit 49 — deleted before Staff/Guardian/Circular/Survey/GalleryAlbum,
+    // which they reference.
+    await tx.circularAck.deleteMany({ where: { tenantId } });
+    await tx.circular.deleteMany({ where: { tenantId } });
+    await tx.pTMSlot.deleteMany({ where: { tenantId } });
+    await tx.calendarEvent.deleteMany({ where: { tenantId } });
+    await tx.complaint.deleteMany({ where: { tenantId } });
+    await tx.surveyResponse.deleteMany({ where: { tenantId } });
+    await tx.surveyQuestion.deleteMany({ where: { tenantId } });
+    await tx.survey.deleteMany({ where: { tenantId } });
+    await tx.galleryPhoto.deleteMany({ where: { tenantId } });
+    await tx.galleryAlbum.deleteMany({ where: { tenantId } });
+    await tx.message.deleteMany({ where: { tenantId } });
     await tx.teacherAssignment.deleteMany({ where: { tenantId } });
     await tx.staffAttendanceRecord.deleteMany({ where: { tenantId } });
     await tx.staff.deleteMany({ where: { tenantId } });

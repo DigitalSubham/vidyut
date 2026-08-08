@@ -238,3 +238,201 @@ describe("timetable — bulk upsert (grid + slot overwrite), staff double-bookin
     expect(unscoped).toHaveLength(0);
   });
 });
+
+/** Mirrors the service's own JS-Date-to-server-dayOfWeek conversion
+ * (0=Monday..6=Sunday) so tests can build a period for "today". */
+function todayServerDayOfWeek(): number {
+  return (new Date().getDay() + 6) % 7;
+}
+
+/** Substitute teachers must be in the same branch as the period they cover —
+ * unlike `setup()`, which spins up a whole new branch each call. */
+async function createExtraStaff(tenantId: string, branchId: string, code: string) {
+  const existingRole = await withTenant(tenantId, (tx) => tx.role.findFirst({ where: { key: "TEACHER" } }));
+  const role = existingRole ?? (await createRoleWithPermissions(tenantId, "TEACHER", []));
+  const user = await createStaffUser(tenantId, {
+    email: `staff-${code}-${branchId}@example.com`,
+    password: "Passw0rd!",
+    roleId: role.id,
+    branchId,
+  });
+  return withTenant(tenantId, (tx) =>
+    tx.staff.create({
+      data: {
+        tenantId,
+        branchId,
+        userId: user.id,
+        employeeNo: `EMP-EXTRA-${code}-${branchId}`,
+        designation: "Teacher",
+        type: "TEACHING",
+        joinedAt: new Date("2020-01-01"),
+      },
+    })
+  );
+}
+
+describe("timetable — substitutions (Unit 47)", () => {
+  it("creates a substitution overriding one period for one day without touching the recurring TimetablePeriod", async () => {
+    const tenant = await createTenant("substitution-crud-tenant");
+    tenantIds.push(tenant.id);
+    await createRoleWithPermissions(tenant.id, "OWNER", ["timetable.manage"]);
+    const owner = await ownerToken(tenant.id);
+    const { branch, session, section, subject, staff } = await setup(tenant.id, "A");
+    const substitute = await createExtraStaff(tenant.id, branch.id, "B");
+
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    const dayOfWeek = todayServerDayOfWeek();
+
+    const period = await withTenant(tenant.id, (tx) =>
+      tx.timetablePeriod.create({
+        data: {
+          tenantId: tenant.id,
+          branchId: branch.id,
+          sessionId: session.id,
+          sectionId: section.id,
+          dayOfWeek,
+          periodNo: 1,
+          subjectId: subject.id,
+          staffId: staff.id,
+          room: "Room 1",
+        },
+      })
+    );
+
+    const res = await request(app)
+      .post("/api/v1/timetable/substitutions")
+      .set("Authorization", `Bearer ${owner}`)
+      .send({
+        timetablePeriodId: period.id,
+        date: today.toISOString(),
+        substituteStaffId: substitute.id,
+        reason: "Sick leave",
+      });
+    expect(res.status).toBe(201);
+    expect(res.body.data.substituteStaffId).toBe(substitute.id);
+
+    const recurring = await withTenant(tenant.id, (tx) => tx.timetablePeriod.findUnique({ where: { id: period.id } }));
+    expect(recurring?.staffId).toBe(staff.id);
+
+    const todayList = await request(app)
+      .get(`/api/v1/timetable/substitutions/today?branchId=${branch.id}`)
+      .set("Authorization", `Bearer ${owner}`);
+    expect(todayList.status).toBe(200);
+    expect(todayList.body.data).toHaveLength(1);
+    expect(todayList.body.data[0].substituteStaffId).toBe(substitute.id);
+  });
+
+  it("rejects a substitute teacher already covering another section's period in the same slot that day", async () => {
+    const tenant = await createTenant("substitution-conflict-tenant");
+    tenantIds.push(tenant.id);
+    await createRoleWithPermissions(tenant.id, "OWNER", ["timetable.manage"]);
+    const owner = await ownerToken(tenant.id);
+    const { branch, session, section, subject, staff } = await setup(tenant.id, "A");
+    const otherSection = await withTenant(tenant.id, (tx) =>
+      tx.section.create({ data: { tenantId: tenant.id, branchId: branch.id, classId: section.classId, name: "A-B" } })
+    );
+    const staffB = await createExtraStaff(tenant.id, branch.id, "B");
+    const substitute = await createExtraStaff(tenant.id, branch.id, "C");
+
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    const dayOfWeek = todayServerDayOfWeek();
+
+    const periodA = await withTenant(tenant.id, (tx) =>
+      tx.timetablePeriod.create({
+        data: { tenantId: tenant.id, branchId: branch.id, sessionId: session.id, sectionId: section.id, dayOfWeek, periodNo: 1, subjectId: subject.id, staffId: staff.id },
+      })
+    );
+    const periodB = await withTenant(tenant.id, (tx) =>
+      tx.timetablePeriod.create({
+        data: { tenantId: tenant.id, branchId: branch.id, sessionId: session.id, sectionId: otherSection.id, dayOfWeek, periodNo: 1, subjectId: subject.id, staffId: staffB.id },
+      })
+    );
+
+    const first = await request(app)
+      .post("/api/v1/timetable/substitutions")
+      .set("Authorization", `Bearer ${owner}`)
+      .send({ timetablePeriodId: periodA.id, date: today.toISOString(), substituteStaffId: substitute.id });
+    expect(first.status).toBe(201);
+
+    const conflicting = await request(app)
+      .post("/api/v1/timetable/substitutions")
+      .set("Authorization", `Bearer ${owner}`)
+      .send({ timetablePeriodId: periodB.id, date: today.toISOString(), substituteStaffId: substitute.id });
+    expect(conflicting.status).toBe(409);
+  });
+
+  it("rejects a room already used by another substitution in the same slot that day", async () => {
+    const tenant = await createTenant("substitution-room-conflict-tenant");
+    tenantIds.push(tenant.id);
+    await createRoleWithPermissions(tenant.id, "OWNER", ["timetable.manage"]);
+    const owner = await ownerToken(tenant.id);
+    const { branch, session, section, subject, staff } = await setup(tenant.id, "A");
+    const otherSection = await withTenant(tenant.id, (tx) =>
+      tx.section.create({ data: { tenantId: tenant.id, branchId: branch.id, classId: section.classId, name: "A-B" } })
+    );
+    const staffB = await createExtraStaff(tenant.id, branch.id, "B");
+    const substitute1 = await createExtraStaff(tenant.id, branch.id, "C");
+    const substitute2 = await createExtraStaff(tenant.id, branch.id, "D");
+
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    const dayOfWeek = todayServerDayOfWeek();
+
+    const periodA = await withTenant(tenant.id, (tx) =>
+      tx.timetablePeriod.create({
+        data: { tenantId: tenant.id, branchId: branch.id, sessionId: session.id, sectionId: section.id, dayOfWeek, periodNo: 1, subjectId: subject.id, staffId: staff.id },
+      })
+    );
+    const periodB = await withTenant(tenant.id, (tx) =>
+      tx.timetablePeriod.create({
+        data: { tenantId: tenant.id, branchId: branch.id, sessionId: session.id, sectionId: otherSection.id, dayOfWeek, periodNo: 1, subjectId: subject.id, staffId: staffB.id },
+      })
+    );
+
+    const first = await request(app)
+      .post("/api/v1/timetable/substitutions")
+      .set("Authorization", `Bearer ${owner}`)
+      .send({ timetablePeriodId: periodA.id, date: today.toISOString(), substituteStaffId: substitute1.id, room: "Lab 1" });
+    expect(first.status).toBe(201);
+
+    const conflicting = await request(app)
+      .post("/api/v1/timetable/substitutions")
+      .set("Authorization", `Bearer ${owner}`)
+      .send({ timetablePeriodId: periodB.id, date: today.toISOString(), substituteStaffId: substitute2.id, room: "Lab 1" });
+    expect(conflicting.status).toBe(409);
+  });
+
+  it("RBAC: TEACHER denied creating substitutions; ADMIN with timetable.manage allowed", async () => {
+    const tenant = await createTenant("substitution-rbac-tenant");
+    tenantIds.push(tenant.id);
+    await createRoleWithPermissions(tenant.id, "ADMIN", ["timetable.manage"]);
+    const { branch, session, section, subject, staff } = await setup(tenant.id, "A");
+    const substitute = await createExtraStaff(tenant.id, branch.id, "B");
+    const admin = await adminToken(tenant.id, branch.id);
+    const teacher = await teacherToken(tenant.id, branch.id);
+
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    const dayOfWeek = todayServerDayOfWeek();
+
+    const period = await withTenant(tenant.id, (tx) =>
+      tx.timetablePeriod.create({
+        data: { tenantId: tenant.id, branchId: branch.id, sessionId: session.id, sectionId: section.id, dayOfWeek, periodNo: 1, subjectId: subject.id, staffId: staff.id },
+      })
+    );
+
+    const teacherAttempt = await request(app)
+      .post("/api/v1/timetable/substitutions")
+      .set("Authorization", `Bearer ${teacher}`)
+      .send({ timetablePeriodId: period.id, date: today.toISOString(), substituteStaffId: substitute.id });
+    expect(teacherAttempt.status).toBe(403);
+
+    const adminAttempt = await request(app)
+      .post("/api/v1/timetable/substitutions")
+      .set("Authorization", `Bearer ${admin}`)
+      .send({ timetablePeriodId: period.id, date: today.toISOString(), substituteStaffId: substitute.id });
+    expect(adminAttempt.status).toBe(201);
+  });
+});

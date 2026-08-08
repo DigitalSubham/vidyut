@@ -4,8 +4,9 @@ Read `apps/api/src/modules/announcements/` (Unit 20) first — several of these 
 
 ## Open Questions
 
-1. **Parent-teacher 1:1 chat** — real-time messaging is meaningfully more infrastructure (websockets or polling, message threading, read receipts) than anything else in this batch. **Recommendation:** scope v1 as **asynchronous, not real-time** — a `Message` model + REST polling (the mobile app already polls `/me/*` endpoints elsewhere), no websocket server. Confirm with the user if true real-time chat is actually wanted before building socket infra.
-2. **Events & school calendar** — is this a new calendar or should exam dates (Unit 46's `ExamTimetable`) and homework due-dates (already visible) surface into one unified calendar view? **Recommendation:** the latter — a `CalendarEvent` model for holidays/generic events, **merged at read time** with existing exam/homework dates into one `GET /me/calendar` response, not a separate calendar UI per data source.
+1. **Parent-teacher 1:1 chat — resolved, confirmed in scope, async.** Built as recommended: a `Message` model + REST polling (`GET /messages/threads/mine`, `GET /messages?staffId=&guardianId=`, `POST /messages`), no websocket server, no read receipts. Self-scope is enforced by resolving the caller's own Staff/Guardian record server-side and checking they're one of the two conversation participants (or staff with branch access, for moderation).
+2. **Events & school calendar — resolved as recommended.** `CalendarEvent` for holidays/generic events, merged at read time with `ExamTimetable` dates (via the student's current class's `ExamSubject` rows) and `Homework` due-dates into one `GET /me/calendar` response — replaced the old homework-only calendar the mobile app's Parent/Student screen used before this unit, rather than adding a second calendar tab.
+3. **SOS broadcast (scope #8) — deliberately NOT built this pass.** The user explicitly said to skip the SMS-wallet-balance bypass for now, pending a real sign-off on the billing-impact policy (an emergency shouldn't silently fail for lack of SMS balance — but that's a "can overspend the wallet" decision, not an engineering default). Everything else in this spec's scope was built.
 
 ## Goal
 
@@ -20,8 +21,8 @@ Circulars, class broadcast, PTM scheduling, a unified calendar, complaints/surve
 5. `Complaint` (`raisedByUserId`, `category`, `body`, `status`) + staff resolution flow.
 6. `Survey`/`SurveyQuestion`/`SurveyResponse` — simple single-choice/text questions, no branching logic.
 7. `GalleryAlbum`/`GalleryPhoto` — S3-backed, reuses Unit 04's storage wrapper.
-8. Emergency/SOS: a `POST /announcements/sos` variant that skips the normal fan-out queue delay and forces `channel: PUSH` + `channel: SMS` simultaneously to every guardian in the branch, bypassing the wallet-balance skip (an emergency shouldn't silently fail for lack of SMS balance — flag this explicitly to the user as a deliberate policy choice needing their sign-off, since it could overspend the wallet).
-9. Parent-teacher chat (Open Question 1), if confirmed in scope.
+8. Emergency/SOS: a `POST /announcements/sos` variant that skips the normal fan-out queue delay and forces `channel: PUSH` + `channel: SMS` simultaneously to every guardian in the branch, bypassing the wallet-balance skip (an emergency shouldn't silently fail for lack of SMS balance — flag this explicitly to the user as a deliberate policy choice needing their sign-off, since it could overspend the wallet). **Skipped this pass — see Open Question 3.**
+9. Parent-teacher chat (Open Question 1), if confirmed in scope. **Confirmed — built.**
 
 ## Out of scope
 

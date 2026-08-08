@@ -101,6 +101,18 @@ export interface InvoiceItem {
   dueDate: string;
 }
 
+// -- Unit 48: Fee Management Depth (Cheque/PDC Tracking) --------------------
+
+export interface ChequeRow {
+  id: string;
+  paymentId: string;
+  chequeNo: string;
+  bankName: string;
+  dueDate: string;
+  status: "PENDING" | "CLEARED" | "BOUNCED";
+  payment: { id: string; studentId: string; amount: number; invoiceId: string | null };
+}
+
 export interface AttendanceRegisterRow {
   studentId: string;
   firstName: string;
@@ -287,6 +299,36 @@ export interface ExamRankRow {
   rank: number;
 }
 
+// -- Unit 47: Timetable Depth (Substitution) --------------------------------------
+
+export interface TimetablePeriodRow {
+  id: string;
+  sectionId: string;
+  dayOfWeek: number;
+  periodNo: number;
+  subjectId: string;
+  staffId: string;
+  room: string | null;
+}
+
+export interface SubstitutionRow {
+  id: string;
+  timetablePeriodId: string;
+  date: string;
+  substituteStaffId: string;
+  room: string | null;
+  reason: string | null;
+  timetablePeriod: {
+    periodNo: number;
+    dayOfWeek: number;
+    room: string | null;
+    section: { name: string };
+    subject: { name: string };
+    staff: { id: string; user?: { name: string } };
+  };
+  substituteStaff: { id: string; user?: { name: string } };
+}
+
 export interface TranscriptRow {
   id: string;
   examId: string;
@@ -327,6 +369,82 @@ export interface OnlineExamSubmissionRow {
   submittedAt: string;
 }
 
+// -- Unit 49: Messaging & Engagement --------------------------------------------
+
+export interface CircularItem {
+  id: string;
+  title: string;
+  body: string;
+  attachmentUrl: string | null;
+  publishedAt: string;
+}
+
+export interface CircularAckRow {
+  id: string;
+  userId: string;
+  ackedAt: string;
+}
+
+export interface PTMSlotItem {
+  id: string;
+  staffId: string;
+  startTime: string;
+  endTime: string;
+  bookedByGuardianId: string | null;
+}
+
+export interface CalendarEventItem {
+  id: string;
+  title: string;
+  date: string;
+  type: string;
+  description: string | null;
+}
+
+export interface ComplaintItem {
+  id: string;
+  raisedByUserId: string;
+  category: string;
+  body: string;
+  status: string;
+  resolution: string | null;
+}
+
+export interface SurveyQuestionItem {
+  id: string;
+  questionText: string;
+  type: string;
+  options: string[] | null;
+  order: number;
+}
+
+export interface SurveyItem {
+  id: string;
+  title: string;
+  questions: SurveyQuestionItem[];
+}
+
+export interface SurveyResultRow {
+  questionId: string;
+  questionText: string;
+  type: string;
+  tally?: Record<string, number>;
+  responses?: string[];
+}
+
+export interface GalleryAlbumItem {
+  id: string;
+  title: string;
+  createdAt: string;
+}
+
+export interface GalleryPhotoItem {
+  id: string;
+  key: string;
+  caption: string | null;
+  url: string;
+}
+
 export const adminApi = {
   login: (tenantSlug: string, email: string, password: string) =>
     adminFetch<{
@@ -357,11 +475,30 @@ export const adminApi = {
     adminFetch<{ data: InvoiceItem[]; meta: { total: number } }>(
       `/api/v1/invoices?branchId=${encodeURIComponent(branchId)}&pageSize=50`
     ),
-  collectPayment: (input: { branchId: string; studentId: string; invoiceId: string; amount: number; mode: string }) =>
+  collectPayment: (input: {
+    branchId: string;
+    studentId: string;
+    invoiceId: string;
+    amount: number;
+    mode: string;
+    chequeNo?: string;
+    bankName?: string;
+    chequeDueDate?: string;
+  }) =>
     adminFetch<{ data: { id: string } }>("/api/v1/payments", {
       method: "POST",
       headers: { "Idempotency-Key": crypto.randomUUID() },
       body: JSON.stringify(input),
+    }),
+
+  listCheques: (branchId: string, status?: string) =>
+    adminFetch<{ data: ChequeRow[] }>(
+      `/api/v1/fees/reports/cheques?branchId=${encodeURIComponent(branchId)}${status ? `&status=${status}` : ""}`
+    ),
+  updateChequeStatus: (paymentId: string, status: "CLEARED" | "BOUNCED") =>
+    adminFetch<{ data: ChequeRow }>(`/api/v1/payments/${paymentId}/cheque-status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
     }),
 
   markAttendance: (input: {
@@ -569,4 +706,68 @@ export const adminApi = {
     adminFetch<{ data: OnlineExamQuestionRow[] }>(`/api/v1/online-exams/${examId}/questions`),
   listOnlineExamSubmissions: (examId: string) =>
     adminFetch<{ data: OnlineExamSubmissionRow[] }>(`/api/v1/online-exams/${examId}/submissions`),
+
+  listTimetable: (sectionId: string) =>
+    adminFetch<{ data: TimetablePeriodRow[] }>(`/api/v1/timetable?sectionId=${encodeURIComponent(sectionId)}`),
+  createSubstitution: (input: Record<string, unknown>) =>
+    adminFetch<{ data: SubstitutionRow }>("/api/v1/timetable/substitutions", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  listSubstitutionsToday: (branchId: string) =>
+    adminFetch<{ data: SubstitutionRow[] }>(
+      `/api/v1/timetable/substitutions/today?branchId=${encodeURIComponent(branchId)}`
+    ),
+
+  createCircular: (input: Record<string, unknown>) =>
+    adminFetch<{ data: CircularItem }>("/api/v1/circulars", { method: "POST", body: JSON.stringify(input) }),
+  listCirculars: (branchId: string) =>
+    adminFetch<{ data: CircularItem[] }>(`/api/v1/circulars?branchId=${encodeURIComponent(branchId)}`),
+  listCircularAcks: (id: string) =>
+    adminFetch<{ data: CircularAckRow[] }>(`/api/v1/circulars/${id}/acks`),
+
+  createPTMSlot: (input: { startTime: string; endTime: string }) =>
+    adminFetch<{ data: PTMSlotItem }>("/api/v1/ptm-slots", { method: "POST", body: JSON.stringify(input) }),
+  listPTMSlots: (staffId: string) =>
+    adminFetch<{ data: PTMSlotItem[] }>(`/api/v1/ptm-slots?staffId=${encodeURIComponent(staffId)}`),
+
+  createCalendarEvent: (input: Record<string, unknown>) =>
+    adminFetch<{ data: CalendarEventItem }>("/api/v1/calendar-events", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  listCalendarEvents: (branchId: string) =>
+    adminFetch<{ data: CalendarEventItem[] }>(`/api/v1/calendar-events?branchId=${encodeURIComponent(branchId)}`),
+
+  listComplaints: (branchId: string, status?: string) =>
+    adminFetch<{ data: ComplaintItem[] }>(
+      `/api/v1/complaints?branchId=${encodeURIComponent(branchId)}${status ? `&status=${status}` : ""}`
+    ),
+  resolveComplaint: (id: string, resolution: string) =>
+    adminFetch<{ data: ComplaintItem }>(`/api/v1/complaints/${id}/resolve`, {
+      method: "PATCH",
+      body: JSON.stringify({ resolution }),
+    }),
+
+  createSurvey: (input: Record<string, unknown>) =>
+    adminFetch<{ data: SurveyItem }>("/api/v1/surveys", { method: "POST", body: JSON.stringify(input) }),
+  listSurveys: (branchId: string) =>
+    adminFetch<{ data: SurveyItem[] }>(`/api/v1/surveys?branchId=${encodeURIComponent(branchId)}`),
+  getSurveyResults: (id: string) =>
+    adminFetch<{ data: SurveyResultRow[] }>(`/api/v1/surveys/${id}/results`),
+
+  createGalleryAlbum: (input: { branchId: string; title: string }) =>
+    adminFetch<{ data: GalleryAlbumItem }>("/api/v1/gallery/albums", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  listGalleryAlbums: (branchId: string) =>
+    adminFetch<{ data: GalleryAlbumItem[] }>(`/api/v1/gallery/albums?branchId=${encodeURIComponent(branchId)}`),
+  requestGalleryPhotoUpload: (albumId: string, input: { fileName: string; contentType: string }) =>
+    adminFetch<{ data: { photo: GalleryPhotoItem; uploadUrl: string } }>(
+      `/api/v1/gallery/albums/${albumId}/photos`,
+      { method: "POST", body: JSON.stringify(input) }
+    ),
+  listGalleryPhotos: (albumId: string) =>
+    adminFetch<{ data: GalleryPhotoItem[] }>(`/api/v1/gallery/albums/${albumId}/photos`),
 };

@@ -85,6 +85,7 @@ model Tenant {
   payments          Payment[]
   receipts          Receipt[]
   refundRequests    RefundRequest[]
+  chequePayments    ChequePayment[]
   notificationLogs  NotificationLog[]
   announcements     Announcement[]
   certificates      Certificate[]
@@ -110,6 +111,20 @@ model Tenant {
   electiveGroups        ElectiveGroup[]
   studentElectiveChoices StudentElectiveChoice[]
   houses                House[]
+  substitutions         Substitution[]
+  circulars             Circular[]
+  circularAcks          CircularAck[]
+  ptmSlots              PTMSlot[]
+  calendarEvents        CalendarEvent[]
+  complaints            Complaint[]
+  surveys               Survey[]
+  surveyQuestions       SurveyQuestion[]
+  surveyResponses       SurveyResponse[]
+  galleryAlbums         GalleryAlbum[]
+  galleryPhotos         GalleryPhoto[]
+  messages              Message[]
+  certificateTemplates  CertificateTemplate[]
+  documents             Document[]
 }
 
 /// A physical school under the tenant. Tenant-owned — RLS-scoped.
@@ -169,6 +184,16 @@ model Branch {
   coScholasticGrades    CoScholasticGrade[]
   questionBankItems     QuestionBankItem[]
   onlineExams           OnlineExam[]
+  substitutions         Substitution[]
+  circulars             Circular[]
+  ptmSlots              PTMSlot[]
+  calendarEvents        CalendarEvent[]
+  complaints            Complaint[]
+  surveys               Survey[]
+  galleryAlbums         GalleryAlbum[]
+  messages              Message[]
+  certificateTemplates  CertificateTemplate[]
+  documents             Document[]
 
   @@unique([tenantId, code])
   @@index([tenantId])

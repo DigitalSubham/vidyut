@@ -36,7 +36,7 @@ import { questionBankRouter } from "./modules/question-bank/routes";
 import { marksRouter } from "./modules/marks/routes";
 import { reportCardTemplatesRouter, reportCardsRouter } from "./modules/reportcards/routes";
 import { announcementsRouter } from "./modules/announcements/routes";
-import { certificatesRouter } from "./modules/certificates/routes";
+import { certificatesRouter, esignWebhookRouter } from "./modules/certificates/routes";
 import { timetableRouter } from "./modules/timetable/routes";
 import { homeworkRouter } from "./modules/homework/routes";
 import { meRouter } from "./modules/me/routes";
@@ -50,6 +50,13 @@ import { usersRouter } from "./modules/users/routes";
 import { rolesRouter } from "./modules/roles/routes";
 import { searchRouter } from "./modules/search/routes";
 import { dataDeletionRequestsRouter } from "./modules/dpdp/routes";
+import { circularsRouter } from "./modules/circulars/routes";
+import { ptmRouter } from "./modules/ptm/routes";
+import { calendarRouter } from "./modules/calendar/routes";
+import { complaintsRouter } from "./modules/complaints/routes";
+import { surveysRouter } from "./modules/surveys/routes";
+import { galleryRouter } from "./modules/gallery/routes";
+import { messagesRouter } from "./modules/messages/routes";
 
 /**
  * Builds the Express app instance. Pipeline order per
@@ -121,6 +128,7 @@ export function createApp(): Express {
   app.use("/api/v1/report-cards", reportCardsRouter);
   app.use("/api/v1/announcements", announcementsRouter);
   app.use("/api/v1/certificates", certificatesRouter);
+  app.use("/api/v1/webhooks/esign", esignWebhookRouter);
   app.use("/api/v1/timetable", timetableRouter);
   app.use("/api/v1/homework", homeworkRouter);
   app.use("/api/v1/me", meRouter);
@@ -134,6 +142,13 @@ export function createApp(): Express {
   app.use("/api/v1/roles", rolesRouter);
   app.use("/api/v1/search", searchRouter);
   app.use("/api/v1/data-deletion-requests", dataDeletionRequestsRouter);
+  app.use("/api/v1/circulars", circularsRouter);
+  app.use("/api/v1/ptm-slots", ptmRouter);
+  app.use("/api/v1/calendar-events", calendarRouter);
+  app.use("/api/v1/complaints", complaintsRouter);
+  app.use("/api/v1/surveys", surveysRouter);
+  app.use("/api/v1/gallery", galleryRouter);
+  app.use("/api/v1/messages", messagesRouter);
 
   app.use(errorHandler);
   return app;

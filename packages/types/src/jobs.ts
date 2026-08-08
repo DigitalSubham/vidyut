@@ -14,6 +14,7 @@ export const JOB_NAMES = [
   "reportcard.generate",
   "announcement.fanout",
   "certificate.generate",
+  "certificate.esign-request",
 ] as const;
 export type JobName = (typeof JOB_NAMES)[number];
 
@@ -116,6 +117,17 @@ export interface AnnouncementFanoutPayload {
 
 /** context/feature-specs/21-certificates-ids.md — stubbed like receipt.generate/reportcard.generate (no PDF pipeline yet). */
 export interface CertificateGeneratePayload {
+  certificateId: string;
+}
+
+/**
+ * context/feature-specs/50-certificates-depth.md (Open Question 2) — gated
+ * on ESIGN_API_KEY/ESIGN_PROVIDER_URL, same honest-stub posture as Unit 40's
+ * SMS/WhatsApp adapters: no credentials exist in this environment, so this
+ * always logs a stub and leaves the certificate's signatureStatus at
+ * REQUESTED. Real completion arrives later via the provider's webhook.
+ */
+export interface CertificateEsignRequestPayload {
   certificateId: string;
 }
 

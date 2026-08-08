@@ -1,25 +1,33 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import * as DocumentPicker from "expo-document-picker";
 import { useAuth } from "../lib/auth-context";
 import { OnlineExamTaker } from "./OnlineExamTaker";
+import { MessagesScreen } from "./MessagesScreen";
 import {
+  ackCircular,
+  createComplaint,
   getMyAnnouncements,
   getMyAttendance,
+  getMyCalendar,
+  getMyCirculars,
   getMyFeeLedger,
+  getMyGuardian,
   getMyHomework,
-  getMyHomeworkCalendar,
   getMyReportCards,
   getMyTimetable,
   initiateOnlinePayment,
+  listMyComplaints,
   listMyOnlineExams,
   listMyStudents,
   requestHomeworkSubmissionUpload,
   type MyAnnouncement,
   type MyAttendanceRecord,
+  type MyCalendarItem,
+  type MyCircular,
+  type MyComplaint,
   type MyFeeLedgerEntry,
-  type MyHomeworkCalendar,
   type MyHomeworkItem,
   type MyOnlineExamListItem,
   type MyReportCard,
@@ -27,9 +35,32 @@ import {
   type MyTimetablePeriod,
 } from "../lib/api-client";
 
-type Section = "fees" | "attendance" | "reportCards" | "notices" | "homework" | "timetable" | "calendar" | "onlineExams";
+type Section =
+  | "fees"
+  | "attendance"
+  | "reportCards"
+  | "notices"
+  | "homework"
+  | "timetable"
+  | "calendar"
+  | "onlineExams"
+  | "circulars"
+  | "complaints"
+  | "messages";
 
-const SECTIONS: Section[] = ["fees", "attendance", "reportCards", "notices", "homework", "timetable", "calendar", "onlineExams"];
+const SECTIONS: Section[] = [
+  "fees",
+  "attendance",
+  "reportCards",
+  "notices",
+  "homework",
+  "timetable",
+  "calendar",
+  "onlineExams",
+  "circulars",
+  "complaints",
+  "messages",
+];
 
 /**
  * Unit 24 built the self-scope layer with a minimal proof screen; Unit 25
@@ -51,11 +82,17 @@ export function ParentStudentHomeScreen() {
   const [announcements, setAnnouncements] = useState<MyAnnouncement[]>([]);
   const [homework, setHomework] = useState<MyHomeworkItem[]>([]);
   const [timetable, setTimetable] = useState<MyTimetablePeriod[]>([]);
-  const [calendar, setCalendar] = useState<MyHomeworkCalendar>({});
+  const [calendar, setCalendar] = useState<MyCalendarItem[]>([]);
   const [onlineExams, setOnlineExams] = useState<MyOnlineExamListItem[]>([]);
   const [submittingHomeworkId, setSubmittingHomeworkId] = useState<string | null>(null);
   const [submittedHomeworkIds, setSubmittedHomeworkIds] = useState<Set<string>>(new Set());
   const [takingExamId, setTakingExamId] = useState<string | null>(null);
+  const [circulars, setCirculars] = useState<MyCircular[]>([]);
+  const [complaints, setComplaints] = useState<MyComplaint[]>([]);
+  const [complaintCategory, setComplaintCategory] = useState("");
+  const [complaintBody, setComplaintBody] = useState("");
+  const [submittingComplaint, setSubmittingComplaint] = useState(false);
+  const [guardianId, setGuardianId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!session) return;
@@ -65,6 +102,11 @@ export function ParentStudentHomeScreen() {
         setActiveStudentId(items[0]?.id ?? null);
       })
       .finally(() => setLoading(false));
+    // A STUDENT-direct-login token has no linked Guardian — the Messages tab
+    // simply stays unusable for them (chat is parent-teacher only, per spec).
+    getMyGuardian(session.accessToken)
+      .then((g) => setGuardianId(g.id))
+      .catch(() => setGuardianId(null));
   }, [session]);
 
   const loadSection = useCallback(async () => {
@@ -83,17 +125,49 @@ export function ParentStudentHomeScreen() {
     } else if (section === "timetable") {
       setTimetable(await getMyTimetable(session.accessToken, activeStudentId));
     } else if (section === "calendar") {
-      setCalendar(await getMyHomeworkCalendar(session.accessToken, activeStudentId, now.getMonth() + 1, now.getFullYear()));
-    } else {
+      setCalendar(await getMyCalendar(session.accessToken, activeStudentId, now.getMonth() + 1, now.getFullYear()));
+    } else if (section === "onlineExams") {
       setOnlineExams(await listMyOnlineExams(session.accessToken, activeStudentId));
+    } else if (section === "circulars") {
+      setCirculars(await getMyCirculars(session.accessToken, activeStudentId));
+    } else if (section === "complaints") {
+      setComplaints(await listMyComplaints(session.accessToken));
     }
   }, [session, activeStudentId, section]);
+
+  const activeStudent = students.find((s) => s.id === activeStudentId);
+
+  const ackAndRefresh = useCallback(
+    async (circularId: string) => {
+      if (!session) return;
+      await ackCircular(session.accessToken, circularId);
+      setCirculars((prev) => prev.map((c) => (c.id === circularId ? { ...c, acked: true } : c)));
+    },
+    [session]
+  );
+
+  const raiseComplaint = useCallback(async () => {
+    if (!session || !activeStudent || !complaintCategory.trim() || !complaintBody.trim()) return;
+    setSubmittingComplaint(true);
+    try {
+      await createComplaint(session.accessToken, {
+        branchId: activeStudent.branchId,
+        category: complaintCategory.trim(),
+        body: complaintBody.trim(),
+      });
+      setComplaintCategory("");
+      setComplaintBody("");
+      setComplaints(await listMyComplaints(session.accessToken));
+    } catch (err) {
+      Alert.alert(t("attendance.errorTitle"), (err as Error).message);
+    } finally {
+      setSubmittingComplaint(false);
+    }
+  }, [session, activeStudent, complaintCategory, complaintBody, t]);
 
   useEffect(() => {
     void loadSection();
   }, [loadSection]);
-
-  const activeStudent = students.find((s) => s.id === activeStudentId);
 
   const payDue = useCallback(
     async (entry: MyFeeLedgerEntry) => {
@@ -294,17 +368,80 @@ export function ParentStudentHomeScreen() {
       ) : null}
       {section === "calendar" ? (
         <FlatList
-          data={Object.entries(calendar).sort(([a], [b]) => Number(a) - Number(b))}
-          keyExtractor={([day]) => day}
-          renderItem={({ item: [day, items] }) => (
+          data={calendar}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
             <View style={styles.row2}>
-              <Text style={styles.noticeTitle}>{t("me.dayOfMonth", { day })}</Text>
-              {items.map((hw) => (
-                <Text key={hw.id}>{hw.title}</Text>
-              ))}
+              <Text style={styles.noticeTitle}>
+                {item.date.slice(0, 10)} · {t(`me.calendarType.${item.type}`)}
+              </Text>
+              <Text>{item.title}</Text>
             </View>
           )}
         />
+      ) : null}
+      {section === "circulars" ? (
+        <FlatList
+          data={circulars}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <View style={styles.homeworkRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.noticeTitle}>{item.title}</Text>
+                <Text>{item.body}</Text>
+              </View>
+              {item.acked ? (
+                <Text style={styles.scoreText}>{t("me.acked")}</Text>
+              ) : (
+                <TouchableOpacity onPress={() => ackAndRefresh(item.id)}>
+                  <Text style={styles.submitLink}>{t("me.ack")}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+        />
+      ) : null}
+      {section === "complaints" ? (
+        <View style={{ flex: 1, gap: 8 }}>
+          <TextInput
+            style={styles.textInput}
+            placeholder={t("me.complaintCategory") as string}
+            value={complaintCategory}
+            onChangeText={setComplaintCategory}
+          />
+          <TextInput
+            style={styles.textInput}
+            placeholder={t("me.complaintBody") as string}
+            value={complaintBody}
+            onChangeText={setComplaintBody}
+          />
+          <TouchableOpacity
+            onPress={raiseComplaint}
+            disabled={submittingComplaint || !complaintCategory.trim() || !complaintBody.trim()}
+          >
+            <Text style={styles.submitLink}>{submittingComplaint ? t("me.submitting") : t("me.raiseComplaint")}</Text>
+          </TouchableOpacity>
+          <FlatList
+            data={complaints}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <View style={styles.row2}>
+                <Text style={styles.noticeTitle}>
+                  {item.category} — {item.status}
+                </Text>
+                <Text>{item.body}</Text>
+                {item.resolution ? <Text>{t("me.resolution")}: {item.resolution}</Text> : null}
+              </View>
+            )}
+          />
+        </View>
+      ) : null}
+      {section === "messages" ? (
+        session && guardianId && activeStudent ? (
+          <MessagesScreen accessToken={session.accessToken} branchId={activeStudent.branchId} own={{ role: "guardian", id: guardianId }} />
+        ) : (
+          <Text style={styles.row2}>{t("me.messagesUnavailable")}</Text>
+        )
       ) : null}
       {section === "onlineExams" ? (
         <FlatList
@@ -345,6 +482,7 @@ const styles = StyleSheet.create({
   tab: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: 6, backgroundColor: "#F3F4F6" },
   tabActive: { backgroundColor: "#DCFCE7" },
   row2: { paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: "#E5E7EB" },
+  textInput: { borderWidth: 1, borderColor: "#D1D5DB", borderRadius: 8, padding: 8 },
   feeRow: {
     flexDirection: "row",
     justifyContent: "space-between",

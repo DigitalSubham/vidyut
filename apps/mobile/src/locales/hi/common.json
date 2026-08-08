@@ -49,7 +49,8 @@
       "attendance": "हाजिरी",
       "marks": "अंक",
       "homework": "गृहकार्य",
-      "grading": "ग्रेडिंग"
+      "grading": "ग्रेडिंग",
+      "messages": "संदेश"
     }
   },
   "marks": {
@@ -87,7 +88,10 @@
       "homework": "गृहकार्य",
       "timetable": "समय सारणी",
       "calendar": "कैलेंडर",
-      "onlineExams": "ऑनलाइन परीक्षा"
+      "onlineExams": "ऑनलाइन परीक्षा",
+      "circulars": "परिपत्र",
+      "complaints": "शिकायतें",
+      "messages": "संदेश"
     },
     "due": "जमा करने की तारीख",
     "day": "दिन",
@@ -102,7 +106,19 @@
     "submitting": "सबमिट हो रहा है…",
     "submitted": "सबमिट हो गया",
     "homeworkSubmittedTitle": "होमवर्क सबमिट हुआ",
-    "dayOfMonth": "{{day}} तारीख़"
+    "dayOfMonth": "{{day}} तारीख़",
+    "acked": "स्वीकृत",
+    "ack": "स्वीकार करें",
+    "complaintCategory": "श्रेणी",
+    "complaintBody": "समस्या का वर्णन करें",
+    "raiseComplaint": "शिकायत भेजें",
+    "resolution": "समाधान",
+    "messagesUnavailable": "इस खाते के लिए संदेश उपलब्ध नहीं है।",
+    "calendarType": {
+      "event": "कार्यक्रम",
+      "exam": "परीक्षा",
+      "homework": "गृहकार्य"
+    }
   },
   "onlineExams": {
     "minutes": "मिनट",
@@ -111,5 +127,15 @@
     "cancel": "रद्द करें",
     "submit": "जमा करें",
     "submitting": "जमा हो रहा है…"
+  },
+  "messages": {
+    "back": "वापस",
+    "placeholder": "संदेश लिखें",
+    "sending": "भेजा जा रहा है…",
+    "send": "भेजें",
+    "guardianIdPlaceholder": "अभिभावक आईडी",
+    "staffIdPlaceholder": "शिक्षक/स्टाफ आईडी",
+    "open": "खोलें",
+    "noThreads": "अभी कोई बातचीत नहीं है।"
   }
 }

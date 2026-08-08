@@ -6,9 +6,11 @@ import {
   createRefundRequestSchema,
   feeReportsQuerySchema,
   initiateOnlinePaymentSchema,
+  listChequesQuerySchema,
   listInvoicesQuerySchema,
   listPaymentsQuerySchema,
   reconciliationQuerySchema,
+  updateChequeStatusSchema,
 } from "@vidyut/validation";
 import { asyncHandler } from "../../core/envelope";
 import { authGuard } from "../../core/guards/auth-guard";
@@ -74,6 +76,15 @@ paymentsRouter.post(
   asyncHandler(onlinePaymentsController.createRefundRequest)
 );
 
+// -- Unit 48: Cheque/PDC Tracking ---------------------------------------------
+
+paymentsRouter.patch(
+  "/:id/cheque-status",
+  requirePermission("fees.collect"),
+  validateBody(updateChequeStatusSchema),
+  asyncHandler(controller.updateChequeStatus)
+);
+
 // -- Fee reports ----------------------------------------------------------------
 
 export const feeReportsRouter = Router();
@@ -92,6 +103,13 @@ feeReportsRouter.get(
   requirePermission("fee.reports"),
   validateQuery(feeReportsQuerySchema),
   asyncHandler(controller.getDefaultersReport)
+);
+feeReportsRouter.get(
+  "/cheques",
+  requireBranch(branchIdFromQuery),
+  requirePermission("fee.reports"),
+  validateQuery(listChequesQuerySchema),
+  asyncHandler(controller.listCheques)
 );
 
 // -- Unit 38: Fee Reconciliation (mounted at /api/v1/fees/reconciliation) ----

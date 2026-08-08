@@ -62,6 +62,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<StaffRoleKey, Permission[]> = {
     "certificate.issue",
     "announcement.send",
     "notification.send",
+    "engagement.manage",
     "dashboard.owner",
     "dashboard.principal",
     "subscription.view",
@@ -94,6 +95,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<StaffRoleKey, Permission[]> = {
     "homework.manage",
     "announcement.send",
     "notification.send",
+    "engagement.manage",
     "dashboard.principal",
   ],
   ADMIN: [
@@ -118,6 +120,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<StaffRoleKey, Permission[]> = {
     "certificate.issue",
     "announcement.send",
     "notification.send",
+    "engagement.manage",
   ],
   ACCOUNTANT: [
     "student.view",

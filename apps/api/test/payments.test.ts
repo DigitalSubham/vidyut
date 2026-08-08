@@ -400,3 +400,202 @@ describe("payments — idempotent counter collection, invoice status, receipt", 
     expect(res.body.error.code).toBe("FORBIDDEN");
   });
 });
+
+describe("Unit 48 — cheque/PDC tracking", () => {
+  async function setupInvoice(tenantId: string, code: string) {
+    const { branch, cls, session, section } = await setup(tenantId, code);
+    const student = await enrollStudent(tenantId, branch.id, cls.id, section.id, session.id, code);
+    const feeHead = await withTenant(tenantId, (tx) =>
+      tx.feeHead.create({ data: { tenantId, branchId: branch.id, name: "Tuition", type: "TUITION" } })
+    );
+    const invoice = await withTenant(tenantId, (tx) =>
+      tx.invoice.create({
+        data: {
+          tenantId,
+          branchId: branch.id,
+          studentId: student.id,
+          sessionId: session.id,
+          number: `INV-CHQ-${code}`,
+          periodLabel: "Apr 2025",
+          dueDate: new Date("2025-04-05"),
+          items: { create: { tenantId, feeHeadId: feeHead.id, amount: 100000 } },
+        },
+      })
+    );
+    return { branch, student, invoice };
+  }
+
+  it("a cheque payment requires chequeNo/bankName/chequeDueDate, counts toward the invoice immediately, and starts PENDING", async () => {
+    const tenant = await createTenant("cheque-create-tenant");
+    tenantIds.push(tenant.id);
+    await createRoleWithPermissions(tenant.id, "OWNER", ["fee.setup", "fees.collect", "fee.view"]);
+    const owner = await ownerToken(tenant.id);
+    const { branch, student, invoice } = await setupInvoice(tenant.id, "A");
+
+    const missingDetails = await request(app)
+      .post("/api/v1/payments")
+      .set("Authorization", `Bearer ${owner}`)
+      .set("Idempotency-Key", randomUUID())
+      .send({ branchId: branch.id, studentId: student.id, invoiceId: invoice.id, amount: 100000, mode: "CHEQUE" });
+    expect(missingDetails.status).toBe(400);
+    expect(missingDetails.body.error.code).toBe("VALIDATION_ERROR");
+
+    const res = await request(app)
+      .post("/api/v1/payments")
+      .set("Authorization", `Bearer ${owner}`)
+      .set("Idempotency-Key", randomUUID())
+      .send({
+        branchId: branch.id,
+        studentId: student.id,
+        invoiceId: invoice.id,
+        amount: 100000,
+        mode: "CHEQUE",
+        chequeNo: "CHQ-001",
+        bankName: "SBI",
+        chequeDueDate: "2025-04-20",
+      });
+    expect(res.status).toBe(201);
+    const paymentId = res.body.data.id as string;
+
+    const chequePayment = await withTenant(tenant.id, (tx) => tx.chequePayment.findUnique({ where: { paymentId } }));
+    expect(chequePayment?.status).toBe("PENDING");
+    expect(chequePayment?.chequeNo).toBe("CHQ-001");
+
+    const afterCreate = await withTenant(tenant.id, (tx) => tx.invoice.findUnique({ where: { id: invoice.id } }));
+    expect(afterCreate?.status).toBe("PAID");
+  });
+
+  it("clearing a cheque leaves the invoice untouched; bouncing it marks the payment FAILED and reopens the invoice", async () => {
+    const tenant = await createTenant("cheque-bounce-tenant");
+    tenantIds.push(tenant.id);
+    await createRoleWithPermissions(tenant.id, "OWNER", ["fee.setup", "fees.collect", "fee.view"]);
+    const owner = await ownerToken(tenant.id);
+    const { branch, student, invoice } = await setupInvoice(tenant.id, "A");
+
+    const create = await request(app)
+      .post("/api/v1/payments")
+      .set("Authorization", `Bearer ${owner}`)
+      .set("Idempotency-Key", randomUUID())
+      .send({
+        branchId: branch.id,
+        studentId: student.id,
+        invoiceId: invoice.id,
+        amount: 100000,
+        mode: "CHEQUE",
+        chequeNo: "CHQ-002",
+        bankName: "HDFC",
+        chequeDueDate: "2025-04-20",
+      });
+    const paymentId = create.body.data.id as string;
+
+    const bounce = await request(app)
+      .patch(`/api/v1/payments/${paymentId}/cheque-status`)
+      .set("Authorization", `Bearer ${owner}`)
+      .send({ status: "BOUNCED" });
+    expect(bounce.status).toBe(200);
+    expect(bounce.body.data.status).toBe("BOUNCED");
+
+    const payment = await withTenant(tenant.id, (tx) => tx.payment.findUnique({ where: { id: paymentId } }));
+    expect(payment?.status).toBe("FAILED");
+
+    const reopened = await withTenant(tenant.id, (tx) => tx.invoice.findUnique({ where: { id: invoice.id } }));
+    expect(reopened?.status).toBe("PENDING");
+
+    // Already-decided cheques reject a further transition.
+    const secondBounce = await request(app)
+      .patch(`/api/v1/payments/${paymentId}/cheque-status`)
+      .set("Authorization", `Bearer ${owner}`)
+      .send({ status: "CLEARED" });
+    expect(secondBounce.status).toBe(409);
+  });
+
+  it("clearing a cheque is a no-op on the invoice, and re-clearing is idempotent", async () => {
+    const tenant = await createTenant("cheque-clear-tenant");
+    tenantIds.push(tenant.id);
+    await createRoleWithPermissions(tenant.id, "OWNER", ["fee.setup", "fees.collect", "fee.view"]);
+    const owner = await ownerToken(tenant.id);
+    const { branch, student, invoice } = await setupInvoice(tenant.id, "A");
+
+    const create = await request(app)
+      .post("/api/v1/payments")
+      .set("Authorization", `Bearer ${owner}`)
+      .set("Idempotency-Key", randomUUID())
+      .send({
+        branchId: branch.id,
+        studentId: student.id,
+        invoiceId: invoice.id,
+        amount: 100000,
+        mode: "CHEQUE",
+        chequeNo: "CHQ-003",
+        bankName: "ICICI",
+        chequeDueDate: "2025-04-20",
+      });
+    const paymentId = create.body.data.id as string;
+
+    const clear = await request(app)
+      .patch(`/api/v1/payments/${paymentId}/cheque-status`)
+      .set("Authorization", `Bearer ${owner}`)
+      .send({ status: "CLEARED" });
+    expect(clear.status).toBe(200);
+    expect(clear.body.data.status).toBe("CLEARED");
+
+    const stillPaid = await withTenant(tenant.id, (tx) => tx.invoice.findUnique({ where: { id: invoice.id } }));
+    expect(stillPaid?.status).toBe("PAID");
+
+    const reClear = await request(app)
+      .patch(`/api/v1/payments/${paymentId}/cheque-status`)
+      .set("Authorization", `Bearer ${owner}`)
+      .send({ status: "CLEARED" });
+    expect(reClear.status).toBe(200);
+  });
+
+  it("GET /fees/reports/cheques filters by status; RBAC denies TEACHER on the status-update endpoint", async () => {
+    const tenant = await createTenant("cheque-report-tenant");
+    tenantIds.push(tenant.id);
+    await createRoleWithPermissions(tenant.id, "OWNER", ["fee.setup", "fees.collect", "fee.view", "fee.reports"]);
+    await createRoleWithPermissions(tenant.id, "TEACHER", []);
+    const owner = await ownerToken(tenant.id);
+    const { branch, student, invoice } = await setupInvoice(tenant.id, "A");
+
+    const create = await request(app)
+      .post("/api/v1/payments")
+      .set("Authorization", `Bearer ${owner}`)
+      .set("Idempotency-Key", randomUUID())
+      .send({
+        branchId: branch.id,
+        studentId: student.id,
+        invoiceId: invoice.id,
+        amount: 100000,
+        mode: "CHEQUE",
+        chequeNo: "CHQ-004",
+        bankName: "Axis",
+        chequeDueDate: "2025-04-20",
+      });
+    const paymentId = create.body.data.id as string;
+
+    const pendingList = await request(app)
+      .get(`/api/v1/fees/reports/cheques?branchId=${branch.id}&status=PENDING`)
+      .set("Authorization", `Bearer ${owner}`);
+    expect(pendingList.status).toBe(200);
+    expect(pendingList.body.data).toHaveLength(1);
+    expect(pendingList.body.data[0].chequeNo).toBe("CHQ-004");
+
+    const teacher = await signAccessToken({
+      sub: "teacher-1",
+      tenantId: tenant.id,
+      roles: ["TEACHER"],
+      branchIds: [branch.id],
+    });
+    const teacherAttempt = await request(app)
+      .patch(`/api/v1/payments/${paymentId}/cheque-status`)
+      .set("Authorization", `Bearer ${teacher}`)
+      .send({ status: "CLEARED" });
+    expect(teacherAttempt.status).toBe(403);
+
+    const clearedList = await request(app)
+      .get(`/api/v1/fees/reports/cheques?branchId=${branch.id}&status=CLEARED`)
+      .set("Authorization", `Bearer ${owner}`);
+    expect(clearedList.status).toBe(200);
+    expect(clearedList.body.data).toHaveLength(0);
+  });
+});

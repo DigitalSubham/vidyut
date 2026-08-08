@@ -38,6 +38,7 @@ export const PERMISSIONS = [
   "homework.manage",
   "announcement.send",
   "notification.send",
+  "engagement.manage",
   "dashboard.owner",
   "dashboard.principal",
   "subscription.view",

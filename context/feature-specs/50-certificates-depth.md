@@ -4,8 +4,9 @@ Read `apps/api/src/modules/certificates/` (Unit 21) + Unit 42's `Certificate.sta
 
 ## Open Questions
 
-1. **Custom certificate builder** — a full WYSIWYG template designer is a real, substantial UI effort. **Recommendation:** v1 = a small set of placeholder tokens (`{{studentName}}`, `{{className}}`, `{{issueDate}}`, etc.) an OWNER fills into a plain-text/simple-HTML template stored on `ReportCardTemplate`-like model, rendered at PDF-generation time — not a drag-and-drop designer. Confirm this is enough before investing in a real visual builder.
-2. **e-Sign** — needs a real e-sign provider (DigiSigner/Zoho Sign, named in the catalog) and a paid account. **Recommendation:** build the integration point (a "request signature" button that calls out to a provider webhook) gated on credentials, same honest-stub posture as Units 31/40 — don't fake a signed PDF.
+1. **Custom certificate builder — resolved, built as recommended.** `CertificateTemplate` stores a plain-text/simple-HTML `body` with `{{studentName}}`/`{{className}}`/`{{issueDate}}`/etc. placeholder tokens, substituted by a pure `renderCertificateTemplate()` function at generation time — not a drag-and-drop designer. Revisit only if a paying school explicitly asks for visual layout control.
+2. **e-Sign — resolved, built as recommended, gated stub.** `POST /certificates/:id/request-signature` sets `signatureStatus=REQUESTED` and enqueues a `certificate.esign-request` job; the worker adapter checks `ESIGN_API_KEY`/`ESIGN_PROVIDER_URL` exactly like Unit 40's SMS/WhatsApp adapters — no credentials exist in this environment, so it logs a clearly-labeled stub and leaves the request pending (never fakes `SIGNED`). `POST /certificates/esign-webhook` (shared-secret-checked, unauthenticated route since it's the provider calling us) is the real completion path once a provider is actually wired up.
+3. **UI scope — web only.** Certificate templates, bulk ID generation, and the DMS document list are office/admin tasks (OWNER/ADMIN/PRINCIPAL) with no mobile self-service angle — no mobile screens this unit.
 
 ## Goal
 

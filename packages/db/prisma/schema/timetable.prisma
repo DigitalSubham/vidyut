@@ -27,4 +27,29 @@ model TimetablePeriod {
 
   @@unique([sectionId, dayOfWeek, periodNo])
   @@index([tenantId])
+  substitutions Substitution[]
+}
+
+// Unit 47 — a same-day override for one recurring period; doesn't touch
+// TimetablePeriod itself. `room` is null unless the substitution also moves
+// rooms (defaults to the original period's room otherwise).
+model Substitution {
+  id                  String   @id @default(cuid())
+  tenantId            String
+  branchId            String
+  timetablePeriodId   String
+  date                DateTime @db.Date
+  substituteStaffId   String
+  room                String?
+  reason              String?
+  createdAt           DateTime @default(now())
+
+  tenant           Tenant          @relation(fields: [tenantId], references: [id])
+  branch           Branch          @relation(fields: [branchId], references: [id])
+  timetablePeriod  TimetablePeriod @relation(fields: [timetablePeriodId], references: [id])
+  substituteStaff  Staff           @relation(fields: [substituteStaffId], references: [id])
+
+  @@unique([timetablePeriodId, date])
+  @@index([tenantId])
+  @@index([branchId, date])
 }

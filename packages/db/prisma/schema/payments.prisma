@@ -36,6 +36,15 @@ enum RefundStatus {
   REJECTED
 }
 
+/// Unit 48 — cheque/PDC clearing status. A cheque `Payment` is recorded (and
+/// counted toward the invoice) immediately at collection time, same as any
+/// other mode; this tracks the bank's later clearing outcome separately.
+enum ChequeStatus {
+  PENDING
+  CLEARED
+  BOUNCED
+}
+
 /// A due bill for a student for one period. `@@unique([studentId, sessionId,
 /// periodLabel])` is a Unit 12 addition beyond data-model.md's bare sketch —
 /// it's what makes invoice generation idempotent (context/feature-specs/12's
@@ -111,6 +120,29 @@ model Payment {
   student       Student        @relation(fields: [studentId], references: [id])
   receipt       Receipt?
   refundRequests RefundRequest[]
+  chequePayment  ChequePayment?
+
+  @@index([tenantId])
+}
+
+/// Unit 48 — cheque/PDC (post-dated cheque) tracking, attached to an
+/// existing `Payment(mode: CHEQUE)` row rather than replacing it. A bounce
+/// reopens the linked invoice (see `recomputeInvoiceStatus` in
+/// complete-payment.ts, the same status logic Unit 12's payment-success path
+/// uses, run in reverse).
+model ChequePayment {
+  id        String       @id @default(cuid())
+  tenantId  String
+  paymentId String       @unique
+  chequeNo  String
+  bankName  String
+  dueDate   DateTime
+  status    ChequeStatus @default(PENDING)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+  payment Payment @relation(fields: [paymentId], references: [id])
 
   @@index([tenantId])
 }

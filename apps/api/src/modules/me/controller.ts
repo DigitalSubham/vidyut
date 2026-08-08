@@ -3,6 +3,7 @@ import type {
   CreateDataDeletionRequestInput,
   ListMyNotificationsQueryInput,
   MyAttendanceQueryInput,
+  MyCalendarQueryInput,
   MyHomeworkCalendarQueryInput,
   MyStudentScopedQueryInput,
   RegisterPushTokenInput,
@@ -55,6 +56,23 @@ export async function getMyAnnouncements(req: Request, res: Response): Promise<v
   const query = res.locals.query as MyStudentScopedQueryInput;
   const announcements = await service.getMyAnnouncements(req.auth!, query);
   ok(res, announcements);
+}
+
+export async function getMyGuardian(req: Request, res: Response): Promise<void> {
+  const guardian = await service.getMyGuardian(req.auth!);
+  ok(res, guardian);
+}
+
+export async function getMyCirculars(req: Request, res: Response): Promise<void> {
+  const query = res.locals.query as MyStudentScopedQueryInput;
+  const circulars = await service.getMyCirculars(req.auth!, query);
+  ok(res, circulars);
+}
+
+export async function getMyCalendar(req: Request, res: Response): Promise<void> {
+  const query = res.locals.query as MyCalendarQueryInput;
+  const calendar = await service.getMyCalendar(req.auth!, query);
+  ok(res, calendar);
 }
 
 export async function getMyDataExport(req: Request, res: Response): Promise<void> {

@@ -353,3 +353,86 @@ export function submitOnlineExam(
     body: JSON.stringify(input),
   });
 }
+
+// -- Unit 49: Messaging & Engagement --------------------------------------------
+
+export interface MyCircular {
+  id: string;
+  title: string;
+  body: string;
+  attachmentUrl: string | null;
+  publishedAt: string;
+  acked: boolean;
+}
+
+/** A PARENT token carries no guardianId claim of its own — this resolves it server-side from the linked User, needed to identify the caller as a Message conversation participant. */
+export function getMyGuardian(accessToken: string) {
+  return authedRequest<{ id: string }>(accessToken, "/me/guardian");
+}
+
+export function getMyCirculars(accessToken: string, studentId: string) {
+  return authedRequest<MyCircular[]>(accessToken, `/me/circulars?studentId=${encodeURIComponent(studentId)}`);
+}
+
+export function ackCircular(accessToken: string, circularId: string) {
+  return authedRequest(accessToken, `/circulars/${encodeURIComponent(circularId)}/ack`, { method: "POST" });
+}
+
+export interface MyCalendarItem {
+  id: string;
+  date: string;
+  type: "event" | "exam" | "homework";
+  title: string;
+}
+
+/** Unified calendar (Unit 49) — merges CalendarEvent + exam dates + homework due-dates server-side, replacing the homework-only calendar this screen used before. */
+export function getMyCalendar(accessToken: string, studentId: string, month: number, year: number) {
+  return authedRequest<MyCalendarItem[]>(
+    accessToken,
+    `/me/calendar?studentId=${encodeURIComponent(studentId)}&month=${month}&year=${year}`
+  );
+}
+
+export interface MyComplaint {
+  id: string;
+  category: string;
+  body: string;
+  status: "OPEN" | "RESOLVED";
+  resolution: string | null;
+}
+
+export function createComplaint(accessToken: string, input: { branchId: string; category: string; body: string }) {
+  return authedRequest<MyComplaint>(accessToken, "/complaints", { method: "POST", body: JSON.stringify(input) });
+}
+
+export function listMyComplaints(accessToken: string) {
+  return authedRequest<MyComplaint[]>(accessToken, "/complaints/mine");
+}
+
+export interface MessageItem {
+  id: string;
+  staffId: string;
+  guardianId: string;
+  senderId: string;
+  body: string;
+  createdAt: string;
+}
+
+/** Async, REST-polled chat (Unit 49, Open Question 1 — no websocket infra). */
+export function listMyThreads(accessToken: string) {
+  return authedRequest<MessageItem[]>(accessToken, "/messages/threads/mine");
+}
+
+export function listThread(accessToken: string, staffId: string, guardianId: string) {
+  return authedRequest<MessageItem[]>(
+    accessToken,
+    `/messages?staffId=${encodeURIComponent(staffId)}&guardianId=${encodeURIComponent(guardianId)}`
+  );
+}
+
+export function sendMessage(
+  accessToken: string,
+  input: { branchId: string; staffId: string; guardianId: string; body: string }
+) {
+  return authedRequest<MessageItem>(accessToken, "/messages", { method: "POST", body: JSON.stringify(input) });
+}

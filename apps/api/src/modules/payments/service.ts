@@ -4,14 +4,16 @@ import type {
   CreateOpeningBalanceInput,
   CreatePaymentInput,
   FeeReportsQueryInput,
+  ListChequesQueryInput,
   ListInvoicesQueryInput,
   ListPaymentsQueryInput,
   ReconciliationQueryInput,
+  UpdateChequeStatusInput,
 } from "@vidyut/validation";
 import { AppError } from "../../core/errors";
 import { branchAccessAllowed } from "../../core/guards/branch-scope";
 import type { RequestAuth } from "../../core/guards/types";
-import { finalizePaymentSuccess } from "./complete-payment";
+import { finalizePaymentSuccess, recomputeInvoiceStatus } from "./complete-payment";
 import { computePeriods } from "./periods";
 
 function assertBranchAccess(auth: RequestAuth, branchId: string): void {
@@ -184,6 +186,21 @@ export async function createPayment(
         idempotencyKey,
       },
     });
+
+    // Unit 48 — a cheque payment counts toward the invoice immediately, same
+    // as any other mode (finalizePaymentSuccess below), but also gets a
+    // ChequePayment row to track the bank's later clearing outcome.
+    if (input.mode === "CHEQUE" && input.chequeNo && input.bankName && input.chequeDueDate) {
+      await tx.chequePayment.create({
+        data: {
+          tenantId: auth.tenantId,
+          paymentId: created.id,
+          chequeNo: input.chequeNo,
+          bankName: input.bankName,
+          dueDate: input.chequeDueDate,
+        },
+      });
+    }
 
     // Fee mutations are ledgered + audited (AGENTS.md invariant #6) —
     // shared with Unit 13's webhook-driven online-payment path.
@@ -475,4 +492,81 @@ export async function cancelReceipt(auth: RequestAuth, id: string, input: Cancel
 
     return updated;
   });
+}
+
+// ---------------------------------------------------------------------------
+// Unit 48 — Fee Management Depth (Cheque/PDC Tracking)
+// ---------------------------------------------------------------------------
+
+async function getChequePaymentOrThrow(auth: RequestAuth, paymentId: string) {
+  const chequePayment = await withTenant(auth.tenantId, (tx) =>
+    tx.chequePayment.findUnique({ where: { paymentId }, include: { payment: true } })
+  );
+  if (!chequePayment) {
+    throw new AppError("NOT_FOUND", "fee.errors.chequePaymentNotFound");
+  }
+  return chequePayment;
+}
+
+/**
+ * CLEARED is a no-op on the invoice — the payment already counted toward it
+ * at collection time. BOUNCED marks the payment FAILED and recomputes the
+ * invoice status, reopening it if this was the payment that had made it
+ * PAID/PARTIAL. Idempotent on a terminal status (re-clearing/re-bouncing the
+ * same cheque is a clean no-op, matching Unit 38's receipt-cancel precedent).
+ */
+export async function updateChequeStatus(auth: RequestAuth, paymentId: string, input: UpdateChequeStatusInput) {
+  const chequePayment = await getChequePaymentOrThrow(auth, paymentId);
+  assertBranchAccess(auth, chequePayment.payment.branchId);
+
+  if (chequePayment.status === input.status) {
+    return chequePayment;
+  }
+  if (chequePayment.status !== "PENDING") {
+    throw new AppError("CONFLICT", "fee.errors.chequeAlreadyDecided");
+  }
+
+  return withTenant(auth.tenantId, async (tx) => {
+    const updated = await tx.chequePayment.update({
+      where: { paymentId },
+      data: { status: input.status },
+    });
+
+    if (input.status === "BOUNCED") {
+      await tx.payment.update({ where: { id: paymentId }, data: { status: "FAILED" } });
+      if (chequePayment.payment.invoiceId) {
+        await recomputeInvoiceStatus(tx, chequePayment.payment.invoiceId);
+      }
+    }
+
+    await tx.auditLog.create({
+      data: {
+        tenantId: auth.tenantId,
+        branchId: chequePayment.payment.branchId,
+        actorId: auth.userId,
+        action: "cheque.status-update",
+        entity: "ChequePayment",
+        entityId: chequePayment.id,
+        before: { status: "PENDING" } as Prisma.InputJsonValue,
+        after: { status: input.status } as Prisma.InputJsonValue,
+      },
+    });
+
+    return updated;
+  });
+}
+
+export async function listCheques(auth: RequestAuth, query: ListChequesQueryInput) {
+  assertBranchAccess(auth, query.branchId);
+
+  return withTenant(auth.tenantId, (tx) =>
+    tx.chequePayment.findMany({
+      where: {
+        status: query.status,
+        payment: { branchId: query.branchId },
+      },
+      include: { payment: true },
+      orderBy: { dueDate: "asc" },
+    })
+  );
 }
