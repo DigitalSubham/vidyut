@@ -68,6 +68,8 @@ model Invoice {
   session AcademicSession @relation(fields: [sessionId], references: [id])
   items   InvoiceItem[]
   payments Payment[]
+  bookIssueFines BookIssue[]
+  storeOrders    StoreOrder[]
 
   @@unique([studentId, sessionId, periodLabel])
   @@unique([branchId, number])

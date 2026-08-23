@@ -11,9 +11,14 @@ export default async function SchoolPublicPage({ params }: { params: Promise<{ s
 
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-8 p-6">
-      <header>
+      <header className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold">{info.name}</h1>
         <p className="text-sm text-[var(--text-secondary)]">School code: {info.schoolCode}</p>
+        <nav className="flex gap-4 text-sm underline">
+          <a href={`/${schoolCode}/notices`}>Notices</a>
+          <a href={`/${schoolCode}/gallery`}>Gallery</a>
+          <a href={`/${schoolCode}/contact`}>Contact</a>
+        </nav>
       </header>
 
       <section className="flex flex-col gap-2">

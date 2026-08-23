@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
+import { recordResponse } from "./error-counter";
 
 /**
  * Unit 35 — structured request logging. One JSON line per request: request
@@ -13,6 +14,7 @@ import type { Request, Response, NextFunction } from "express";
 export function structuredLogging(req: Request, res: Response, next: NextFunction): void {
   const start = Date.now();
   res.on("finish", () => {
+    recordResponse(res.statusCode);
     const entry = {
       level: res.statusCode >= 500 ? "error" : "info",
       requestId: req.requestId,

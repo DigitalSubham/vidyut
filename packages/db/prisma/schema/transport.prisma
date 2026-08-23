@@ -1,0 +1,135 @@
+// Transport Management — Unit 57 (D1, first fully On-Demand module). See
+// context/feature-specs/57-transport-management.md.
+
+/// A bus/van route. Branch-owned — RLS-scoped.
+model Route {
+  id        String    @id @default(cuid())
+  tenantId  String
+  branchId  String
+  name      String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  tenant       Tenant                    @relation(fields: [tenantId], references: [id])
+  branch       Branch                    @relation(fields: [branchId], references: [id])
+  stops        RouteStop[]
+  vehicles     Vehicle[]
+  allocations  StudentRouteAllocation[]
+
+  @@index([tenantId])
+}
+
+/// An ordered pickup/drop point on a route. Tenant-owned — RLS-scoped (no
+/// direct branchId; scoped via its route).
+model RouteStop {
+  id        String   @id @default(cuid())
+  tenantId  String
+  routeId   String
+  name      String
+  sequence  Int
+  latitude  Float?
+  longitude Float?
+  createdAt DateTime @default(now())
+
+  tenant      Tenant                    @relation(fields: [tenantId], references: [id])
+  route       Route                     @relation(fields: [routeId], references: [id])
+  allocations StudentRouteAllocation[]
+
+  @@index([tenantId])
+}
+
+/// A bus/van. `routeId` optional — a vehicle can exist before route
+/// assignment. Document-expiry fields feed Unit 14-style cron alerts.
+/// Branch-owned — RLS-scoped.
+model Vehicle {
+  id               String    @id @default(cuid())
+  tenantId         String
+  branchId         String
+  routeId          String?
+  regNo            String
+  capacity         Int?
+  fitnessExpiry    DateTime?
+  insuranceExpiry  DateTime?
+  permitExpiry     DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  deletedAt        DateTime?
+
+  tenant        Tenant          @relation(fields: [tenantId], references: [id])
+  branch        Branch          @relation(fields: [branchId], references: [id])
+  route         Route?          @relation(fields: [routeId], references: [id])
+  drivers       Driver[]
+  locationPings LocationPing[]
+
+  @@unique([branchId, regNo])
+  @@index([tenantId])
+}
+
+/// A driver — a lightweight non-staff contact record by default; `staffId`
+/// links it to a real Staff row only if the school employs the driver
+/// directly (spec scope #1: "staff or a lightweight non-staff contact
+/// record"). Branch-owned — RLS-scoped.
+model Driver {
+  id         String    @id @default(cuid())
+  tenantId   String
+  branchId   String
+  vehicleId  String?
+  staffId    String?
+  name       String
+  phone      String
+  licenseNo  String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
+
+  tenant  Tenant   @relation(fields: [tenantId], references: [id])
+  branch  Branch   @relation(fields: [branchId], references: [id])
+  vehicle Vehicle? @relation(fields: [vehicleId], references: [id])
+  staff   Staff?   @relation(fields: [staffId], references: [id])
+
+  @@index([tenantId])
+}
+
+/// Which route/stop a student uses. `feeAssignmentId` links to the
+/// FeeAssignment created for this route's TRANSPORT FeeStructure (Open
+/// Question 2 — reuses Unit 11's fee engine, no parallel billing model).
+/// Branch-owned — RLS-scoped.
+model StudentRouteAllocation {
+  id              String   @id @default(cuid())
+  tenantId        String
+  branchId        String
+  studentId       String
+  routeId         String
+  stopId          String
+  feeAssignmentId String?
+  createdAt       DateTime @default(now())
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id])
+  branch        Branch         @relation(fields: [branchId], references: [id])
+  student       Student        @relation(fields: [studentId], references: [id])
+  route         Route          @relation(fields: [routeId], references: [id])
+  stop          RouteStop      @relation(fields: [stopId], references: [id])
+  feeAssignment FeeAssignment? @relation(fields: [feeAssignmentId], references: [id])
+
+  @@unique([studentId, routeId])
+  @@index([tenantId])
+}
+
+/// Generic, vendor-agnostic location ingestion (Open Question 1 — build the
+/// data model + API to *receive* pings from any source; no specific GPS
+/// hardware/SDK decision made here). Tenant-owned — RLS-scoped.
+model LocationPing {
+  id         String   @id @default(cuid())
+  tenantId   String
+  vehicleId  String
+  latitude   Float
+  longitude  Float
+  recordedAt DateTime @default(now())
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id])
+
+  @@index([tenantId])
+  @@index([vehicleId, recordedAt])
+}

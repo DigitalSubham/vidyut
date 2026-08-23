@@ -482,6 +482,7 @@ function GalleryTab() {
   const branchId = getAdminBranchId() ?? "";
   const queryClient = useQueryClient();
   const [title, setTitle] = useState("");
+  const [isPublic, setIsPublic] = useState(false);
   const [selectedAlbumId, setSelectedAlbumId] = useState("");
   const [loadedAlbumId, setLoadedAlbumId] = useState("");
 
@@ -497,9 +498,10 @@ function GalleryTab() {
   });
 
   const createAlbumMutation = useMutation({
-    mutationFn: () => adminApi.createGalleryAlbum({ branchId, title }),
+    mutationFn: () => adminApi.createGalleryAlbum({ branchId, title, isPublic }),
     onSuccess: () => {
       setTitle("");
+      setIsPublic(false);
       toast.success(t("school.engagement.albumCreated") as string);
       void queryClient.invalidateQueries({ queryKey: ["gallery-albums", branchId] });
     },
@@ -530,6 +532,10 @@ function GalleryTab() {
           <Label>{t("school.engagement.albumTitle")}</Label>
           <Input className="max-w-xs" value={title} onChange={(e) => setTitle(e.target.value)} />
         </div>
+        <label className="flex items-center gap-2 pb-2 text-sm text-text-secondary">
+          <input type="checkbox" checked={isPublic} onChange={(e) => setIsPublic(e.target.checked)} />
+          {t("school.engagement.albumIsPublic")}
+        </label>
         <Button onClick={() => createAlbumMutation.mutate()} disabled={!title}>
           {t("school.common.save")}
         </Button>
@@ -540,12 +546,16 @@ function GalleryTab() {
           <TableRow>
             <TableHead>{t("school.engagement.albumTitle")}</TableHead>
             <TableHead />
+            <TableHead />
           </TableRow>
         </TableHeader>
         <TableBody>
           {albums.map((a) => (
             <TableRow key={a.id}>
               <TableCell className="font-medium">{a.title}</TableCell>
+              <TableCell>
+                {a.isPublic ? <Badge>{t("school.engagement.albumIsPublic")}</Badge> : null}
+              </TableCell>
               <TableCell>
                 <Button
                   variant="outline"

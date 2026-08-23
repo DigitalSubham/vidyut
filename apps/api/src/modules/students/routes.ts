@@ -1,10 +1,15 @@
 import { Router } from "express";
 import {
   createStudentSchema,
+  createTimelineEntrySchema,
   importStudentsSchema,
+  linkSiblingsSchema,
+  listAlumniQuerySchema,
   listStudentsQuerySchema,
   patchStudentSchema,
+  readmitStudentSchema,
   requestImportUploadSchema,
+  transferStudentSchema,
 } from "@vidyut/validation";
 import { asyncHandler } from "../../core/envelope";
 import { authGuard } from "../../core/guards/auth-guard";
@@ -55,7 +60,52 @@ studentsRouter.post(
   asyncHandler(controller.importStudents)
 );
 
+studentsRouter.get(
+  "/alumni",
+  requirePermission("student.view"),
+  validateQuery(listAlumniQuerySchema),
+  asyncHandler(controller.listAlumni)
+);
+
+studentsRouter.post(
+  "/link-siblings",
+  requirePermission("student.edit"),
+  validateBody(linkSiblingsSchema),
+  asyncHandler(controller.linkSiblings)
+);
+
 studentsRouter.get("/:id", requirePermission("student.view"), asyncHandler(controller.getStudent));
+
+studentsRouter.get("/:id/siblings", requirePermission("student.view"), asyncHandler(controller.listSiblings));
+
+studentsRouter.post(
+  "/:id/transfer",
+  requirePermission("student.edit"),
+  validateBody(transferStudentSchema),
+  asyncHandler(controller.transferStudent)
+);
+
+studentsRouter.post("/:id/mark-alumni", requirePermission("student.edit"), asyncHandler(controller.markAlumni));
+
+studentsRouter.post(
+  "/:id/readmit",
+  requirePermission("student.edit"),
+  validateBody(readmitStudentSchema),
+  asyncHandler(controller.readmitStudent)
+);
+
+studentsRouter.post(
+  "/:id/timeline",
+  requirePermission("student.edit"),
+  validateBody(createTimelineEntrySchema),
+  asyncHandler(controller.createTimelineEntry)
+);
+
+studentsRouter.get(
+  "/:id/timeline",
+  requirePermission("student.view"),
+  asyncHandler(controller.listTimelineEntries)
+);
 
 studentsRouter.get(
   "/:id/transcript",

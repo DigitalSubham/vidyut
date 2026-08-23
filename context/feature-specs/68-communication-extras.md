@@ -29,6 +29,14 @@ A full preference-center UI beyond a simple per-channel toggle list (no granular
 - Birthday cron fires correctly on the right date.
 - `progress-tracker.md` updated, with the birthday-automation default-on/off decision explicitly recorded as confirmed with the user, not assumed.
 
+## Decisions made during build
+
+- Open Question 2 (birthday-automation default): **the user explicitly confirmed on by default (opt-out)** — every guardian gets a birthday greeting for their child unless they turn it off via `CommunicationPreference`. Asked directly via `AskUserQuestion` before building this piece, not assumed.
+- Open Question 1: `CommunicationPreference` built as a real send-time gate — absence of a row means opted in (the same default confirmed for birthday automation), an explicit `optedIn: false` row is how a channel gets turned off. Wired into the existing `announcement.fanout` processor's PUSH loop (the shared fan-out mechanism Newsletter also reuses), not into every individual send function separately.
+- Scope #3 (Newsletter): reuses the exact "create a real `Announcement` row, enqueue the existing `announcement.fanout` job unchanged" pattern Unit 56 already established for platform-wide announcements — added an optional `templateKey` field to `AnnouncementFanoutPayload` (defaults to `"announcement.published"`) so Newsletter can pass `"newsletter.sent"` instead, per the spec's own "distinct template key, not a parallel pipeline" instruction. Audience is every class in the branch (reaches every guardian via the existing classId-based fan-out path).
+- Scope #4 (birthday automation): **student birthdays only.** `Staff` has no `dob` field in the existing schema — a real spec-vs-schema gap (same category as Unit 66's `Enrollment` unique-constraint issue), flagged rather than silently building a partial staff-birthday feature on a field that doesn't exist. If staff birthdays are wanted later, `Staff.dob` needs to be added first.
+- No dedicated preference-center UI was built on `apps/web-app` — the toggle is consumed via `GET`/`PUT /me/communication-preferences` and is primarily parent/guardian-facing (mobile app territory), matching the spec's own "no full preference-center UI" scope note. The endpoints are fully functional and tested via the API test suite.
+
 ## Next unit
 
 **69 — Platform Extras (Security Audit, SSO, Webhooks, Help, Feedback, Dashboards, Branding UI).**

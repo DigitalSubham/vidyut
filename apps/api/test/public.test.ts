@@ -2,7 +2,8 @@ import request from "supertest";
 import { afterAll, describe, expect, it } from "vitest";
 import { generateSchoolCode, prisma, withTenant } from "@vidyut/db";
 import { createApp } from "../src/app";
-import { cleanupTenant, createBranch, createTenant } from "./helpers";
+import { signAccessToken } from "../src/core/auth/jwt";
+import { cleanupTenant, createBranch, createRoleWithPermissions, createTenant } from "./helpers";
 
 const app = createApp();
 const tenantIds: string[] = [];
@@ -51,6 +52,58 @@ describe("public — school info + admission intake (no auth), rate-limited", ()
     const enquiries = await withTenant(tenant.id, (tx) => tx.enquiry.findMany({ where: { branchId: branch.id } }));
     expect(enquiries).toHaveLength(1);
     expect(enquiries[0]?.childName).toBe("Aarav");
+  });
+
+  it("a published PublicNotice is visible on the public notices endpoint", async () => {
+    const tenant = await createTenantWithSchoolCode("public-notices-tenant");
+    tenantIds.push(tenant.id);
+    const branch = await createBranch(tenant.id, "A");
+    await createRoleWithPermissions(tenant.id, "OWNER", ["announcement.send"]);
+    const owner = await signAccessToken({ sub: "owner-1", tenantId: tenant.id, roles: ["OWNER"], branchIds: [] });
+
+    const createRes = await request(app)
+      .post("/api/v1/public-notices")
+      .set("Authorization", `Bearer ${owner}`)
+      .send({ branchId: branch.id, title: "Admissions open", body: "For 2026-27" });
+    expect(createRes.status).toBe(201);
+
+    const res = await request(app).get(`/api/v1/public/notices/${tenant.schoolCode}`);
+    expect(res.status).toBe(200);
+    expect(res.body.data).toHaveLength(1);
+    expect(res.body.data[0].title).toBe("Admissions open");
+  });
+
+  it("only public-flagged gallery albums appear on the public gallery endpoint", async () => {
+    const tenant = await createTenantWithSchoolCode("public-gallery-tenant");
+    tenantIds.push(tenant.id);
+    const branch = await createBranch(tenant.id, "A");
+    await withTenant(tenant.id, (tx) =>
+      tx.galleryAlbum.create({ data: { tenantId: tenant.id, branchId: branch.id, title: "Public Album", isPublic: true } })
+    );
+    await withTenant(tenant.id, (tx) =>
+      tx.galleryAlbum.create({ data: { tenantId: tenant.id, branchId: branch.id, title: "Private Album", isPublic: false } })
+    );
+
+    const res = await request(app).get(`/api/v1/public/gallery/${tenant.schoolCode}`);
+    expect(res.status).toBe(200);
+    expect(res.body.data).toHaveLength(1);
+    expect(res.body.data[0].title).toBe("Public Album");
+  });
+
+  it("returns the tenant's contact info + active branches on the public contact endpoint", async () => {
+    const tenant = await createTenantWithSchoolCode("public-contact-tenant");
+    tenantIds.push(tenant.id);
+    await createBranch(tenant.id, "A");
+    await prisma.tenant.update({
+      where: { id: tenant.id },
+      data: { contactPhone: "+919812340000", contactEmail: "school@example.com", address: "Patna" },
+    });
+
+    const res = await request(app).get(`/api/v1/public/contact/${tenant.schoolCode}`);
+    expect(res.status).toBe(200);
+    expect(res.body.data.phone).toBe("+919812340000");
+    expect(res.body.data.email).toBe("school@example.com");
+    expect(res.body.data.branches).toHaveLength(1);
   });
 
   it("rate-limits the public admission endpoint more strictly than authenticated endpoints", async () => {

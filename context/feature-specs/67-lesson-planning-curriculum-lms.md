@@ -28,6 +28,15 @@ Video hosting/transcoding (Open Question 1); a real Zoom/Meet/Jitsi SDK integrat
 - A student/parent can see a scheduled live-class link on the relevant date.
 - `progress-tracker.md` updated.
 
+## Decisions made during build
+
+- Open Question 1: built as recommended — `ContentItem` reuses Unit 04's S3 upload wrapper for `FILE` items (`fileUrl`), or a plain external `linkUrl` for `LINK` items. No video hosting/transcoding.
+- Open Question 2: `LiveClassLink` is a scheduled entry with a `joinUrl` the teacher pastes in from an externally-created Zoom/Meet/Jitsi meeting — a link-out point, not an SDK integration.
+- `LessonPlan` has no approval-gate field, per the spec's own default (don't build unrequested workflow).
+- New `lms.manage` permission, granted to OWNER/PRINCIPAL/ADMIN/TEACHER — teachers create their own lesson plans (staffId resolved from the authenticated user via the existing `getStaffByUserId` helper), everything else is staff-wide within the module.
+- Web UI: new `/lms` page with four tabs (Syllabus, Lesson Plans, Content Library, Live Classes), following the existing class/section picker + free-text subjectId convention already used by the Homework and Timetable pages (no dedicated subjects list-endpoint exists yet).
+- Docker was unreachable again this unit (as for Units 52–66) — verified via `tsc --noEmit` only across `apps/api`, `apps/web-app`, `packages/validation`, and `packages/types`, not against a live Postgres. Now sixteen consecutive units (52–67) in this state.
+
 ## Next unit
 
 **68 — Communication Extras (Preferences, Newsletter, Birthday Automation).**

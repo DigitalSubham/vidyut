@@ -7,6 +7,7 @@ import type {
   MyHomeworkCalendarQueryInput,
   MyStudentScopedQueryInput,
   RegisterPushTokenInput,
+  SetCommunicationPreferenceInput,
 } from "@vidyut/validation";
 import { AppError } from "../../core/errors";
 import { resolveSelfStudentIds } from "../../core/guards/require-self";
@@ -99,6 +100,27 @@ export async function getMyReportCards(auth: RequestAuth, query: MyStudentScoped
       orderBy: { createdAt: "desc" },
     })
   );
+}
+
+/** Unit 52 — the student's current-session subject teachers, feeding the parent PTM-booking screen (needs a staffId to browse slots for). */
+export async function getMyTeachers(auth: RequestAuth, query: MyStudentScopedQueryInput) {
+  await assertOwnStudent(auth, query.studentId);
+
+  return withTenant(auth.tenantId, async (tx) => {
+    const sectionId = await resolveCurrentSectionId(tx, query.studentId);
+    if (!sectionId) {
+      return [];
+    }
+    const assignments = await tx.teacherAssignment.findMany({
+      where: { sectionId },
+      include: { staff: { include: { user: true } }, subject: true },
+    });
+    return assignments.map((a) => ({
+      staffId: a.staffId,
+      staffName: a.staff.user.name,
+      subjectName: a.subject.name,
+    }));
+  });
 }
 
 /** Resolves the student's current-session section, shared by homework + timetable below. */
@@ -335,5 +357,40 @@ export async function markNotificationRead(auth: RequestAuth, id: string) {
 export async function registerPushToken(auth: RequestAuth, input: RegisterPushTokenInput) {
   return withTenant(auth.tenantId, (tx) =>
     tx.user.update({ where: { id: auth.userId }, data: { pushToken: input.pushToken } })
+  );
+}
+
+/**
+ * Unit 68 — the caller's per-channel opt-out list. Absence of a row for a
+ * channel means "opted in" (the confirmed default, including for birthday
+ * automation), so this only returns the rows that exist (i.e. the explicit
+ * overrides), not one row per channel.
+ */
+export async function getMyCommunicationPreferences(auth: RequestAuth) {
+  return withTenant(auth.tenantId, (tx) =>
+    tx.communicationPreference.findMany({ where: { userId: auth.userId } })
+  );
+}
+
+/** Unit 69 scope #4 — the tour is entirely frontend-scripted; this is just the "seen it" flag. */
+export async function markTourSeen(auth: RequestAuth) {
+  return withTenant(auth.tenantId, (tx) =>
+    tx.user.update({ where: { id: auth.userId }, data: { hasSeenTour: true } })
+  );
+}
+
+export async function getTourSeen(auth: RequestAuth) {
+  return withTenant(auth.tenantId, (tx) =>
+    tx.user.findUnique({ where: { id: auth.userId }, select: { hasSeenTour: true } })
+  );
+}
+
+export async function setMyCommunicationPreference(auth: RequestAuth, input: SetCommunicationPreferenceInput) {
+  return withTenant(auth.tenantId, (tx) =>
+    tx.communicationPreference.upsert({
+      where: { userId_channel: { userId: auth.userId, channel: input.channel } },
+      update: { optedIn: input.optedIn },
+      create: { tenantId: auth.tenantId, userId: auth.userId, channel: input.channel, optedIn: input.optedIn },
+    })
   );
 }

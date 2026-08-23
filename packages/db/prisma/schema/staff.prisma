@@ -19,6 +19,9 @@ enum LeaveType {
   CASUAL
   SICK
   EARNED
+  // Unit 63 scope #2 — needed so payroll export can reduce gross pay by
+  // unpaid-leave days; added here rather than inferred from another type.
+  UNPAID
   OTHER
 }
 
@@ -51,6 +54,12 @@ model Staff {
   substitutions          Substitution[]
   ptmSlots               PTMSlot[]
   messages               Message[]
+  transportDrivers       Driver[]
+  libraryMemberships     LibraryMember[]
+  hostedVisitors         Visitor[]
+  salaryStructure        SalaryStructure?
+  staffTasks             StaffTask[]
+  lessonPlans            LessonPlan[]
 
   @@unique([branchId, employeeNo])
   @@unique([userId])

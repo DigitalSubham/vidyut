@@ -122,6 +122,37 @@ describe("GET /dashboard/summary — aggregated KPIs, RBAC, branch-scope", () =>
       })
     );
 
+    // Unit 53 — a staff member on approved leave covering today, feeding staffMetrics.
+    const staffUser = await withTenant(tenant.id, (tx) =>
+      tx.user.create({ data: { tenantId: tenant.id, name: "T One", phone: "+919812340098", status: "ACTIVE" } })
+    );
+    const staff = await withTenant(tenant.id, (tx) =>
+      tx.staff.create({
+        data: {
+          tenantId: tenant.id,
+          branchId: branch.id,
+          userId: staffUser.id,
+          employeeNo: "EMP-1",
+          designation: "Teacher",
+          type: "TEACHING",
+          joinedAt: new Date("2020-01-01"),
+        },
+      })
+    );
+    await withTenant(tenant.id, (tx) =>
+      tx.leaveRequest.create({
+        data: {
+          tenantId: tenant.id,
+          branchId: branch.id,
+          staffId: staff.id,
+          type: "SICK",
+          fromDate: new Date(),
+          toDate: new Date(),
+          status: "APPROVED",
+        },
+      })
+    );
+
     const res = await request(app)
       .get(`/api/v1/dashboard/summary?branchId=${branch.id}`)
       .set("Authorization", `Bearer ${owner}`);
@@ -130,6 +161,14 @@ describe("GET /dashboard/summary — aggregated KPIs, RBAC, branch-scope", () =>
     expect(res.body.data.totalDues).toBe(60000);
     expect(res.body.data.attendancePercent).toBe(100);
     expect(res.body.data.admissionsFunnel.enquiries).toBe(1);
+
+    // Unit 53 — enrollment trend covers the last 12 months, this month's enrollment counted once.
+    expect(res.body.data.enrollmentTrend).toHaveLength(12);
+    expect(res.body.data.enrollmentTrend[11].count).toBe(1);
+    expect(res.body.data.enrollmentTrend.reduce((sum: number, m: { count: number }) => sum + m.count, 0)).toBe(1);
+
+    // Unit 53 — staff metrics: 1 staff member, on leave today.
+    expect(res.body.data.staffMetrics).toEqual({ headcount: 1, onLeaveToday: 1 });
   });
 
   it("RBAC: dashboard.owner/dashboard.principal roles pass; ADMIN/TEACHER denied", async () => {

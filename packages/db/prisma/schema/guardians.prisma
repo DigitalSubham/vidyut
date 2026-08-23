@@ -19,6 +19,9 @@ model Guardian {
   name       String
   relation   GuardianRelation
   phone      String
+  // Unit 68 — the missing alternate-contact fields from A3.
+  alternatePhone String?
+  whatsappOptIn  Boolean @default(false)
   email      String?
   occupation String?
   // Unit 39 — DPDP consent capture at invite time (Open Question 1). Set

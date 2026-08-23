@@ -140,6 +140,9 @@ export async function generateBulkIds(auth: RequestAuth, query: BulkIdsQueryInpu
 
   const certificates = await withTenant(auth.tenantId, async (tx) => {
     const sessionId = await getCurrentSessionId(tx, section.branchId);
+    if (!sessionId) {
+      throw new AppError("VALIDATION_ERROR", "student.errors.noCurrentSession");
+    }
     const enrollments = await tx.enrollment.findMany({
       where: { sectionId: query.sectionId, sessionId, status: "ACTIVE" },
       include: { student: true },

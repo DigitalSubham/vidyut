@@ -60,6 +60,15 @@ Parents/students are **self-scoped**: they read only their own (children's) data
 | `dashboard.owner` | ✓ | | | | |
 | `dashboard.principal` | ✓ | ✓ | | | |
 | `subscription.view` | ✓ | | | | |
+| `transport.manage` (Unit 57 — routes, vehicles, drivers, allocations) | ✓ | ✓ | ✓ | | |
+| `library.manage` (Unit 58 — books, copies, members, issue/return/renew) | ✓ | ✓ | ✓ | | |
+| `hostel.manage` (Unit 59 — blocks, rooms, allocations; attendance reuses `attendance.mark`/`.view`) | ✓ | ✓ | ✓ | | |
+| `frontoffice.manage` (Unit 60 — visitors, gate passes, complaint desk, call/postal logs) | ✓ | ✓ | ✓ | | |
+| `wellbeing.manage` (Unit 61 — health, discipline, awards, canteen wallet, lost & found) | ✓ | ✓ | ✓ | | |
+| `accounting.manage` (Unit 62 — expenses, Tally/Zoho CSV export) | ✓ | ✓ | ✓ | ✓ | |
+| `payroll.manage` (Unit 63 — salary structures, Paybooks-format export) | ✓ | ✓ | ✓ | ✓ | |
+| `inventory.manage` (Unit 64 — stock, purchase orders, assets, parent store) | ✓ | ✓ | ✓ | | |
+| `task.manage` (Unit 65 — staff task assignment) | ✓ | ✓ | ✓ | | |
 
 ## Platform permissions (SUPERADMIN only)
 `tenant.manage` · `plan.manage` · `module.toggle` · `billing.manage` · `wallet.manage` · `appbuild.manage` · `impersonate` (time-boxed, audited) · `support.view` · `monitoring.view`.

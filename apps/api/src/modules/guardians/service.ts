@@ -17,6 +17,8 @@ export async function createGuardian(auth: RequestAuth, input: CreateGuardianInp
         name: input.name,
         relation: input.relation,
         phone: input.phone,
+        alternatePhone: input.alternatePhone,
+        whatsappOptIn: input.whatsappOptIn,
         email: input.email,
         occupation: input.occupation,
       },

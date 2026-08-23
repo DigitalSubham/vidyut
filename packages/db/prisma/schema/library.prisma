@@ -1,0 +1,103 @@
+// Library Management — Unit 58 (D2, second fully On-Demand module). See
+// context/feature-specs/58-library-management.md.
+
+enum BookCopyStatus {
+  AVAILABLE
+  ISSUED
+  LOST
+}
+
+/// A catalog title. Branch-owned — RLS-scoped. `isbn` is a plain optional
+/// field — Open Question 1's own resolution: manual entry, no external
+/// bibliographic-lookup API.
+model Book {
+  id        String    @id @default(cuid())
+  tenantId  String
+  branchId  String
+  title     String
+  author    String
+  isbn      String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  tenant Tenant     @relation(fields: [tenantId], references: [id])
+  branch Branch     @relation(fields: [branchId], references: [id])
+  copies BookCopy[]
+
+  @@index([tenantId])
+}
+
+/// One physical, issuable unit of a Book. Branch-owned — RLS-scoped.
+model BookCopy {
+  id        String         @id @default(cuid())
+  tenantId  String
+  branchId  String
+  bookId    String
+  barcode   String
+  status    BookCopyStatus @default(AVAILABLE)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  deletedAt DateTime?
+
+  tenant Tenant       @relation(fields: [tenantId], references: [id])
+  branch Branch       @relation(fields: [branchId], references: [id])
+  book   Book         @relation(fields: [bookId], references: [id])
+  issues BookIssue[]
+
+  @@unique([branchId, barcode])
+  @@index([tenantId])
+}
+
+/// A student's or staff member's library membership — a thin link, not a new
+/// identity (spec scope #2). Exactly one of studentId/staffId is set
+/// (enforced at the validation layer). Branch-owned — RLS-scoped.
+model LibraryMember {
+  id        String    @id @default(cuid())
+  tenantId  String
+  branchId  String
+  studentId String?
+  staffId   String?
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
+
+  tenant  Tenant      @relation(fields: [tenantId], references: [id])
+  branch  Branch      @relation(fields: [branchId], references: [id])
+  student Student?    @relation(fields: [studentId], references: [id])
+  staff   Staff?      @relation(fields: [staffId], references: [id])
+  issues  BookIssue[]
+
+  // Nulls are distinct in a Postgres unique index, so many members with a
+  // null studentId (staff-only) or null staffId (student-only) can coexist —
+  // this only prevents the *same* student or staff being registered twice.
+  @@unique([branchId, studentId])
+  @@unique([branchId, staffId])
+  @@index([tenantId])
+}
+
+/// One issue/return cycle of a copy to a member. Branch-owned — RLS-scoped.
+/// `fineInvoiceId` is set only when an overdue return generated a fine
+/// (Open Question 2's resolution — reuses Unit 12's Invoice/InvoiceItem, no
+/// parallel fine ledger).
+model BookIssue {
+  id            String    @id @default(cuid())
+  tenantId      String
+  branchId      String
+  copyId        String
+  memberId      String
+  issuedAt      DateTime  @default(now())
+  dueAt         DateTime
+  returnedAt    DateTime?
+  fineInvoiceId String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  tenant  Tenant         @relation(fields: [tenantId], references: [id])
+  branch  Branch         @relation(fields: [branchId], references: [id])
+  copy    BookCopy       @relation(fields: [copyId], references: [id])
+  member  LibraryMember  @relation(fields: [memberId], references: [id])
+  fineInvoice Invoice?   @relation(fields: [fineInvoiceId], references: [id])
+
+  @@index([tenantId])
+  @@index([memberId])
+}

@@ -8,12 +8,16 @@ import {
   Prisma,
 } from "@vidyut/db";
 import type {
+  CreateGlobalAnnouncementInput,
   CreatePlatformInvoiceInput,
   CreateTenantInput,
+  ListPlatformTicketsQueryInput,
   ListTenantsQueryInput,
   PatchPlatformInvoiceStatusInput,
+  PatchTenantBrandingInput,
   PatchTenantInput,
   PlatformLoginInput,
+  RespondSupportTicketInput,
   RevenueSummaryQueryInput,
   WalletRechargeInput,
 } from "@vidyut/validation";
@@ -23,7 +27,9 @@ import { hashPassword, verifyPassword } from "../../core/auth/password";
 import { signPlatformAccessToken } from "../../core/auth/platform-jwt";
 import { signAccessToken } from "../../core/auth/jwt";
 import { loadUserAuthContext } from "../../core/auth/tokens";
-import { enqueue } from "../../core/jobs";
+import { enqueue, getQueueCounts } from "../../core/jobs";
+import { redis } from "../../core/redis";
+import { getRecentErrorCount } from "../../core/error-counter";
 
 function currentAcademicSession(referenceDate = new Date()) {
   const year = referenceDate.getUTCFullYear();
@@ -258,6 +264,47 @@ export async function patchTenant(
   return getTenant(tenantId);
 }
 
+/**
+ * Unit 69 scope #7 — the missing super-admin screen to actually set the
+ * white-label parameters Unit 31's app-config pipeline already reads
+ * (`Tenant.logoUrl` existed since Unit 36; `primaryColor`/`customDomain`
+ * are new this unit).
+ */
+export async function patchTenantBranding(
+  tenantId: string,
+  input: PatchTenantBrandingInput,
+  actorPlatformUserId: string
+) {
+  const tenant = await getTenant(tenantId);
+  const before = { logoUrl: tenant.logoUrl, primaryColor: tenant.primaryColor, customDomain: tenant.customDomain };
+
+  await prisma.tenant.update({
+    where: { id: tenantId },
+    data: {
+      logoUrl: input.logoUrl,
+      primaryColor: input.primaryColor,
+      customDomain: input.customDomain,
+    },
+  });
+
+  await withTenant(tenantId, (tx) =>
+    tx.auditLog.create({
+      data: {
+        tenantId,
+        actorId: actorPlatformUserId,
+        actorType: "PLATFORM_USER",
+        action: "tenant.branding.patch",
+        entity: "Tenant",
+        entityId: tenantId,
+        before: before as Prisma.InputJsonValue,
+        after: input as Prisma.InputJsonValue,
+      },
+    })
+  );
+
+  return getTenant(tenantId);
+}
+
 export async function getTenantUsage(tenantId: string) {
   const tenant = await getTenant(tenantId);
   const [userCount, branchCount, studentCount] = await withTenant(tenantId, (tx) =>
@@ -413,4 +460,111 @@ export async function getRevenueSummary(query: RevenueSummaryQueryInput) {
     subscriptionRevenuePaise: subscriptionRevenue._sum.amount ?? 0,
     platformFeeRevenuePaise: platformFeeTotal,
   };
+}
+
+// --- Unit 56: Super-Admin Console Depth ---
+
+/** Scope #1 — creates the record, then hands the actual per-tenant fan-out to a background job (AGENTS.md invariant #2: never inline in the request handler). */
+export async function createGlobalAnnouncement(actorPlatformUserId: string, input: CreateGlobalAnnouncementInput) {
+  const announcement = await prisma.globalAnnouncement.create({
+    data: {
+      title: input.title,
+      body: input.body,
+      targetPlanKeys: input.targetPlanKeys as Prisma.InputJsonValue | undefined,
+      createdById: actorPlatformUserId,
+    },
+  });
+
+  await enqueue("platform.globalAnnouncementFanout", { globalAnnouncementId: announcement.id });
+
+  return announcement;
+}
+
+/**
+ * Scope #2 — cross-tenant, one `withTenant(tenantId, ...)` read per ACTIVE
+ * tenant (same pattern as `getRevenueSummary` above's platform-fee loop —
+ * RLS is never bypassed, just called once per tenant). Every tenant whose
+ * tickets are actually read gets its own AuditLog entry, same posture as
+ * `impersonateUser`'s audit trail — a deliberate, audited exception to
+ * normal tenant isolation, not a silent one.
+ */
+export async function listPlatformTickets(actorPlatformUserId: string, status?: ListPlatformTicketsQueryInput["status"]) {
+  const tenants = await prisma.tenant.findMany({ where: { status: "ACTIVE" }, select: { id: true, name: true } });
+
+  const results: Array<{ tenantId: string; tenantName: string; tickets: unknown[] }> = [];
+  for (const tenant of tenants) {
+    const tickets = await withTenant(tenant.id, (tx) =>
+      tx.supportTicket.findMany({ where: status ? { status } : undefined, orderBy: { createdAt: "desc" } })
+    );
+    if (tickets.length === 0) continue;
+
+    await withTenant(tenant.id, (tx) =>
+      tx.auditLog.create({
+        data: {
+          tenantId: tenant.id,
+          actorId: actorPlatformUserId,
+          actorType: "PLATFORM_USER",
+          action: "support-ticket.read",
+          entity: "SupportTicket",
+          entityId: "*",
+        },
+      })
+    );
+
+    results.push({ tenantId: tenant.id, tenantName: tenant.name, tickets });
+  }
+
+  return results;
+}
+
+export async function respondToTicket(
+  actorPlatformUserId: string,
+  tenantId: string,
+  ticketId: string,
+  input: RespondSupportTicketInput
+) {
+  const ticket = await withTenant(tenantId, (tx) => tx.supportTicket.findUnique({ where: { id: ticketId } }));
+  if (!ticket) {
+    throw new AppError("NOT_FOUND", "platform.errors.ticketNotFound");
+  }
+
+  const updated = await withTenant(tenantId, (tx) =>
+    tx.supportTicket.update({
+      where: { id: ticketId },
+      data: { response: input.response, status: input.status, respondedAt: new Date() },
+    })
+  );
+
+  await withTenant(tenantId, (tx) =>
+    tx.auditLog.create({
+      data: {
+        tenantId,
+        actorId: actorPlatformUserId,
+        actorType: "PLATFORM_USER",
+        action: "support-ticket.respond",
+        entity: "SupportTicket",
+        entityId: ticketId,
+      },
+    })
+  );
+
+  return updated;
+}
+
+/** Scope #3, Open Question 3's own recommendation — DB/Redis reachability (same checks as /ready), real BullMQ queue depth, and the in-process recent-error counter (Unit 56's own `error-counter.ts`) instead of a real Sentry API integration (a second credential dependency the spec explicitly avoids). */
+export async function getHealthSummary() {
+  const [dbOk, redisOk] = await Promise.all([
+    prisma
+      .$queryRaw`SELECT 1`
+      .then(() => true)
+      .catch(() => false),
+    redis
+      .ping()
+      .then((reply) => reply === "PONG")
+      .catch(() => false),
+  ]);
+  const queueCounts = await getQueueCounts();
+  const recentErrorCount = getRecentErrorCount();
+
+  return { db: dbOk, redis: redisOk, queue: queueCounts, recentErrorCount };
 }

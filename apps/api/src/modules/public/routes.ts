@@ -11,6 +11,11 @@ export const publicRouter = Router();
 
 publicRouter.get("/schools/:schoolCode", asyncHandler(controller.getPublicSchoolInfo));
 
+// Unit 54 — notices/gallery/contact, same no-auth posture as the schoolCode lookup above.
+publicRouter.get("/notices/:schoolCode", asyncHandler(controller.getPublicNotices));
+publicRouter.get("/gallery/:schoolCode", asyncHandler(controller.getPublicGallery));
+publicRouter.get("/contact/:schoolCode", asyncHandler(controller.getPublicContact));
+
 // Stricter than the pipeline-wide default limiter (context/feature-specs/29's
 // scope #4) — a public, unauthenticated form is a real spam target.
 const publicAdmissionLimiter = createRateLimiter({

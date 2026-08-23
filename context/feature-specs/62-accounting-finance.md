@@ -1,10 +1,10 @@
 # Unit 62 — Accounting & Finance (B2, full On-Demand module)
 
-Same On-Demand caveat as Unit 57 — this is real, substantial scope (a general ledger is effectively its own product) and should genuinely wait for confirmed demand more than most other units in this batch.
+Same On-Demand caveat as Unit 57 — this is real, substantial scope (a general ledger is effectively its own product) and should genuinely wait for confirmed demand more than most other units in this batch. **Built at the user's explicit request** ("continue with next unit"), and the build-vs-buy call below was put to the user directly rather than defaulted — this is the one On-Demand unit this session where the scope itself, not just the timing, needed a real decision.
 
 ## Open Questions
 
-1. **Build vs. integrate.** A school likely already uses (or should use) Tally/Zoho Books for real statutory accounting — building a parallel general ledger inside this ERP risks becoming the record of truth for something with real legal/audit weight, duplicating effort a dedicated accounting product already does well. **Recommendation: lead with the Tally/Zoho export integration (already named in the catalog), not a from-scratch ledger.** Only build income/expense tracking + a simple cash book natively if the user confirms schools specifically want to avoid a second accounting tool — flag this as a real build-vs-buy decision for the user, not an engineering default.
+1. **Build vs. integrate.** A school likely already uses (or should use) Tally/Zoho Books for real statutory accounting — building a parallel general ledger inside this ERP risks becoming the record of truth for something with real legal/audit weight, duplicating effort a dedicated accounting product already does well. **Resolved — founder call, not an engineering default:** asked the user directly; recommended export-first for the reasons above; **the user confirmed export-first.** A native general ledger (chart of accounts, cash/bank books, vendor payables, GST, trial balance) was explicitly not built.
 
 ## Goal
 
@@ -18,7 +18,12 @@ Resolve Open Question 1 with the user first. If native ledger is confirmed: inco
 
 ## Out of scope
 
-A full general ledger/chart-of-accounts/trial-balance/financial-statements engine (Open Question 1's non-default path) unless explicitly confirmed; payroll-linked accounting (Unit 63's territory).
+A full general ledger/chart-of-accounts/trial-balance/financial-statements engine (Open Question 1's non-default path, not confirmed); payroll-linked accounting (Unit 63's territory); GST invoice fields (scope #3) — not confirmed that GST applies to this fee category, and the spec's own instruction is "confirm, don't assume," so nothing was added to `Invoice`.
+
+## Decisions made during build
+
+- The export format is a plain CSV (`Date, Type, Category, Description, Amount, ReferenceNo`), not literal Tally XML — Tally's real XML import format (company/ledger masters, voucher-type schema) is a much larger integration surface than "export-first" implies, while both Tally and Zoho Books accept CSV import. This keeps the export genuinely simple, matching the spirit of "lead with export, not a ledger."
+- **Not verified against a real Tally/Zoho import** — no live account or install exists in this environment (same honest-stub posture as Unit 40's SMS/WhatsApp providers and Unit 50's e-sign integration). The CSV shape is a reasonable-format assumption, not a proven one; the spec's own Definition-of-Done bar ("a real import succeeds") is not met and shouldn't be claimed as met.
 
 ## Definition of done / checks
 

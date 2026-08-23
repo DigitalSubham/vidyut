@@ -134,6 +134,8 @@ model FeeAssignment {
   branch    Branch       @relation(fields: [branchId], references: [id])
   student   Student      @relation(fields: [studentId], references: [id])
   structure FeeStructure @relation(fields: [structureId], references: [id])
+  routeAllocations StudentRouteAllocation[]
+  roomAllocations  RoomAllocation[]
 
   @@unique([studentId, structureId])
   @@index([tenantId])

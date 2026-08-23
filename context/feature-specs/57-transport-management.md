@@ -4,8 +4,10 @@ Read `feature-catalog.md` D1 first. **Note on scope**: `build-approach.md` §6 s
 
 ## Open Questions
 
-1. **GPS tracking needs a real hardware/SDK decision** (a device on each bus, a mobile app in the driver's hand, or both) — a real procurement question for the school, not something to assume. **Recommendation:** build the data model and API to *receive* location pings from any source; defer picking a specific device vendor until a real school's fleet is known.
-2. **Fare/zone structure** varies a lot by school (flat fee vs. distance-based vs. zone-based). **Recommendation:** model it as just another `FeeHead`/`FeeStructureItem` (Unit 11's existing fee engine) keyed by route, not a parallel transport-specific billing engine — reuse, don't duplicate.
+1. **GPS tracking needs a real hardware/SDK decision** — **Resolved: adopted the spec's own recommendation.** `POST /transport/location-ping` is generic and vendor-agnostic; no device/SDK was picked or assumed. It's still behind `authGuard` (a real bearer token, not unauthenticated), but not gated by a specific per-vehicle device token yet — that's the real next decision once an actual device exists to design the token flow against (Unit 44's `attendanceDeviceToken` is the precedent to reuse then).
+2. **Fare/zone structure** — **Resolved: adopted the spec's own recommendation.** A route allocation finds-or-creates a per-route `FeeStructure` with one `TRANSPORT` `FeeStructureItem` (Unit 11's existing fee engine) — no parallel transport billing model.
+
+**Scope note carried over from the spec's own header**: this unit was built at the user's explicit request despite `build-approach.md`'s "on-demand modules only when a paying school needs one" rule — no real school demand was confirmed before implementation. Flagged here for visibility, not as a defect.
 
 ## Goal
 

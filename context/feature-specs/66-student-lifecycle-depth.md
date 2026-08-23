@@ -30,6 +30,14 @@ Automatic sibling fee-discount application (Open Question 1, unless confirmed); 
 - Tenant-isolation + branch-scope tests.
 - `progress-tracker.md` updated.
 
+## Decisions made during build
+
+- Open Question 1: built as the recommended plain `SiblingGroup` tag, no auto-discount.
+- Open Question 2: `Enrollment` has `@@unique([studentId, sessionId])`, so a transfer cannot literally "close and open a new Enrollment" for the same session — it updates the existing Enrollment row's `branchId`/`classId`/`sectionId` in place (and moves `Student.branchId`), same shape as a promotion updating one row. Old attendance/marks/fee records already carry their own `branchId` and are never rewritten — verified with a fixture that creates a real pre-transfer `AttendanceRecord` and asserts it is untouched after the transfer.
+- Open Question 3: readmission upserts on the same `studentId_sessionId` key (reactivating a `LEFT` current-session Enrollment if one exists, else creating a fresh one) — distinct from Unit 33's rollover-time REPEAT.
+- Web UI added on the existing Unit 07 student detail page (`/students/[id]`) rather than a new route: a "Lifecycle" card with transfer (branch/class/section pickers), mark-alumni/readmit toggle, sibling linking, and timeline log.
+- Docker was unreachable for this unit (as for Units 52–65); migrations are hand-written to match Prisma's generated SQL shape and verified via `prisma generate` (schema-only) + `tsc --noEmit`, not against a live Postgres.
+
 ## Next unit
 
 **67 — Lesson Planning, Curriculum & LMS.**

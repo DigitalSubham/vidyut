@@ -15,6 +15,15 @@ export const JOB_NAMES = [
   "announcement.fanout",
   "certificate.generate",
   "certificate.esign-request",
+  "reports.scheduledEmail",
+  "platform.globalAnnouncementFanout",
+  "transport.geofenceAlert",
+  "transport.expiryScan",
+  "transport.expiryAlert",
+  "frontoffice.gatePassAlert",
+  "inventory.lowStockScan",
+  "inventory.lowStockAlert",
+  "comm.birthdayScan",
 ] as const;
 export type JobName = (typeof JOB_NAMES)[number];
 
@@ -108,11 +117,12 @@ export interface ReportCardGeneratePayload {
   reportCardId: string;
 }
 
-/** context/feature-specs/20-notifications-announcements.md — resolves the audience and writes one NotificationLog per targeted user. */
+/** context/feature-specs/20-notifications-announcements.md — resolves the audience and writes one NotificationLog per targeted user. `templateKey` defaults to "announcement.published"; Unit 68's Newsletter reuses this same job with "newsletter.sent" instead, per its own "distinct template key, not a parallel pipeline" scope note. */
 export interface AnnouncementFanoutPayload {
   tenantId: string;
   branchId: string;
   announcementId: string;
+  templateKey?: string;
 }
 
 /** context/feature-specs/21-certificates-ids.md — stubbed like receipt.generate/reportcard.generate (no PDF pipeline yet). */
@@ -129,6 +139,78 @@ export interface CertificateGeneratePayload {
  */
 export interface CertificateEsignRequestPayload {
   certificateId: string;
+}
+
+/**
+ * Unit 55 — a repeatable job (BullMQ `repeat.pattern`, same cron mechanism
+ * as Unit 14's fee-reminder scan). The payload carries everything needed to
+ * regenerate the report on each firing — nothing is persisted in Postgres,
+ * BullMQ itself is the source of truth for "this schedule exists."
+ */
+export interface ReportsScheduledEmailPayload {
+  tenantId: string;
+  branchId: string;
+  reportType: "attendance" | "fees" | "exams" | "admissions" | "staff";
+  recipientEmail: string;
+}
+
+/** Unit 56 — fans a `GlobalAnnouncement` out into a real per-tenant/branch `Announcement` row (Unit 20's model), then reuses the existing `announcement.fanout` job unchanged for actual dispatch. Never runs inline in the request handler (AGENTS.md invariant #2). */
+export interface PlatformGlobalAnnouncementFanoutPayload {
+  globalAnnouncementId: string;
+}
+
+/** Unit 57 — a location ping crossed a stop's geofence; alerts guardians of every student allocated to that (routeId, stopId) pair. Reuses the existing PUSH-then-SMS-fallback pipeline (Unit 32/40), no new dispatch logic. */
+export interface TransportGeofenceAlertPayload {
+  tenantId: string;
+  branchId: string;
+  routeId: string;
+  stopId: string;
+}
+
+/** Unit 57 — nightly cron tick (Unit 14's own pattern): no tenantId scans every ACTIVE tenant's vehicles for documents expiring soon; a tenantId scopes to just that tenant. */
+export interface TransportExpiryScanPayload {
+  tenantId?: string;
+}
+
+export interface TransportExpiryAlertPayload {
+  tenantId: string;
+  branchId: string;
+  vehicleId: string;
+  regNo: string;
+  docType: "fitness" | "insurance" | "permit";
+  expiryDate: string;
+}
+
+/** Unit 60 — a gate pass was approved for a student; alerts guardians via the existing PUSH-then-SMS-fallback pipeline (Unit 32/40), no new dispatch logic. */
+export interface FrontofficeGatePassAlertPayload {
+  tenantId: string;
+  branchId: string;
+  studentId: string;
+  gatePassId: string;
+  reason: string;
+}
+
+/** Unit 64 scope #5 — nightly cron tick (Unit 14's own pattern): no tenantId scans every ACTIVE tenant's inventory items for those at/below lowStockAt; a tenantId scopes to just that tenant. */
+export interface InventoryLowStockScanPayload {
+  tenantId?: string;
+}
+
+export interface InventoryLowStockAlertPayload {
+  tenantId: string;
+  branchId: string;
+  itemId: string;
+  itemName: string;
+  quantity: number;
+  lowStockAt: number;
+}
+
+/**
+ * Unit 68 scope #4 — no tenantId scans every ACTIVE tenant, matching Unit
+ * 14/57/64's own nightly-scan shape. Gated per-user by
+ * `CommunicationPreference` (Open Question 2 — confirmed default: on).
+ */
+export interface CommBirthdayScanPayload {
+  tenantId?: string;
 }
 
 export type JobState = "waiting" | "active" | "completed" | "failed" | "delayed" | "unknown";

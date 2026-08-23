@@ -1,10 +1,15 @@
 # Unit 63 — Payroll & Salary (B3, full On-Demand module)
 
-Same On-Demand caveat as Unit 57 — payroll has real statutory-compliance weight (PF/ESI/TDS/PT calculations change with Indian tax law) and is a strong candidate to stay export-to-a-real-payroll-tool rather than being rebuilt in-house, similar to Unit 62's reasoning.
+Same On-Demand caveat as Unit 57 — payroll has real statutory-compliance weight (PF/ESI/TDS/PT calculations change with Indian tax law) and is a strong candidate to stay export-to-a-real-payroll-tool rather than being rebuilt in-house, similar to Unit 62's reasoning. **Built at the user's explicit request** ("continue with 63 to 65"), and the compliance-risk decision below was put to the user directly rather than defaulted.
 
 ## Open Questions
 
-1. **Same build-vs-buy question as Unit 62.** PF/ESI/TDS/PT statutory calculations are a real compliance surface with penalties for getting wrong — a dedicated payroll tool (Paybooks, named in the catalog) already handles this correctly and stays updated with law changes; this codebase re-implementing it is a real liability if it drifts out of compliance. **Recommendation: build salary-structure data + a Paybooks-format export, not a from-scratch statutory calculator** — flag this to the user explicitly as a compliance-risk decision, not an engineering default.
+1. **Same build-vs-buy question as Unit 62.** PF/ESI/TDS/PT statutory calculations are a real compliance surface with penalties for getting wrong — a dedicated payroll tool (Paybooks, named in the catalog) already handles this correctly and stays updated with law changes; this codebase re-implementing it is a real liability if it drifts out of compliance. **Resolved — founder call, not an engineering default:** asked the user directly, recommended export-first (same reasoning as Unit 62); **the user confirmed export-first.** No native PF/ESI/TDS/PT calculator was built.
+
+## Decisions made during build
+
+- **Added `LeaveType.UNPAID`** to Unit 09's existing `LeaveRequest` model — the spec's scope #2 requires "unpaid-leave days reduce gross," and no such leave type existed. A small, additive enum change, not a new model.
+- Unpaid-leave reduction is a flat `(basic+hra)/30` per-day rate — a real simplification of how a payroll tool would actually prorate (weekends/holidays, specific-month day counts). It's a reasonable input for the export, not a claim of statutory correctness — `ponytail`-flagged in the code.
 
 ## Goal
 

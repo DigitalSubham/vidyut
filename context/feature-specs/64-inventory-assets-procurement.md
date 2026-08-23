@@ -1,10 +1,10 @@
 # Unit 64 — Inventory, Assets & Procurement (B4, full On-Demand module)
 
-Same On-Demand caveat as Unit 57. Lowest-priority remaining catalog module alongside Hostel.
+Same On-Demand caveat as Unit 57. Lowest-priority remaining catalog module alongside Hostel. **Built at the user's explicit request** ("continue with 63 to 65").
 
 ## Open Questions
 
-1. **Scope check** — does the school actually want to sell uniforms/books to parents through this system (a real POS + fee-ledger integration), or just track internal stationery/asset inventory (no parent-facing sales)? These are different-sized asks. **Recommendation:** confirm which (or both) before scoping — internal-only inventory is much smaller than a parent-facing store.
+1. **Scope check** — does the school actually want to sell uniforms/books to parents through this system (a real POS + fee-ledger integration), or just track internal stationery/asset inventory (no parent-facing sales)? These are different-sized asks. **Resolved:** asked the user directly; **the user confirmed the parent-facing store is in scope.** Built as scope #4 describes: `StoreItem`/`StoreOrder` reusing Unit 11/12's fee engine, not a separate payment path.
 
 ## Goal
 

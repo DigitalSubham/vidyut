@@ -5,6 +5,7 @@ import * as DocumentPicker from "expo-document-picker";
 import { useAuth } from "../lib/auth-context";
 import { OnlineExamTaker } from "./OnlineExamTaker";
 import { MessagesScreen } from "./MessagesScreen";
+import { PTMScreen } from "./PTMScreen";
 import {
   ackCircular,
   createComplaint,
@@ -46,7 +47,8 @@ type Section =
   | "onlineExams"
   | "circulars"
   | "complaints"
-  | "messages";
+  | "messages"
+  | "ptm";
 
 const SECTIONS: Section[] = [
   "fees",
@@ -60,6 +62,7 @@ const SECTIONS: Section[] = [
   "circulars",
   "complaints",
   "messages",
+  "ptm",
 ];
 
 /**
@@ -439,6 +442,13 @@ export function ParentStudentHomeScreen() {
       {section === "messages" ? (
         session && guardianId && activeStudent ? (
           <MessagesScreen accessToken={session.accessToken} branchId={activeStudent.branchId} own={{ role: "guardian", id: guardianId }} />
+        ) : (
+          <Text style={styles.row2}>{t("me.messagesUnavailable")}</Text>
+        )
+      ) : null}
+      {section === "ptm" ? (
+        session && activeStudentId ? (
+          <PTMScreen accessToken={session.accessToken} studentId={activeStudentId} />
         ) : (
           <Text style={styles.row2}>{t("me.messagesUnavailable")}</Text>
         )

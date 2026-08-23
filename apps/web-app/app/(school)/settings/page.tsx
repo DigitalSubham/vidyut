@@ -21,7 +21,16 @@ function SchoolProfileTab() {
   // No GET /tenants/me/profile endpoint exists (Unit 36's scope is PATCH
   // only) — the form starts blank; saving only sends the fields the owner
   // actually filled in, leaving the rest of the tenant row untouched.
-  const [form, setForm] = useState({ name: "", address: "", logoUrl: "", admissionNoPrefix: "", invoiceNoPrefix: "" });
+  const [form, setForm] = useState({
+    name: "",
+    address: "",
+    logoUrl: "",
+    admissionNoPrefix: "",
+    invoiceNoPrefix: "",
+    contactPhone: "",
+    contactEmail: "",
+    mapUrl: "",
+  });
 
   const mutation = useMutation({
     mutationFn: () => adminApi.patchTenantProfile(Object.fromEntries(Object.entries(form).filter(([, v]) => v !== ""))),
@@ -52,6 +61,18 @@ function SchoolProfileTab() {
       <div className="flex flex-col gap-1.5">
         <Label>{t("school.settings.invoiceNoPrefix")}</Label>
         <Input value={form.invoiceNoPrefix} onChange={(e) => setForm({ ...form, invoiceNoPrefix: e.target.value })} />
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <Label>{t("school.settings.contactPhone")}</Label>
+        <Input value={form.contactPhone} onChange={(e) => setForm({ ...form, contactPhone: e.target.value })} />
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <Label>{t("school.settings.contactEmail")}</Label>
+        <Input value={form.contactEmail} onChange={(e) => setForm({ ...form, contactEmail: e.target.value })} />
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <Label>{t("school.settings.mapUrl")}</Label>
+        <Input value={form.mapUrl} onChange={(e) => setForm({ ...form, mapUrl: e.target.value })} />
       </div>
       <Button onClick={() => mutation.mutate()} disabled={mutation.isPending}>
         {t("school.common.save")}
@@ -370,6 +391,195 @@ function DataRequestsTab() {
   );
 }
 
+function PublicNoticesTab() {
+  const { t } = useTranslation();
+  const branchId = getAdminBranchId() ?? "";
+  const queryClient = useQueryClient();
+  const [form, setForm] = useState({ title: "", body: "" });
+
+  const listQuery = useQuery({
+    queryKey: ["public-notices", branchId],
+    queryFn: () => adminApi.listPublicNotices(branchId),
+    enabled: !!branchId,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: () => adminApi.createPublicNotice({ branchId, ...form }),
+    onSuccess: () => {
+      setForm({ title: "", body: "" });
+      void queryClient.invalidateQueries({ queryKey: ["public-notices", branchId] });
+    },
+  });
+
+  const notices = listQuery.data?.data ?? [];
+
+  return (
+    <div className="flex flex-col gap-4">
+      <p className="text-sm text-text-secondary">{t("school.settings.publicNoticesHint")}</p>
+      <div className="flex max-w-md flex-col gap-3">
+        <div className="flex flex-col gap-1.5">
+          <Label>{t("school.engagement.fieldTitle")}</Label>
+          <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label>{t("school.settings.body")}</Label>
+          <Input value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} />
+        </div>
+        <Button
+          className="w-fit"
+          onClick={() => createMutation.mutate()}
+          disabled={!form.title || !form.body || !branchId || createMutation.isPending}
+        >
+          {t("school.settings.publish")}
+        </Button>
+      </div>
+
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>{t("school.engagement.fieldTitle")}</TableHead>
+            <TableHead>{t("school.settings.body")}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {notices.map((n) => (
+            <TableRow key={n.id}>
+              <TableCell className="font-medium">{n.title}</TableCell>
+              <TableCell>{n.body}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
+function SupportTab() {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const [form, setForm] = useState<{ subject: string; body: string; priority: "LOW" | "MEDIUM" | "HIGH" }>({
+    subject: "",
+    body: "",
+    priority: "MEDIUM",
+  });
+
+  const listQuery = useQuery({
+    queryKey: ["support-tickets"],
+    queryFn: () => adminApi.listMySupportTickets(),
+  });
+
+  const createMutation = useMutation({
+    mutationFn: () => adminApi.createSupportTicket(form),
+    onSuccess: () => {
+      setForm({ subject: "", body: "", priority: "MEDIUM" });
+      toast.success(t("school.settings.ticketSubmitted") as string);
+      void queryClient.invalidateQueries({ queryKey: ["support-tickets"] });
+    },
+  });
+
+  const tickets = listQuery.data?.data ?? [];
+
+  return (
+    <div className="flex flex-col gap-4">
+      <p className="text-sm text-text-secondary">{t("school.settings.supportHint")}</p>
+      <div className="flex max-w-md flex-col gap-3">
+        <div className="flex flex-col gap-1.5">
+          <Label>{t("school.settings.subject")}</Label>
+          <Input value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label>{t("school.settings.body")}</Label>
+          <Input value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label>{t("school.settings.priority")}</Label>
+          <Select value={form.priority} onValueChange={(v) => setForm({ ...form, priority: v as typeof form.priority })}>
+            <SelectTrigger className="w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="LOW">LOW</SelectItem>
+              <SelectItem value="MEDIUM">MEDIUM</SelectItem>
+              <SelectItem value="HIGH">HIGH</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <Button
+          className="w-fit"
+          onClick={() => createMutation.mutate()}
+          disabled={!form.subject || !form.body || createMutation.isPending}
+        >
+          {t("school.settings.submitTicket")}
+        </Button>
+      </div>
+
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>{t("school.settings.subject")}</TableHead>
+            <TableHead>{t("school.settings.status")}</TableHead>
+            <TableHead>{t("school.settings.response")}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {tickets.map((ticket) => (
+            <TableRow key={ticket.id}>
+              <TableCell>{ticket.subject}</TableCell>
+              <TableCell>
+                <Badge variant={ticket.status === "OPEN" ? "secondary" : "default"}>{ticket.status}</Badge>
+              </TableCell>
+              <TableCell>{ticket.response ?? "—"}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
+function FeedbackTab() {
+  const { t } = useTranslation();
+  const [form, setForm] = useState({ category: "SUGGESTION", body: "" });
+
+  const createMutation = useMutation({
+    mutationFn: () => adminApi.createFeedback(form),
+    onSuccess: () => {
+      setForm({ category: "SUGGESTION", body: "" });
+      toast.success(t("school.settings.feedbackSubmitted") as string);
+    },
+  });
+
+  return (
+    <div className="flex max-w-md flex-col gap-3">
+      <p className="text-sm text-text-secondary">{t("school.settings.feedbackHint")}</p>
+      <div className="flex flex-col gap-1.5">
+        <Label>{t("school.settings.category")}</Label>
+        <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
+          <SelectTrigger className="w-48">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="SUGGESTION">SUGGESTION</SelectItem>
+            <SelectItem value="BUG">BUG</SelectItem>
+            <SelectItem value="OTHER">OTHER</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <Label>{t("school.settings.body")}</Label>
+        <Input value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} />
+      </div>
+      <Button
+        className="w-fit"
+        onClick={() => createMutation.mutate()}
+        disabled={!form.body || createMutation.isPending}
+      >
+        {t("school.settings.submitFeedback")}
+      </Button>
+    </div>
+  );
+}
+
 export default function SettingsPage() {
   const { t } = useTranslation();
 
@@ -382,6 +592,9 @@ export default function SettingsPage() {
           <TabsTrigger value="branches">{t("school.settings.branchesTab")}</TabsTrigger>
           <TabsTrigger value="staff">{t("school.settings.staffTab")}</TabsTrigger>
           <TabsTrigger value="data-requests">{t("school.settings.dataRequestsTab")}</TabsTrigger>
+          <TabsTrigger value="public-notices">{t("school.settings.publicNoticesTab")}</TabsTrigger>
+          <TabsTrigger value="support">{t("school.settings.supportTab")}</TabsTrigger>
+          <TabsTrigger value="feedback">{t("school.settings.feedbackTab")}</TabsTrigger>
         </TabsList>
         <TabsContent value="profile">
           <SchoolProfileTab />
@@ -394,6 +607,15 @@ export default function SettingsPage() {
         </TabsContent>
         <TabsContent value="data-requests">
           <DataRequestsTab />
+        </TabsContent>
+        <TabsContent value="public-notices">
+          <PublicNoticesTab />
+        </TabsContent>
+        <TabsContent value="support">
+          <SupportTab />
+        </TabsContent>
+        <TabsContent value="feedback">
+          <FeedbackTab />
         </TabsContent>
       </Tabs>
     </div>

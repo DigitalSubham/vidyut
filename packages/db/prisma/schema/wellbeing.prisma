@@ -1,0 +1,134 @@
+// Health, Discipline & Others — Unit 61 (D6, fourth fully On-Demand
+// module). See context/feature-specs/61-health-discipline-others.md.
+
+enum DisciplineType {
+  MERIT
+  DEMERIT
+}
+
+enum LostFoundStatus {
+  UNCLAIMED
+  CLAIMED
+}
+
+enum CanteenTxnType {
+  CREDIT
+  DEBIT
+}
+
+/// One student's medical/emergency profile — its own model, not part of
+/// Student itself (spec scope #1). One row per student. Branch-owned — RLS-scoped.
+model HealthRecord {
+  id               String   @id @default(cuid())
+  tenantId         String
+  branchId         String
+  studentId        String
+  condition        String?
+  notes            String?
+  emergencyContact String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+  branch  Branch  @relation(fields: [branchId], references: [id])
+  student Student @relation(fields: [studentId], references: [id])
+
+  @@unique([studentId])
+  @@index([tenantId])
+}
+
+/// A merit/demerit log entry (scope #2). Open Question 1's resolution: a
+/// plain log, no automatic downstream effect on house points or report
+/// cards — not wired into either until confirmed. Branch-owned — RLS-scoped.
+model DisciplineIncident {
+  id           String         @id @default(cuid())
+  tenantId     String
+  branchId     String
+  studentId    String
+  type         DisciplineType
+  points       Int
+  note         String?
+  recordedById String
+  createdAt    DateTime       @default(now())
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+  branch  Branch  @relation(fields: [branchId], references: [id])
+  student Student @relation(fields: [studentId], references: [id])
+
+  @@index([tenantId])
+}
+
+/// A recognition/award record (scope #3). Branch-owned — RLS-scoped.
+model Award {
+  id        String   @id @default(cuid())
+  tenantId  String
+  branchId  String
+  studentId String
+  title     String
+  awardedAt DateTime
+  createdAt DateTime @default(now())
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+  branch  Branch  @relation(fields: [branchId], references: [id])
+  student Student @relation(fields: [studentId], references: [id])
+
+  @@index([tenantId])
+}
+
+/// A per-student prepaid canteen balance (scope #4) — same shape as the
+/// platform's `SmsWallet`, one row per student, guarded against going
+/// negative the same way. Branch-owned — RLS-scoped.
+model CanteenWallet {
+  id           String   @id @default(cuid())
+  tenantId     String
+  branchId     String
+  studentId    String
+  balancePaise Int      @default(0)
+  updatedAt    DateTime @updatedAt
+
+  tenant  Tenant        @relation(fields: [tenantId], references: [id])
+  branch  Branch        @relation(fields: [branchId], references: [id])
+  student Student       @relation(fields: [studentId], references: [id])
+  txns    CanteenTxn[]
+
+  @@unique([studentId])
+  @@index([tenantId])
+}
+
+/// One credit/debit against a CanteenWallet. Branch-owned — RLS-scoped.
+model CanteenTxn {
+  id        String         @id @default(cuid())
+  tenantId  String
+  branchId  String
+  walletId  String
+  type      CanteenTxnType
+  amount    Int
+  reason    String?
+  createdAt DateTime       @default(now())
+
+  tenant Tenant        @relation(fields: [tenantId], references: [id])
+  branch Branch        @relation(fields: [branchId], references: [id])
+  wallet CanteenWallet @relation(fields: [walletId], references: [id])
+
+  @@index([tenantId])
+}
+
+/// A lost & found register entry (scope #6) — a plain list, no matching or
+/// notification logic. Branch-owned — RLS-scoped.
+model LostFoundEntry {
+  id              String          @id @default(cuid())
+  tenantId        String
+  branchId        String
+  itemDescription String
+  foundLocation   String?
+  foundAt         DateTime
+  status          LostFoundStatus @default(UNCLAIMED)
+  claimedByUserId String?
+  claimedAt       DateTime?
+  createdAt       DateTime        @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  branch Branch @relation(fields: [branchId], references: [id])
+
+  @@index([tenantId])
+}

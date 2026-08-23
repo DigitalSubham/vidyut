@@ -4,9 +4,9 @@ Read `apps/api/src/modules/platform/` (Units 05, 30) first.
 
 ## Open Questions
 
-1. **Support/ticket console** — a real ticketing system (SLA tracking, categorization) is a substantial product in itself. **Recommendation:** v1 = a simple `SupportTicket` (`tenantId`, `subject`, `body`, `status`, `priority`) + list/respond, no SLA automation — enough for early-stage support volume, not a Zendesk clone.
-2. **Reseller/partner management** — no reseller program exists yet as a business model decision. **Flag to user**: confirm the commission structure (flat %, tiered, per-plan) before modeling `Partner`/`Commission` — this is a business-terms question, not an engineering guess.
-3. **Monitoring dashboard** — Unit 35 already wired Sentry + structured logs; this unit is the *super-admin-facing UI* over that data, not new instrumentation. **Recommendation:** a simple `GET /platform/health-summary` proxying recent error counts from logs (not Sentry's own API — that needs its own credential/SDK the super-admin console would then depend on) + BullMQ queue depth (already inspectable via the existing jobs status endpoint).
+1. **Support/ticket console** — **Resolved: adopted the spec's own recommendation.** A real `SupportTicket` (`tenantId`, `subject`, `body`, `status`, `priority`, `response`) with tenant-side create/list and platform-side cross-tenant list/respond — no SLA automation, no categorization engine.
+2. **Reseller/partner management** — **Still blocked, not built.** No commission-model decision (flat %, tiered, per-plan) was made this session — a business-terms question, not something to guess at. `Partner`/`Commission` remain unmodeled.
+3. **Monitoring dashboard** — **Resolved: adopted the spec's own recommendation.** `GET /platform/health-summary` returns real DB/Redis reachability (same checks as `/ready`), real BullMQ queue depth (`getQueueCounts`), and an in-process rolling 15-minute 5xx counter (new `core/error-counter.ts`, ticked from the existing `structuredLogging` middleware) — not a real Sentry API integration, avoiding the second credential dependency the spec explicitly flagged.
 
 ## Goal
 

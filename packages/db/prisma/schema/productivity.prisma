@@ -1,0 +1,27 @@
+// Misc Engagement & Productivity — Unit 65 (H-bis remainder). See
+// context/feature-specs/65-misc-engagement-productivity.md. Only task
+// assignment is new here — polls reuse Survey.isPoll (engagement.prisma).
+
+enum StaffTaskStatus {
+  OPEN
+  DONE
+}
+
+/// A task assigned to a staff member (scope #1). Branch-owned — RLS-scoped.
+model StaffTask {
+  id           String          @id @default(cuid())
+  tenantId     String
+  branchId     String
+  assignedToId String
+  assignedById String
+  title        String
+  dueDate      DateTime?
+  status       StaffTaskStatus @default(OPEN)
+  createdAt    DateTime        @default(now())
+
+  tenant     Tenant @relation(fields: [tenantId], references: [id])
+  branch     Branch @relation(fields: [branchId], references: [id])
+  assignedTo Staff  @relation(fields: [assignedToId], references: [id])
+
+  @@index([tenantId])
+}

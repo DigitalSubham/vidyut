@@ -37,10 +37,24 @@ import { marksRouter } from "./modules/marks/routes";
 import { reportCardTemplatesRouter, reportCardsRouter } from "./modules/reportcards/routes";
 import { announcementsRouter } from "./modules/announcements/routes";
 import { certificatesRouter, esignWebhookRouter } from "./modules/certificates/routes";
+import { documentsRouter } from "./modules/documents/routes";
 import { timetableRouter } from "./modules/timetable/routes";
 import { homeworkRouter } from "./modules/homework/routes";
 import { meRouter } from "./modules/me/routes";
 import { dashboardRouter } from "./modules/dashboard/routes";
+import { reportsRouter } from "./modules/reports/routes";
+import { supportTicketsRouter, feedbackRouter } from "./modules/support-tickets/routes";
+import { transportRouter } from "./modules/transport/routes";
+import { libraryRouter } from "./modules/library/routes";
+import { hostelRouter } from "./modules/hostel/routes";
+import { frontOfficeRouter } from "./modules/front-office/routes";
+import { wellbeingRouter } from "./modules/wellbeing/routes";
+import { accountingRouter } from "./modules/accounting/routes";
+import { payrollRouter } from "./modules/payroll/routes";
+import { inventoryRouter } from "./modules/inventory/routes";
+import { productivityRouter } from "./modules/productivity/routes";
+import { lmsRouter } from "./modules/lms/routes";
+import { newslettersRouter } from "./modules/newsletters/routes";
 import { publicRouter } from "./modules/public/routes";
 import { tenantsRouter } from "./modules/tenants/routes";
 import { jobsRouter } from "./modules/jobs/routes";
@@ -57,6 +71,7 @@ import { complaintsRouter } from "./modules/complaints/routes";
 import { surveysRouter } from "./modules/surveys/routes";
 import { galleryRouter } from "./modules/gallery/routes";
 import { messagesRouter } from "./modules/messages/routes";
+import { publicNoticesRouter } from "./modules/public-notices/routes";
 
 /**
  * Builds the Express app instance. Pipeline order per
@@ -129,10 +144,25 @@ export function createApp(): Express {
   app.use("/api/v1/announcements", announcementsRouter);
   app.use("/api/v1/certificates", certificatesRouter);
   app.use("/api/v1/webhooks/esign", esignWebhookRouter);
+  app.use("/api/v1/documents", documentsRouter);
   app.use("/api/v1/timetable", timetableRouter);
   app.use("/api/v1/homework", homeworkRouter);
   app.use("/api/v1/me", meRouter);
   app.use("/api/v1/dashboard", dashboardRouter);
+  app.use("/api/v1/reports", reportsRouter);
+  app.use("/api/v1/support-tickets", supportTicketsRouter);
+  app.use("/api/v1/feedback", feedbackRouter);
+  app.use("/api/v1/transport", transportRouter);
+  app.use("/api/v1/library", libraryRouter);
+  app.use("/api/v1/hostel", hostelRouter);
+  app.use("/api/v1/front-office", frontOfficeRouter);
+  app.use("/api/v1/wellbeing", wellbeingRouter);
+  app.use("/api/v1/accounting", accountingRouter);
+  app.use("/api/v1/payroll", payrollRouter);
+  app.use("/api/v1/inventory", inventoryRouter);
+  app.use("/api/v1/productivity", productivityRouter);
+  app.use("/api/v1/lms", lmsRouter);
+  app.use("/api/v1/newsletters", newslettersRouter);
   app.use("/api/v1/public", publicRouter);
   app.use("/api/v1/tenants", tenantsRouter);
   app.use("/api/v1/jobs", jobsRouter);
@@ -148,6 +178,7 @@ export function createApp(): Express {
   app.use("/api/v1/complaints", complaintsRouter);
   app.use("/api/v1/surveys", surveysRouter);
   app.use("/api/v1/gallery", galleryRouter);
+  app.use("/api/v1/public-notices", publicNoticesRouter);
   app.use("/api/v1/messages", messagesRouter);
 
   app.use(errorHandler);

@@ -7,9 +7,10 @@ import { MarksEntryScreen } from "./MarksEntryScreen";
 import { HomeworkPostScreen } from "./HomeworkPostScreen";
 import { HomeworkGradingScreen } from "./HomeworkGradingScreen";
 import { MessagesScreen } from "./MessagesScreen";
+import { LeaveScreen } from "./LeaveScreen";
 import { listMyTeacherAssignments, type MyTeacherAssignment } from "../lib/api-client";
 
-type Tab = "attendance" | "marks" | "homework" | "grading" | "messages";
+type Tab = "attendance" | "marks" | "homework" | "grading" | "messages" | "leave";
 
 /** Unit 26 — the teacher's three surfaces (attendance already built in Unit
  * 16, marks + homework new) behind one tab row. Unit 45 adds a fourth:
@@ -29,7 +30,7 @@ export function TeacherHomeScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.tabRow}>
-        {(["attendance", "marks", "homework", "grading", "messages"] as Tab[]).map((key) => (
+        {(["attendance", "marks", "homework", "grading", "messages", "leave"] as Tab[]).map((key) => (
           <TouchableOpacity key={key} style={[styles.tab, tab === key ? styles.tabActive : null]} onPress={() => setTab(key)}>
             <Text>{t(`teacherHome.tabs.${key}`)}</Text>
           </TouchableOpacity>
@@ -46,6 +47,9 @@ export function TeacherHomeScreen() {
             branchId={assignment.section.branchId}
             own={{ role: "staff", id: assignment.staffId }}
           />
+        ) : null}
+        {tab === "leave" && session && assignment ? (
+          <LeaveScreen accessToken={session.accessToken} staffId={assignment.staffId} />
         ) : null}
       </View>
     </View>

@@ -50,7 +50,8 @@
       "marks": "Marks",
       "homework": "Homework",
       "grading": "Grading",
-      "messages": "Messages"
+      "messages": "Messages",
+      "leave": "Leave"
     }
   },
   "marks": {
@@ -91,7 +92,8 @@
       "onlineExams": "Online Exams",
       "circulars": "Circulars",
       "complaints": "Complaints",
-      "messages": "Messages"
+      "messages": "Messages",
+      "ptm": "PTM"
     },
     "due": "due",
     "day": "Day",
@@ -137,5 +139,31 @@
     "staffIdPlaceholder": "Teacher/Staff ID to message",
     "open": "Open",
     "noThreads": "No conversations yet."
+  },
+  "leave": {
+    "types": {
+      "CASUAL": "Casual",
+      "SICK": "Sick",
+      "EARNED": "Earned",
+      "OTHER": "Other"
+    },
+    "status": {
+      "PENDING": "Pending",
+      "APPROVED": "Approved",
+      "REJECTED": "Rejected"
+    },
+    "fromDate": "From date (YYYY-MM-DD)",
+    "toDate": "To date (YYYY-MM-DD)",
+    "apply": "Apply for leave",
+    "applying": "Applying…",
+    "noRequests": "No leave requests yet"
+  },
+  "ptm": {
+    "back": "← Back to teachers",
+    "book": "Book",
+    "booking": "Booking…",
+    "booked": "Booked",
+    "noSlots": "No slots available",
+    "noTeachers": "No teachers found"
   }
 }

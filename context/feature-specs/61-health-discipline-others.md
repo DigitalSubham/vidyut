@@ -1,10 +1,14 @@
 # Unit 61 — Health, Discipline & Others (D6)
 
-Same On-Demand caveat as Unit 57.
+Same On-Demand caveat as Unit 57. **Built at the user's explicit request** ("keep going with unit 60 and 61") — no real school demand was confirmed before implementation, same posture as Units 57–60. Flagged here for visibility, not as a defect.
 
 ## Open Questions
 
-1. **Merit/demerit scoring** — is this purely a log, or does it feed into something else (e.g., house points from Unit 43, or affects report-card co-scholastic remarks)? **Recommendation:** v1 = a plain log with a numeric point value, no automatic downstream effects — confirm with the user before wiring it into house scoring or report cards.
+1. **Merit/demerit scoring** — is this purely a log, or does it feed into something else (e.g., house points from Unit 43, or affects report-card co-scholastic remarks)? **Resolved: adopted the spec's own recommendation.** v1 = a plain log with a numeric point value (`DisciplineIncident.points`), no automatic downstream effect on house points or report cards — not wired into either until confirmed.
+
+## Decisions made during build
+
+- Scope #5 (biometric/RFID device hub) — no new endpoint was built. It reuses Unit 44's existing generic device-scan endpoint as the spec itself says; there is nothing to add here beyond that existing ingestion point.
 
 ## Goal
 

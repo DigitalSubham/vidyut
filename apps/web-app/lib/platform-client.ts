@@ -58,6 +58,9 @@ export interface TenantSummary {
 
 export interface TenantDetail extends TenantSummary {
   plan: { key: string; name: string; priceYear: number } | null;
+  logoUrl: string | null;
+  primaryColor: string | null;
+  customDomain: string | null;
 }
 
 export interface UsageMetric {
@@ -96,6 +99,36 @@ export interface RevenueSummary {
   platformFeeRevenuePaise: number;
 }
 
+export interface GlobalAnnouncement {
+  id: string;
+  title: string;
+  body: string;
+  createdAt: string;
+}
+
+export interface SupportTicket {
+  id: string;
+  subject: string;
+  body: string;
+  status: "OPEN" | "IN_PROGRESS" | "RESOLVED";
+  priority: "LOW" | "MEDIUM" | "HIGH";
+  response: string | null;
+  createdAt: string;
+}
+
+export interface TenantTicketGroup {
+  tenantId: string;
+  tenantName: string;
+  tickets: SupportTicket[];
+}
+
+export interface HealthSummary {
+  db: boolean;
+  redis: boolean;
+  queue: { waiting: number; active: number; failed: number; delayed: number };
+  recentErrorCount: number;
+}
+
 export const platformApi = {
   login: (email: string, password: string) =>
     platformFetch<{ data: { accessToken: string } }>("/api/v1/platform/auth/login", {
@@ -115,6 +148,11 @@ export const platformApi = {
     ),
   patchTenant: (id: string, input: Record<string, unknown>) =>
     platformFetch<{ data: TenantDetail }>(`/api/v1/platform/tenants/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
+  patchTenantBranding: (id: string, input: { logoUrl?: string; primaryColor?: string; customDomain?: string }) =>
+    platformFetch<{ data: TenantDetail }>(`/api/v1/platform/tenants/${id}/branding`, {
       method: "PATCH",
       body: JSON.stringify(input),
     }),
@@ -138,4 +176,20 @@ export const platformApi = {
     ),
   getRevenueSummary: () =>
     platformFetch<{ data: RevenueSummary }>("/api/v1/platform/revenue/summary"),
+
+  createGlobalAnnouncement: (input: { title: string; body: string; targetPlanKeys?: string[] }) =>
+    platformFetch<{ data: GlobalAnnouncement }>("/api/v1/platform/announcements", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  listTickets: (status?: string) =>
+    platformFetch<{ data: TenantTicketGroup[] }>(
+      `/api/v1/platform/tickets${status ? `?status=${status}` : ""}`
+    ),
+  respondToTicket: (tenantId: string, ticketId: string, input: { response: string; status: string }) =>
+    platformFetch<{ data: SupportTicket }>(`/api/v1/platform/tenants/${tenantId}/tickets/${ticketId}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
+  getHealthSummary: () => platformFetch<{ data: HealthSummary }>("/api/v1/platform/health-summary"),
 };

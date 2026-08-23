@@ -1,0 +1,189 @@
+// Inventory, Assets & Procurement — Unit 64 (B4, full On-Demand module,
+// parent-facing store confirmed in scope by the user — see
+// context/feature-specs/64-inventory-assets-procurement.md's Open Question 1).
+
+enum StockDirection {
+  IN
+  OUT
+}
+
+enum PurchaseOrderStatus {
+  PENDING
+  RECEIVED
+  CANCELLED
+}
+
+enum StoreOrderStatus {
+  PENDING
+  PAID
+  CANCELLED
+}
+
+/// A stock-keeping location (scope #1's "multiple locations"). Branch-owned — RLS-scoped.
+model Store {
+  id        String    @id @default(cuid())
+  tenantId  String
+  branchId  String
+  name      String
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
+
+  tenant Tenant          @relation(fields: [tenantId], references: [id])
+  branch Branch          @relation(fields: [branchId], references: [id])
+  items  InventoryItem[]
+
+  @@index([tenantId])
+}
+
+/// A stock item with a running quantity, kept in sync by `StockMovement`
+/// rows (not recomputed from history on every read). Branch-owned — RLS-scoped.
+model InventoryItem {
+  id            String    @id @default(cuid())
+  tenantId      String
+  branchId      String
+  storeId       String
+  name          String
+  quantity      Int       @default(0)
+  lowStockAt    Int?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  tenant          Tenant           @relation(fields: [tenantId], references: [id])
+  branch          Branch           @relation(fields: [branchId], references: [id])
+  store           Store            @relation(fields: [storeId], references: [id])
+  movements       StockMovement[]
+  grnLines        GrnLine[]
+  storeListing    StoreItem?
+
+  @@index([tenantId])
+}
+
+/// One stock in/out event (scope #1). Branch-owned — RLS-scoped.
+model StockMovement {
+  id        String         @id @default(cuid())
+  tenantId  String
+  branchId  String
+  itemId    String
+  direction StockDirection
+  quantity  Int
+  reason    String
+  createdAt DateTime       @default(now())
+
+  tenant Tenant        @relation(fields: [tenantId], references: [id])
+  branch Branch        @relation(fields: [branchId], references: [id])
+  item   InventoryItem @relation(fields: [itemId], references: [id])
+
+  @@index([tenantId])
+}
+
+/// A simple two-step procurement flow — order then receipt, no vendor
+/// portal/RFQ (scope #2). Branch-owned — RLS-scoped.
+model PurchaseOrder {
+  id         String              @id @default(cuid())
+  tenantId   String
+  branchId   String
+  vendorName String
+  status     PurchaseOrderStatus @default(PENDING)
+  createdById String
+  createdAt  DateTime            @default(now())
+
+  tenant Tenant    @relation(fields: [tenantId], references: [id])
+  branch Branch    @relation(fields: [branchId], references: [id])
+  grn    Grn?
+
+  @@index([tenantId])
+}
+
+/// The goods-received note closing a PurchaseOrder — its lines create real
+/// `StockMovement(direction: IN)` rows on receipt. Branch-owned — RLS-scoped.
+model Grn {
+  id              String   @id @default(cuid())
+  tenantId        String
+  branchId        String
+  purchaseOrderId String   @unique
+  receivedById    String
+  receivedAt      DateTime @default(now())
+
+  tenant        Tenant        @relation(fields: [tenantId], references: [id])
+  branch        Branch        @relation(fields: [branchId], references: [id])
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+  lines         GrnLine[]
+
+  @@index([tenantId])
+}
+
+model GrnLine {
+  id       String @id @default(cuid())
+  tenantId String
+  grnId    String
+  itemId   String
+  quantity Int
+
+  tenant Tenant        @relation(fields: [tenantId], references: [id])
+  grn    Grn           @relation(fields: [grnId], references: [id])
+  item   InventoryItem @relation(fields: [itemId], references: [id])
+
+  @@index([tenantId])
+}
+
+/// A fixed-asset register entry — a register, not a depreciation-accounting
+/// engine (scope #3, Unit 62's territory if ever built natively). Branch-owned — RLS-scoped.
+model Asset {
+  id                 String    @id @default(cuid())
+  tenantId           String
+  branchId           String
+  item               String
+  purchaseDate       DateTime
+  purchasePricePaise Int
+  depreciationMethod String?
+  createdAt          DateTime  @default(now())
+  deletedAt          DateTime?
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  branch Branch @relation(fields: [branchId], references: [id])
+
+  @@index([tenantId])
+}
+
+/// A parent-facing catalog entry for an `InventoryItem` (scope #4, confirmed
+/// in scope by the user). One listing per item. Branch-owned — RLS-scoped.
+model StoreItem {
+  id            String   @id @default(cuid())
+  tenantId      String
+  branchId      String
+  itemId        String   @unique
+  pricePaise    Int
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant Tenant       @relation(fields: [tenantId], references: [id])
+  branch Branch       @relation(fields: [branchId], references: [id])
+  item   InventoryItem @relation(fields: [itemId], references: [id])
+  orders StoreOrder[]
+
+  @@index([tenantId])
+}
+
+/// A parent's order for a `StoreItem`, invoiced via Unit 11/12's existing
+/// fee engine (MISC FeeHead) rather than a separate payment path (scope #4).
+/// Branch-owned — RLS-scoped.
+model StoreOrder {
+  id          String           @id @default(cuid())
+  tenantId    String
+  branchId    String
+  storeItemId String
+  studentId   String
+  quantity    Int
+  invoiceId   String?
+  status      StoreOrderStatus @default(PENDING)
+  createdAt   DateTime         @default(now())
+
+  tenant    Tenant    @relation(fields: [tenantId], references: [id])
+  branch    Branch    @relation(fields: [branchId], references: [id])
+  storeItem StoreItem @relation(fields: [storeItemId], references: [id])
+  student   Student   @relation(fields: [studentId], references: [id])
+  invoice   Invoice?  @relation(fields: [invoiceId], references: [id])
+
+  @@index([tenantId])
+}

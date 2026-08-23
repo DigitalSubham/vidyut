@@ -39,8 +39,17 @@ model Tenant {
   // defaults shown on the tenant's own "Settings" screen.
   address           String?
   logoUrl           String?
+  // Unit 69 scope #7 — the missing super-admin UI to actually set the
+  // white-label parameters Unit 31's app-config pipeline already reads.
+  primaryColor      String?
+  customDomain      String?
   admissionNoPrefix String?
   invoiceNoPrefix   String?
+  // Unit 54 — public-site contact section (TenantContactInfo, kept as flat
+  // fields on Tenant, same convention as the group profile fields above).
+  contactPhone      String?
+  contactEmail      String?
+  mapUrl            String?
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
   deletedAt DateTime?
@@ -125,6 +134,54 @@ model Tenant {
   messages              Message[]
   certificateTemplates  CertificateTemplate[]
   documents             Document[]
+  publicNotices         PublicNotice[]
+  supportTickets        SupportTicket[]
+  routes                Route[]
+  routeStops            RouteStop[]
+  vehicles              Vehicle[]
+  transportDrivers      Driver[]
+  routeAllocations      StudentRouteAllocation[]
+  locationPings         LocationPing[]
+  books                 Book[]
+  bookCopies            BookCopy[]
+  libraryMembers        LibraryMember[]
+  bookIssues            BookIssue[]
+  hostelBlocks          HostelBlock[]
+  rooms                 Room[]
+  roomAllocations       RoomAllocation[]
+  hostelAttendanceRecords HostelAttendanceRecord[]
+  visitors              Visitor[]
+  gatePasses            GatePass[]
+  complaintDeskEntries  ComplaintDeskEntry[]
+  callLogEntries        CallLogEntry[]
+  postalLogEntries      PostalLogEntry[]
+  healthRecords         HealthRecord[]
+  disciplineIncidents   DisciplineIncident[]
+  awards                Award[]
+  canteenWallets        CanteenWallet[]
+  canteenTxns           CanteenTxn[]
+  lostFoundEntries      LostFoundEntry[]
+  expenseHeads          ExpenseHead[]
+  expenses              Expense[]
+  salaryStructures      SalaryStructure[]
+  siblingGroups         SiblingGroup[]
+  studentTimelineEntries StudentTimelineEntry[]
+  stores                Store[]
+  inventoryItems        InventoryItem[]
+  stockMovements        StockMovement[]
+  purchaseOrders        PurchaseOrder[]
+  grns                  Grn[]
+  grnLines              GrnLine[]
+  assets                Asset[]
+  storeItems            StoreItem[]
+  storeOrders           StoreOrder[]
+  staffTasks            StaffTask[]
+  syllabusChapters      SyllabusChapter[]
+  lessonPlans           LessonPlan[]
+  contentItems          ContentItem[]
+  liveClassLinks        LiveClassLink[]
+  communicationPreferences CommunicationPreference[]
+  newsletters           Newsletter[]
 }
 
 /// A physical school under the tenant. Tenant-owned — RLS-scoped.
@@ -194,6 +251,48 @@ model Branch {
   messages              Message[]
   certificateTemplates  CertificateTemplate[]
   documents             Document[]
+  publicNotices         PublicNotice[]
+  routes                Route[]
+  vehicles              Vehicle[]
+  transportDrivers      Driver[]
+  routeAllocations      StudentRouteAllocation[]
+  books                 Book[]
+  bookCopies            BookCopy[]
+  libraryMembers        LibraryMember[]
+  bookIssues            BookIssue[]
+  hostelBlocks          HostelBlock[]
+  rooms                 Room[]
+  roomAllocations       RoomAllocation[]
+  hostelAttendanceRecords HostelAttendanceRecord[]
+  visitors              Visitor[]
+  gatePasses            GatePass[]
+  complaintDeskEntries  ComplaintDeskEntry[]
+  callLogEntries        CallLogEntry[]
+  postalLogEntries      PostalLogEntry[]
+  healthRecords         HealthRecord[]
+  disciplineIncidents   DisciplineIncident[]
+  awards                Award[]
+  canteenWallets        CanteenWallet[]
+  canteenTxns           CanteenTxn[]
+  lostFoundEntries      LostFoundEntry[]
+  expenseHeads          ExpenseHead[]
+  expenses              Expense[]
+  salaryStructures      SalaryStructure[]
+  studentTimelineEntries StudentTimelineEntry[]
+  stores                Store[]
+  inventoryItems        InventoryItem[]
+  stockMovements        StockMovement[]
+  purchaseOrders        PurchaseOrder[]
+  grns                  Grn[]
+  assets                Asset[]
+  storeItems            StoreItem[]
+  storeOrders           StoreOrder[]
+  staffTasks            StaffTask[]
+  syllabusChapters      SyllabusChapter[]
+  lessonPlans           LessonPlan[]
+  contentItems          ContentItem[]
+  liveClassLinks        LiveClassLink[]
+  newsletters           Newsletter[]
 
   @@unique([tenantId, code])
   @@index([tenantId])

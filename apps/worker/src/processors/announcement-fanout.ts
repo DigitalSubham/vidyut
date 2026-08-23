@@ -4,6 +4,7 @@ import type { AnnouncementFanoutPayload } from "@vidyut/types";
 import { sendPush } from "../providers/push";
 import { sendSms } from "../providers/sms";
 import { resolveTemplateBody } from "../providers/resolve-template";
+import { isOptedIn } from "../comm-preference";
 
 const SMS_COST_PAISE = Number(process.env.SMS_COST_PAISE ?? 20);
 const PUSH_TITLE = "Announcement";
@@ -30,6 +31,7 @@ interface Audience {
  */
 export async function processAnnouncementFanout(job: Job<AnnouncementFanoutPayload>) {
   const { tenantId, branchId, announcementId } = job.data;
+  const templateKey = job.data.templateKey ?? "announcement.published";
 
   return withTenant(tenantId, async (tx) => {
     const announcement = await tx.announcement.findUnique({ where: { id: announcementId } });
@@ -40,7 +42,7 @@ export async function processAnnouncementFanout(job: Job<AnnouncementFanoutPaylo
     const message = await resolveTemplateBody(
       tx,
       tenantId,
-      "announcement.published",
+      templateKey,
       "SMS",
       announcement.title,
       { announcementId }
@@ -79,6 +81,10 @@ export async function processAnnouncementFanout(job: Job<AnnouncementFanoutPaylo
 
     let pushSent = 0;
     for (const userId of pushUserIds) {
+      // Unit 68 — a real opt-out gate: absence of a preference row means opted in.
+      if (!(await isOptedIn(tx, userId, "PUSH"))) {
+        continue;
+      }
       const user = await tx.user.findUnique({ where: { id: userId }, select: { pushToken: true } });
       const pushResult = await sendPush(user?.pushToken ?? null, PUSH_TITLE, message);
       await tx.notificationLog.create({
@@ -86,7 +92,7 @@ export async function processAnnouncementFanout(job: Job<AnnouncementFanoutPaylo
           tenantId,
           branchId,
           channel: "PUSH",
-          templateKey: "announcement.published",
+          templateKey,
           toUserId: userId,
           status: pushResult.sent || pushResult.stubbed ? "SENT" : "FAILED",
           payload: { announcementId, ...(pushResult.error ? { error: pushResult.error } : {}) },
@@ -106,7 +112,7 @@ export async function processAnnouncementFanout(job: Job<AnnouncementFanoutPaylo
             tenantId,
             branchId,
             channel: "SMS",
-            templateKey: "announcement.published",
+            templateKey,
             toPhone: phone,
             status: "FAILED",
             payload: { announcementId, reason: "insufficient_wallet_balance" },
@@ -129,7 +135,7 @@ export async function processAnnouncementFanout(job: Job<AnnouncementFanoutPaylo
           tenantId,
           branchId,
           channel: "SMS",
-          templateKey: "announcement.published",
+          templateKey,
           toPhone: phone,
           status: smsResult.sent || smsResult.stubbed ? "SENT" : "FAILED",
           payload: { announcementId, ...(smsResult.error ? { error: smsResult.error } : {}) },

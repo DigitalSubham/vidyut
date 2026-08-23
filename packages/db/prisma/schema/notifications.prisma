@@ -90,6 +90,25 @@ model Announcement {
   @@index([tenantId])
 }
 
+/// Unit 54 — a public-facing subset of Announcement's concept, separate
+/// model since not every internal announcement should be public. No
+/// audience matching (the public site has no logged-in reader to match
+/// against) — just title/body/publishedAt, listed newest-first.
+model PublicNotice {
+  id          String   @id @default(cuid())
+  tenantId    String
+  branchId    String
+  title       String
+  body        String
+  publishedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  branch Branch @relation(fields: [branchId], references: [id])
+
+  @@index([tenantId])
+}
+
 enum WalletTxnType {
   CREDIT
   DEBIT

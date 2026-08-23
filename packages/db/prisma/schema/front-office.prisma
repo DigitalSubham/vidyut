@@ -1,0 +1,110 @@
+// Front Office & Gate — Unit 60 (D4 remaining rows). See
+// context/feature-specs/60-front-office-gate.md. Enquiry log is already
+// covered by Unit 10's Enquiry model — not duplicated here.
+
+enum CallDirection {
+  INCOMING
+  OUTGOING
+}
+
+enum PostalDirection {
+  INWARD
+  OUTWARD
+}
+
+/// A gate-in visitor log. Branch-owned — RLS-scoped.
+model Visitor {
+  id           String    @id @default(cuid())
+  tenantId     String
+  branchId     String
+  name         String
+  purpose      String
+  hostStaffId  String?
+  checkInAt    DateTime  @default(now())
+  checkOutAt   DateTime?
+  photoUrl     String?
+  createdAt    DateTime  @default(now())
+
+  tenant    Tenant @relation(fields: [tenantId], references: [id])
+  branch    Branch @relation(fields: [branchId], references: [id])
+  hostStaff Staff? @relation(fields: [hostStaffId], references: [id])
+
+  @@index([tenantId])
+}
+
+/// A student's early-leave/gate pass. `exitAt` set once the student actually
+/// leaves; approval alone triggers the parent alert (scope #2). Branch-owned
+/// — RLS-scoped.
+model GatePass {
+  id           String    @id @default(cuid())
+  tenantId     String
+  branchId     String
+  studentId    String
+  reason       String
+  approvedById String
+  exitAt       DateTime?
+  createdAt    DateTime  @default(now())
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+  branch  Branch  @relation(fields: [branchId], references: [id])
+  student Student @relation(fields: [studentId], references: [id])
+
+  @@index([tenantId])
+}
+
+/// A lighter-weight walk-in complaint (scope #3) — not Unit 49's `Complaint`
+/// directly, since that model requires a real `raisedByUserId` and a gate
+/// visitor complaint often has no User account behind it. Same
+/// `ComplaintStatus` enum reused, no parallel status vocabulary. Branch-owned
+/// — RLS-scoped.
+model ComplaintDeskEntry {
+  id             String          @id @default(cuid())
+  tenantId       String
+  branchId       String
+  raisedByName   String
+  category       String
+  body           String
+  status         ComplaintStatus @default(OPEN)
+  resolution     String?
+  resolvedById   String?
+  resolvedAt     DateTime?
+  createdAt      DateTime        @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  branch Branch @relation(fields: [branchId], references: [id])
+
+  @@index([tenantId])
+}
+
+/// A plain call register (scope #4) — create/list only, no workflow. Branch-owned — RLS-scoped.
+model CallLogEntry {
+  id         String        @id @default(cuid())
+  tenantId   String
+  branchId   String
+  direction  CallDirection
+  callerName String
+  phone      String?
+  notes      String?
+  calledAt   DateTime      @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  branch Branch @relation(fields: [branchId], references: [id])
+
+  @@index([tenantId])
+}
+
+/// A plain postal/courier register (scope #4) — create/list only. Branch-owned — RLS-scoped.
+model PostalLogEntry {
+  id          String          @id @default(cuid())
+  tenantId    String
+  branchId    String
+  direction   PostalDirection
+  refNo       String?
+  description String
+  loggedAt    DateTime        @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  branch Branch @relation(fields: [branchId], references: [id])
+
+  @@index([tenantId])
+}

@@ -42,6 +42,16 @@ export const PERMISSIONS = [
   "dashboard.owner",
   "dashboard.principal",
   "subscription.view",
+  "transport.manage",
+  "library.manage",
+  "hostel.manage",
+  "frontoffice.manage",
+  "wellbeing.manage",
+  "accounting.manage",
+  "payroll.manage",
+  "inventory.manage",
+  "task.manage",
+  "lms.manage",
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];

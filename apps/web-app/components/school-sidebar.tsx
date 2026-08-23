@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslation } from "react-i18next";
-import { Users, Wallet, CalendarCheck, LayoutDashboard, Settings, BadgeCheck, Layers, GraduationCap, CalendarClock, MessageSquare } from "lucide-react";
+import { Users, Wallet, CalendarCheck, LayoutDashboard, Settings, BadgeCheck, Layers, GraduationCap, CalendarClock, MessageSquare, FileBadge, UserPlus, ClipboardList, Megaphone, BookOpen, FileBarChart, Bus, Library, Building2, DoorOpen, HeartPulse, Calculator, Banknote, Boxes, ListChecks, NotebookPen, Mail } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getAdminRoles } from "@/lib/admin-client";
 
@@ -12,20 +12,38 @@ import { getAdminRoles } from "@/lib/admin-client";
  * 27's Open Question 2, but by role (not permission — no `GET /auth/me`
  * endpoint exists yet to fetch effective permissions, see admin-client.ts).
  * Units 42/43/44/46 added their own screens (staff, academic structure,
- * exams) on top of the original students/fees/attendance/settings set;
- * guardians/admissions/announcements/certificates/homework remain
- * fast-follow work, not built here. Unit 47 added timetable (substitutions).
+ * exams) on top of the original students/fees/attendance/settings set.
+ * Unit 47 added timetable (substitutions). Unit 50 added certificates
+ * (templates, bulk IDs, e-sign, documents). Unit 51 closes the remaining
+ * gap: guardians, admissions, announcements, homework.
  */
 const NAV_ITEMS = [
   { key: "dashboard", href: "/dashboard", icon: LayoutDashboard, roles: ["OWNER", "PRINCIPAL"] },
   { key: "students", href: "/students", icon: Users, roles: ["OWNER", "PRINCIPAL", "ADMIN", "ACCOUNTANT", "TEACHER"] },
+  { key: "guardians", href: "/guardians", icon: UserPlus, roles: ["OWNER", "PRINCIPAL", "ADMIN"] },
+  { key: "admissions", href: "/admissions", icon: ClipboardList, roles: ["OWNER", "PRINCIPAL", "ADMIN"] },
   { key: "staff", href: "/staff", icon: BadgeCheck, roles: ["OWNER", "PRINCIPAL", "ADMIN"] },
   { key: "fees", href: "/fees", icon: Wallet, roles: ["OWNER", "PRINCIPAL", "ADMIN", "ACCOUNTANT"] },
   { key: "attendance", href: "/attendance", icon: CalendarCheck, roles: ["OWNER", "PRINCIPAL", "ADMIN", "TEACHER"] },
   { key: "academicStructure", href: "/academic-structure", icon: Layers, roles: ["OWNER", "PRINCIPAL", "ADMIN"] },
   { key: "exams", href: "/exams", icon: GraduationCap, roles: ["OWNER", "PRINCIPAL", "ADMIN", "TEACHER"] },
+  { key: "homework", href: "/homework", icon: BookOpen, roles: ["OWNER", "PRINCIPAL", "ADMIN", "TEACHER"] },
   { key: "timetable", href: "/timetable", icon: CalendarClock, roles: ["OWNER", "PRINCIPAL", "ADMIN"] },
+  { key: "announcements", href: "/announcements", icon: Megaphone, roles: ["OWNER", "PRINCIPAL", "ADMIN"] },
   { key: "engagement", href: "/engagement", icon: MessageSquare, roles: ["OWNER", "PRINCIPAL", "ADMIN"] },
+  { key: "certificates", href: "/certificates", icon: FileBadge, roles: ["OWNER", "PRINCIPAL", "ADMIN"] },
+  { key: "reports", href: "/reports", icon: FileBarChart, roles: ["OWNER", "PRINCIPAL"] },
+  { key: "transport", href: "/transport", icon: Bus, roles: ["OWNER", "PRINCIPAL", "ADMIN"] },
+  { key: "library", href: "/library", icon: Library, roles: ["OWNER", "PRINCIPAL", "ADMIN"] },
+  { key: "hostel", href: "/hostel", icon: Building2, roles: ["OWNER", "PRINCIPAL", "ADMIN"] },
+  { key: "frontOffice", href: "/front-office", icon: DoorOpen, roles: ["OWNER", "PRINCIPAL", "ADMIN"] },
+  { key: "wellbeing", href: "/wellbeing", icon: HeartPulse, roles: ["OWNER", "PRINCIPAL", "ADMIN"] },
+  { key: "accounting", href: "/accounting", icon: Calculator, roles: ["OWNER", "PRINCIPAL", "ACCOUNTANT"] },
+  { key: "payroll", href: "/payroll", icon: Banknote, roles: ["OWNER", "PRINCIPAL", "ACCOUNTANT"] },
+  { key: "inventory", href: "/inventory", icon: Boxes, roles: ["OWNER", "PRINCIPAL", "ADMIN"] },
+  { key: "tasks", href: "/tasks", icon: ListChecks, roles: ["OWNER", "PRINCIPAL", "ADMIN"] },
+  { key: "lms", href: "/lms", icon: NotebookPen, roles: ["OWNER", "PRINCIPAL", "ADMIN", "TEACHER"] },
+  { key: "newsletters", href: "/newsletters", icon: Mail, roles: ["OWNER", "PRINCIPAL", "ADMIN"] },
   { key: "settings", href: "/settings", icon: Settings, roles: ["OWNER", "PRINCIPAL"] },
 ] as const;
 

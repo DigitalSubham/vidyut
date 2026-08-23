@@ -24,6 +24,16 @@ export async function enqueue(
   return job.id;
 }
 
+/** Unit 55 — lets a caller (currently just the test suite) confirm a repeatable job was registered with the right cron pattern, without waiting for it to actually fire. */
+export async function getRepeatableJobs() {
+  return queue.getRepeatableJobs();
+}
+
+/** Unit 56 — real BullMQ queue depth for the super-admin health summary (Open Question 3's own recommendation, "already inspectable via the existing jobs status endpoint"). */
+export async function getQueueCounts() {
+  return queue.getJobCounts("waiting", "active", "failed", "delayed");
+}
+
 export async function getJobStatus(jobId: string): Promise<JobStatus | null> {
   const job = await queue.getJob(jobId);
   if (!job) {

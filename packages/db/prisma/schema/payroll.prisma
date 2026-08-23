@@ -1,0 +1,27 @@
+// Payroll & Salary — Unit 63 (B3, export-first path — see
+// context/feature-specs/63-payroll-salary.md's Open Question 1, a founder
+// compliance-risk call, not an engineering default). No native PF/ESI/TDS/PT
+// statutory calculator — salary-structure inputs + a gross-pay export for a
+// real payroll tool (Paybooks) to process statutorily.
+
+/// One staff member's salary structure — the inputs, not the statutory
+/// output (spec scope #1). One active structure per staff. Branch-owned — RLS-scoped.
+model SalaryStructure {
+  id          String   @id @default(cuid())
+  tenantId    String
+  branchId    String
+  staffId     String
+  basic       Int
+  hra         Int
+  allowances  Json
+  deductions  Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  branch Branch @relation(fields: [branchId], references: [id])
+  staff  Staff  @relation(fields: [staffId], references: [id])
+
+  @@unique([staffId])
+  @@index([tenantId])
+}

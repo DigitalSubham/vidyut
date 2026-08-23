@@ -1,12 +1,16 @@
 import { Router } from "express";
 import {
+  createGlobalAnnouncementSchema,
   createPlatformInvoiceSchema,
   createTenantSchema,
   impersonateSchema,
+  listPlatformTicketsQuerySchema,
   listTenantsQuerySchema,
   patchPlatformInvoiceStatusSchema,
+  patchTenantBrandingSchema,
   patchTenantSchema,
   platformLoginSchema,
+  respondSupportTicketSchema,
   revenueSummaryQuerySchema,
   walletRechargeSchema,
 } from "@vidyut/validation";
@@ -44,6 +48,13 @@ platformRouter.patch(
   platformAuthGuard,
   validateBody(patchTenantSchema),
   asyncHandler(controller.patchTenant)
+);
+
+platformRouter.patch(
+  "/tenants/:id/branding",
+  platformAuthGuard,
+  validateBody(patchTenantBrandingSchema),
+  asyncHandler(controller.patchTenantBranding)
 );
 
 platformRouter.get(
@@ -92,3 +103,26 @@ platformRouter.get(
   validateQuery(revenueSummaryQuerySchema),
   asyncHandler(controller.getRevenueSummary)
 );
+
+platformRouter.post(
+  "/announcements",
+  platformAuthGuard,
+  validateBody(createGlobalAnnouncementSchema),
+  asyncHandler(controller.createGlobalAnnouncement)
+);
+
+platformRouter.get(
+  "/tickets",
+  platformAuthGuard,
+  validateQuery(listPlatformTicketsQuerySchema),
+  asyncHandler(controller.listPlatformTickets)
+);
+
+platformRouter.patch(
+  "/tenants/:id/tickets/:ticketId",
+  platformAuthGuard,
+  validateBody(respondSupportTicketSchema),
+  asyncHandler(controller.respondToTicket)
+);
+
+platformRouter.get("/health-summary", platformAuthGuard, asyncHandler(controller.getHealthSummary));

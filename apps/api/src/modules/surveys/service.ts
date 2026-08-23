@@ -20,6 +20,7 @@ export async function createSurvey(auth: RequestAuth, input: CreateSurveyInput) 
         branchId: input.branchId,
         title: input.title,
         audience: input.audience as Prisma.InputJsonValue | undefined,
+        isPoll: input.isPoll,
         createdById: auth.userId,
         questions: {
           create: input.questions.map((q) => ({

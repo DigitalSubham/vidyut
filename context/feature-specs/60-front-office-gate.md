@@ -1,10 +1,14 @@
 # Unit 60 — Front Office & Gate (D4 remaining rows)
 
-Enquiry log is already built (A2/Unit 10) — this unit is the rest of D4.
+Enquiry log is already built (A2/Unit 10) — this unit is the rest of D4. **Built at the user's explicit request** ("keep going with unit 60 and 61") — no real school demand was confirmed before implementation, same posture as Units 57–59. Flagged here for visibility, not as a defect.
 
 ## Open Questions
 
 None — these are small, well-understood registers with no real design ambiguity.
+
+## Decisions made during build
+
+- Scope #3's "or just reuse Complaint directly ... rather than a parallel model" was resolved toward the parallel model: Unit 49's `Complaint.raisedByUserId` is a required FK to `User`, and a gate-desk complaint frequently comes from a walk-in visitor with no `User` account. `ComplaintDeskEntry` is its own lightweight model (`raisedByName` plain text) reusing the same `ComplaintStatus` enum, not a parallel status vocabulary.
 
 ## Goal
 

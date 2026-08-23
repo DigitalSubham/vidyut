@@ -26,6 +26,15 @@ export default function TenantsListPage() {
           <Button variant="outline" asChild>
             <Link href="/super-admin/revenue">{t("platform.revenue.title")}</Link>
           </Button>
+          <Button variant="outline" asChild>
+            <Link href="/super-admin/tickets">{t("platform.tickets.title")}</Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href="/super-admin/announcements">{t("platform.announcements.title")}</Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href="/super-admin/health">{t("platform.health.title")}</Link>
+          </Button>
           <Button asChild>
             <Link href="/super-admin/tenants/new">{t("platform.tenants.create")}</Link>
           </Button>

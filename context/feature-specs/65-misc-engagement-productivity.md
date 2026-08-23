@@ -1,6 +1,6 @@
 # Unit 65 — Misc Engagement & Productivity Tools (H-bis remainder)
 
-The last unit of this batch — the smallest, most speculative remaining rows (Part H-bis's competitor cross-check additions), each genuinely low-priority and independent of every other unit above.
+The last unit of this batch — the smallest, most speculative remaining rows (Part H-bis's competitor cross-check additions), each genuinely low-priority and independent of every other unit above. **Built at the user's explicit request** ("continue with 63 to 65") — the spec's own recommendation (build only tasks + polls, skip everything else) was adopted as-is.
 
 ## Open Questions
 

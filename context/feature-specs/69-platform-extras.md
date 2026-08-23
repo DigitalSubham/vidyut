@@ -36,6 +36,16 @@ A generic developer-API/webhook platform without a real partner request (Open Qu
 - Branding fields save and are readable by Unit 31's app-config pipeline.
 - `progress-tracker.md` updated — **this closes the full re-audited gap list from the previous spec-writing pass.** Placement/career management (H-bis) remains explicitly out of scope — it's primarily a higher-ed feature, minor even in the original catalog's own assessment for K-12, and no spec is written for it in this batch.
 
+## Decisions made during build
+
+- Open Question 1 (password policy): **the user explicitly confirmed length-only, no complexity requirement, no rotation policy** — the existing `z.string().min(8)` (Unit 03) already implements this, no code change needed. Documented in `context/security-audit-unit69.md`.
+- Open Question 2 (SSO): **deferred** — needs a real Google/Microsoft OAuth app registration, a real account-setup step this session cannot self-certify (same category as every other gated-integration deferral: Unit 13's Razorpay, Unit 50's e-sign, Unit 57's fuel-card, etc.).
+- Open Question 3 (webhooks/developer API): **deferred** — no partner/integrator has asked for this yet, per the spec's own trigger rule and `build-approach.md` §6.
+- Open Question 4 (branding UI): built — `PATCH /platform/tenants/:id/branding` + a super-admin form on the existing tenant detail page.
+- Scope #3 (security audit): a review pass, no gaps found — `context/security-audit-unit69.md` documents JWT expiry (15min access / 30d refresh), refresh-token rotation-on-use, and rate-limit thresholds (300 req/min/IP), all already correctly built in earlier units.
+- Scope #6 (dashboard slices): backend only, no dedicated new web page — `GET /dashboard/teacher-summary`/`accountant-summary` self-scope via the caller's own `Staff` row; the natural home for these is the existing mobile Teacher/Parent app screens (`apps/mobile/src/screens/TeacherHomeScreen.tsx`), not a new web-admin page, since teachers/accountants primarily use the app day-to-day.
+- Scope #8 (shared cross-tenant template library): **not built this pass** — it needs real curated report-card/certificate template content to seed from, which doesn't exist yet; this is a content-authoring task, not a code gap. Flagged rather than building an empty seeding endpoint with nothing to seed.
+
 ## Next unit
 
 None remaining in this batch. Full remaining-catalog coverage (excluding Part G/AI) is now spec-complete across Units 36–69, with placement/career management (H-bis) the one deliberately-unspecced row, flagged here rather than silently dropped.

@@ -86,3 +86,41 @@ export const importStudentRowSchema = z.object({
   address: z.string().trim().min(1, "student.errors.addressRequired"),
 });
 export type ImportStudentRowInput = z.infer<typeof importStudentRowSchema>;
+
+// --- Unit 66: Student Lifecycle Depth ---
+
+/** Open Question 2 — history stays put; this moves the student + updates the current-session Enrollment in place (Enrollment's @@unique([studentId, sessionId]) rules out a second row for the same session). */
+export const transferStudentSchema = z.object({
+  targetBranchId: z.string().min(1, "student.errors.branchRequired"),
+  targetClassId: z.string().min(1, "student.errors.classRequired"),
+  targetSectionId: z.string().min(1, "student.errors.sectionRequired"),
+});
+export type TransferStudentInput = z.infer<typeof transferStudentSchema>;
+
+/** Open Question 3 — distinct from Unit 33's rollover-time REPEAT. */
+export const readmitStudentSchema = z.object({
+  classId: z.string().min(1, "student.errors.classRequired"),
+  sectionId: z.string().min(1, "student.errors.sectionRequired"),
+});
+export type ReadmitStudentInput = z.infer<typeof readmitStudentSchema>;
+
+export const listAlumniQuerySchema = z.object({
+  branchId: z.string().min(1, "student.errors.branchRequired"),
+  ...pagination,
+});
+export type ListAlumniQueryInput = z.infer<typeof listAlumniQuerySchema>;
+
+/** Open Question 1 — a plain tag, not an auto-discount trigger. */
+export const linkSiblingsSchema = z.object({
+  studentIds: z.array(z.string().min(1)).min(2, "student.errors.siblingsMinTwo"),
+});
+export type LinkSiblingsInput = z.infer<typeof linkSiblingsSchema>;
+
+const studentTimelineTypeValues = ["DISCIPLINE", "ACHIEVEMENT", "NOTE"] as const;
+
+export const createTimelineEntrySchema = z.object({
+  type: z.enum(studentTimelineTypeValues),
+  body: z.string().trim().min(1, "student.errors.timelineBodyRequired"),
+  occurredAt: z.coerce.date().optional(),
+});
+export type CreateTimelineEntryInput = z.infer<typeof createTimelineEntrySchema>;

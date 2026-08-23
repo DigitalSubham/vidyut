@@ -16,6 +16,13 @@ enum EnrollmentStatus {
   LEFT
 }
 
+/// Unit 66 scope #5 — a simple append-only log entry on a student's profile.
+enum StudentTimelineType {
+  DISCIPLINE
+  ACHIEVEMENT
+  NOTE
+}
+
 /// A student's profile. Tenant-owned — RLS-scoped.
 model Student {
   id           String        @id @default(cuid())
@@ -41,6 +48,9 @@ model Student {
   // Unit 43 — simple house tagging (events/discipline points); no house-vs-
   // house scoring engine here (that's Discipline module territory, D6).
   houseId      String?
+  // Unit 66 scope #1 — a plain tagging group for combined comms/reports;
+  // no automatic sibling fee-discount (Open Question 1, unconfirmed).
+  siblingGroupId String?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   deletedAt    DateTime?
@@ -49,6 +59,8 @@ model Student {
   branch           Branch            @relation(fields: [branchId], references: [id])
   user             User?             @relation(fields: [userId], references: [id])
   house            House?            @relation(fields: [houseId], references: [id])
+  siblingGroup     SiblingGroup?     @relation(fields: [siblingGroupId], references: [id])
+  timelineEntries  StudentTimelineEntry[]
   enrollments      Enrollment[]
   studentGuardians StudentGuardian[]
   applications     Application[]
@@ -64,6 +76,16 @@ model Student {
   homeworkSubmissions HomeworkSubmission[]
   coScholasticGrades CoScholasticGrade[]
   onlineExamSubmissions OnlineExamSubmission[]
+  routeAllocations StudentRouteAllocation[]
+  libraryMemberships LibraryMember[]
+  roomAllocations    RoomAllocation[]
+  hostelAttendanceRecords HostelAttendanceRecord[]
+  gatePasses         GatePass[]
+  storeOrders        StoreOrder[]
+  healthRecord       HealthRecord?
+  disciplineIncidents DisciplineIncident[]
+  awards             Award[]
+  canteenWallet      CanteenWallet?
 
   @@unique([branchId, admissionNo])
   @@index([tenantId])
@@ -93,5 +115,37 @@ model Enrollment {
   section Section         @relation(fields: [sectionId], references: [id])
 
   @@unique([studentId, sessionId])
+  @@index([tenantId])
+}
+
+/// A tag grouping siblings for combined comms/reports (Unit 66 scope #1,
+/// Open Question 1) — no fee-discount logic attached. Tenant-owned — RLS-scoped.
+model SiblingGroup {
+  id        String    @id @default(cuid())
+  tenantId  String
+  createdAt DateTime  @default(now())
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id])
+  students Student[]
+
+  @@index([tenantId])
+}
+
+/// An append-only note on a student's profile (Unit 66 scope #5). Branch-owned — RLS-scoped.
+model StudentTimelineEntry {
+  id           String              @id @default(cuid())
+  tenantId     String
+  branchId     String
+  studentId    String
+  type         StudentTimelineType
+  body         String
+  recordedById String
+  occurredAt   DateTime            @default(now())
+  createdAt    DateTime            @default(now())
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+  branch  Branch  @relation(fields: [branchId], references: [id])
+  student Student @relation(fields: [studentId], references: [id])
+
   @@index([tenantId])
 }

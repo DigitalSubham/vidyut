@@ -7,6 +7,7 @@ import {
   myHomeworkCalendarQuerySchema,
   myStudentScopedQuerySchema,
   registerPushTokenSchema,
+  setCommunicationPreferenceSchema,
 } from "@vidyut/validation";
 import { asyncHandler } from "../../core/envelope";
 import { authGuard } from "../../core/guards/auth-guard";
@@ -38,6 +39,7 @@ meRouter.get(
   validateQuery(myStudentScopedQuerySchema),
   asyncHandler(controller.getMyAnnouncements)
 );
+meRouter.get("/teachers", validateQuery(myStudentScopedQuerySchema), asyncHandler(controller.getMyTeachers));
 meRouter.get("/guardian", asyncHandler(controller.getMyGuardian));
 meRouter.get("/circulars", validateQuery(myStudentScopedQuerySchema), asyncHandler(controller.getMyCirculars));
 meRouter.get("/calendar", validateQuery(myCalendarQuerySchema), asyncHandler(controller.getMyCalendar));
@@ -57,4 +59,12 @@ meRouter.patch(
   "/push-token",
   validateBody(registerPushTokenSchema),
   asyncHandler(controller.registerPushToken)
+);
+meRouter.get("/tour-seen", asyncHandler(controller.getTourSeen));
+meRouter.patch("/tour-seen", asyncHandler(controller.markTourSeen));
+meRouter.get("/communication-preferences", asyncHandler(controller.getMyCommunicationPreferences));
+meRouter.put(
+  "/communication-preferences",
+  validateBody(setCommunicationPreferenceSchema),
+  asyncHandler(controller.setMyCommunicationPreference)
 );

@@ -212,3 +212,61 @@ model AuditLog {
 
   @@index([tenantId])
 }
+
+enum SupportTicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+}
+
+enum SupportTicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+/// Unit 69 scope #5 — feedback reuses this model with a `type` tag rather
+/// than a parallel model, per the spec's own suggestion.
+enum SupportTicketType {
+  SUPPORT
+  FEEDBACK
+}
+
+/// Unit 56, Open Question 1 — a real "SupportTicket" per the spec's own
+/// recommendation: create/list/respond, no SLA/escalation engine. Tenant-
+/// owned and RLS-scoped like AuditLog above; the platform side reads/writes
+/// it the same way — always via withTenant(thatTenantId, ...), never a raw
+/// cross-tenant query, and every such read is audit-logged (see
+/// `listPlatformTickets`/`respondToTicket` in modules/platform/service.ts).
+model SupportTicket {
+  id          String                @id @default(cuid())
+  tenantId    String
+  type        SupportTicketType     @default(SUPPORT)
+  subject     String
+  body        String
+  status      SupportTicketStatus   @default(OPEN)
+  priority    SupportTicketPriority @default(MEDIUM)
+  response    String?
+  respondedAt DateTime?
+  createdById String
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+}
+
+/// Unit 56 scope #1 — created by the platform, fanned out (via a background
+/// job — AGENTS.md invariant #2, never inline in the request handler) into
+/// a real per-tenant `Announcement` row (Unit 20's existing model) for every
+/// matching tenant/branch. No tenantId of its own — platform-owned, no RLS,
+/// same posture as `Plan` (Unit 05's decision).
+model GlobalAnnouncement {
+  id             String   @id @default(cuid())
+  title          String
+  body           String
+  targetPlanKeys Json?
+  createdById    String
+  createdAt      DateTime @default(now())
+}

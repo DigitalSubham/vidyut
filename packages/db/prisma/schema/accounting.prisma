@@ -1,0 +1,41 @@
+// Accounting & Finance — Unit 62 (B2, export-first path — see
+// context/feature-specs/62-accounting-finance.md's Open Question 1, a
+// founder build-vs-buy call, not an engineering default). No native ledger
+// — a simple expense log to pair with the Tally/Zoho CSV export of existing
+// Payment/Invoice data.
+
+/// A simple expense category (e.g. "Utilities", "Maintenance"). Branch-owned — RLS-scoped.
+model ExpenseHead {
+  id        String    @id @default(cuid())
+  tenantId  String
+  branchId  String
+  name      String
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id])
+  branch   Branch    @relation(fields: [branchId], references: [id])
+  expenses Expense[]
+
+  @@unique([branchId, name])
+  @@index([tenantId])
+}
+
+/// A single expense entry — a plain log, not a payables workflow (spec scope #1). Branch-owned — RLS-scoped.
+model Expense {
+  id         String   @id @default(cuid())
+  tenantId   String
+  branchId   String
+  headId     String
+  amount     Int
+  vendorName String?
+  date       DateTime
+  note       String?
+  createdAt  DateTime @default(now())
+
+  tenant Tenant      @relation(fields: [tenantId], references: [id])
+  branch Branch      @relation(fields: [branchId], references: [id])
+  head   ExpenseHead @relation(fields: [headId], references: [id])
+
+  @@index([tenantId])
+}

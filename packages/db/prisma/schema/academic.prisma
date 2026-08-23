@@ -30,6 +30,8 @@ model Class {
   electiveGroups ElectiveGroup[]
   onlineExams OnlineExam[]
   questionBankItems QuestionBankItem[]
+  syllabusChapters SyllabusChapter[]
+  contentItems ContentItem[]
 
   @@unique([branchId, name])
   @@index([tenantId])
@@ -58,6 +60,8 @@ model Section {
   attendanceRecords  AttendanceRecord[]
   timetablePeriods   TimetablePeriod[]
   homework           Homework[]
+  lessonPlans        LessonPlan[]
+  liveClassLinks     LiveClassLink[]
 
   @@unique([classId, name])
   @@index([tenantId])
@@ -85,6 +89,10 @@ model Subject {
   examTimetables ExamTimetable[]
   onlineExams   OnlineExam[]
   questionBankItems QuestionBankItem[]
+  syllabusChapters SyllabusChapter[]
+  lessonPlans   LessonPlan[]
+  contentItems  ContentItem[]
+  liveClassLinks LiveClassLink[]
 
   @@unique([branchId, code])
   @@index([tenantId])

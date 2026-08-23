@@ -8,3 +8,13 @@ export async function getDashboardSummary(req: Request, res: Response): Promise<
   const summary = await service.getDashboardSummary(req.auth!, query);
   ok(res, summary);
 }
+
+export async function getTeacherSummary(req: Request, res: Response): Promise<void> {
+  const summary = await service.getTeacherSummary(req.auth!);
+  ok(res, summary);
+}
+
+export async function getAccountantSummary(req: Request, res: Response): Promise<void> {
+  const summary = await service.getAccountantSummary(req.auth!);
+  ok(res, summary);
+}

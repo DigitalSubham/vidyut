@@ -722,6 +722,280 @@ function QuestionBankTab() {
   );
 }
 
+function MarksEntryTab() {
+  const { t } = useTranslation();
+  const branchId = getAdminBranchId() ?? "";
+  const queryClient = useQueryClient();
+  const [examId, setExamId] = useState("");
+  const [loadedExamId, setLoadedExamId] = useState("");
+  const [examSubjectId, setExamSubjectId] = useState("");
+  const [marksByStudent, setMarksByStudent] = useState<Record<string, string>>({});
+  const [absentByStudent, setAbsentByStudent] = useState<Record<string, boolean>>({});
+
+  const subjectsQuery = useQuery({
+    queryKey: ["exam-subjects", loadedExamId],
+    queryFn: () => adminApi.listExamSubjects(loadedExamId),
+    enabled: !!loadedExamId,
+  });
+  const subjects = subjectsQuery.data?.data ?? [];
+  const selectedSubject = subjects.find((s) => s.id === examSubjectId);
+
+  const studentsQuery = useQuery({
+    queryKey: ["students-by-class", branchId, selectedSubject?.classId],
+    queryFn: () => adminApi.listStudentsByClass(branchId, selectedSubject!.classId),
+    enabled: !!branchId && !!selectedSubject,
+  });
+  const students = studentsQuery.data?.data ?? [];
+
+  const existingMarksQuery = useQuery({
+    queryKey: ["marks", examSubjectId],
+    queryFn: () => adminApi.listMarks(examSubjectId),
+    enabled: !!examSubjectId,
+  });
+  const existingByStudent = new Map((existingMarksQuery.data?.data ?? []).map((m) => [m.studentId, m]));
+
+  const saveMutation = useMutation({
+    mutationFn: () =>
+      adminApi.bulkEnterMarks(
+        examSubjectId,
+        students.map((s) => ({
+          studentId: s.id,
+          isAbsent: !!absentByStudent[s.id],
+          ...(absentByStudent[s.id] ? {} : { marks: Number(marksByStudent[s.id] ?? existingByStudent.get(s.id)?.marks ?? 0) }),
+        }))
+      ),
+    onSuccess: () => {
+      toast.success(t("school.exams.marksSaved") as string);
+      void queryClient.invalidateQueries({ queryKey: ["marks", examSubjectId] });
+    },
+  });
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-end gap-2">
+        <div className="flex flex-col gap-1.5">
+          <Label>{t("school.exams.examId")}</Label>
+          <Input className="max-w-xs" value={examId} onChange={(e) => setExamId(e.target.value)} />
+        </div>
+        <Button variant="outline" onClick={() => setLoadedExamId(examId)}>
+          {t("school.common.load")}
+        </Button>
+      </div>
+
+      {subjects.length > 0 ? (
+        <div className="flex flex-col gap-1.5">
+          <Label>{t("school.exams.examSubject")}</Label>
+          <Select value={examSubjectId} onValueChange={setExamSubjectId}>
+            <SelectTrigger className="w-64">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {subjects.map((s) => (
+                <SelectItem key={s.id} value={s.id}>
+                  {s.subjectId} ({s.classId})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      ) : null}
+
+      {selectedSubject && students.length > 0 ? (
+        <>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t("school.students.name")}</TableHead>
+                <TableHead>{t("school.exams.obtainedMarks")}</TableHead>
+                <TableHead>{t("school.exams.absent")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {students.map((s) => (
+                <TableRow key={s.id}>
+                  <TableCell>
+                    {s.firstName} {s.lastName}
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      type="number"
+                      className="w-24"
+                      disabled={!!absentByStudent[s.id]}
+                      value={marksByStudent[s.id] ?? existingByStudent.get(s.id)?.marks ?? ""}
+                      onChange={(e) => setMarksByStudent({ ...marksByStudent, [s.id]: e.target.value })}
+                      max={selectedSubject.maxMarks}
+                    />
+                    <span className="ml-1 text-xs text-text-secondary">/ {selectedSubject.maxMarks}</span>
+                  </TableCell>
+                  <TableCell>
+                    <input
+                      type="checkbox"
+                      checked={!!absentByStudent[s.id]}
+                      onChange={(e) => setAbsentByStudent({ ...absentByStudent, [s.id]: e.target.checked })}
+                    />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          <Button className="w-fit" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
+            {t("school.exams.saveMarks")}
+          </Button>
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+function ReportCardsTab() {
+  const { t } = useTranslation();
+  const branchId = getAdminBranchId() ?? "";
+  const queryClient = useQueryClient();
+  const [name, setName] = useState("");
+  const [board, setBoard] = useState("CBSE");
+  const [examId, setExamId] = useState("");
+  const [templateId, setTemplateId] = useState("");
+
+  const templatesQuery = useQuery({
+    queryKey: ["report-card-templates", branchId],
+    queryFn: () => adminApi.listReportCardTemplates(branchId),
+    enabled: !!branchId,
+  });
+  const templates = templatesQuery.data?.data ?? [];
+
+  const reportCardsQuery = useQuery({
+    queryKey: ["report-cards", examId],
+    queryFn: () => adminApi.listReportCards(examId),
+    enabled: !!examId,
+  });
+  const reportCards = reportCardsQuery.data?.data ?? [];
+
+  const createTemplateMutation = useMutation({
+    mutationFn: () => adminApi.createReportCardTemplate({ branchId, name, board }),
+    onSuccess: () => {
+      setName("");
+      toast.success(t("school.exams.templateCreated") as string);
+      void queryClient.invalidateQueries({ queryKey: ["report-card-templates", branchId] });
+    },
+  });
+
+  const generateMutation = useMutation({
+    mutationFn: () => adminApi.generateReportCards(examId, templateId),
+    onSuccess: () => {
+      toast.success(t("school.exams.reportCardsGenerated") as string);
+      void queryClient.invalidateQueries({ queryKey: ["report-cards", examId] });
+    },
+  });
+
+  const publishMutation = useMutation({
+    mutationFn: (id: string) => adminApi.publishReportCard(id),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["report-cards", examId] }),
+  });
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-3 rounded-lg border border-border p-4">
+        <h3 className="font-heading text-sm font-semibold text-text-primary">{t("school.exams.newTemplate")}</h3>
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="flex flex-col gap-1.5">
+            <Label>{t("school.certificates.fieldName")}</Label>
+            <Input className="max-w-xs" value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label>{t("school.exams.board")}</Label>
+            <Select value={board} onValueChange={setBoard}>
+              <SelectTrigger className="w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {["CBSE", "ICSE", "STATE_BIHAR", "OTHER"].map((b) => (
+                  <SelectItem key={b} value={b}>
+                    {b}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button onClick={() => createTemplateMutation.mutate()} disabled={!name}>
+            {t("school.common.save")}
+          </Button>
+        </div>
+      </div>
+
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>{t("school.certificates.fieldName")}</TableHead>
+            <TableHead>{t("school.exams.board")}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {templates.map((tpl) => (
+            <TableRow key={tpl.id}>
+              <TableCell className="font-medium">{tpl.name}</TableCell>
+              <TableCell>
+                <Badge variant="outline">{tpl.board}</Badge>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+
+      <div className="flex flex-wrap items-end gap-2 rounded-lg border border-border p-4">
+        <div className="flex flex-col gap-1.5">
+          <Label>{t("school.exams.examId")}</Label>
+          <Input className="max-w-xs" value={examId} onChange={(e) => setExamId(e.target.value)} />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label>{t("school.exams.template")}</Label>
+          <Select value={templateId} onValueChange={setTemplateId}>
+            <SelectTrigger className="w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {templates.map((tpl) => (
+                <SelectItem key={tpl.id} value={tpl.id}>
+                  {tpl.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <Button onClick={() => generateMutation.mutate()} disabled={!examId || !templateId}>
+          {t("school.exams.generate")}
+        </Button>
+      </div>
+
+      {reportCards.length > 0 ? (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>{t("school.exams.studentId")}</TableHead>
+              <TableHead>{t("school.exams.publishedAt")}</TableHead>
+              <TableHead />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {reportCards.map((rc) => (
+              <TableRow key={rc.id}>
+                <TableCell className="font-mono text-xs">{rc.studentId}</TableCell>
+                <TableCell>{rc.publishedAt ? rc.publishedAt.slice(0, 10) : "—"}</TableCell>
+                <TableCell>
+                  {!rc.publishedAt ? (
+                    <Button size="sm" variant="outline" onClick={() => publishMutation.mutate(rc.id)}>
+                      {t("school.exams.publish")}
+                    </Button>
+                  ) : null}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      ) : null}
+    </div>
+  );
+}
+
 export default function ExamsPage() {
   const { t } = useTranslation();
 
@@ -734,6 +1008,8 @@ export default function ExamsPage() {
           <TabsTrigger value="transcript">{t("school.exams.transcriptTab")}</TabsTrigger>
           <TabsTrigger value="onlineExams">{t("school.exams.onlineExamsTab")}</TabsTrigger>
           <TabsTrigger value="questionBank">{t("school.exams.questionBankTab")}</TabsTrigger>
+          <TabsTrigger value="marks">{t("school.exams.marksTab")}</TabsTrigger>
+          <TabsTrigger value="reportCards">{t("school.exams.reportCardsTab")}</TabsTrigger>
         </TabsList>
         <TabsContent value="exams">
           <ExamsTab />
@@ -746,6 +1022,12 @@ export default function ExamsPage() {
         </TabsContent>
         <TabsContent value="questionBank">
           <QuestionBankTab />
+        </TabsContent>
+        <TabsContent value="marks">
+          <MarksEntryTab />
+        </TabsContent>
+        <TabsContent value="reportCards">
+          <ReportCardsTab />
         </TabsContent>
       </Tabs>
     </div>

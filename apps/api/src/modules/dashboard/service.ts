@@ -5,6 +5,7 @@ import { branchAccessAllowed } from "../../core/guards/branch-scope";
 import { userHasPermission } from "../../core/guards/require-permission";
 import type { RequestAuth } from "../../core/guards/types";
 import { invoiceTotal } from "../payments/service";
+import { getStaffByUserId } from "../staff/service";
 
 function assertBranchAccess(auth: RequestAuth, branchId: string): void {
   if (!branchAccessAllowed(auth, branchId)) {
@@ -92,11 +93,107 @@ export async function getDashboardSummary(auth: RequestAuth, query: DashboardSum
       }),
     ]);
 
+    // Unit 53 — last 12 months of new enrollments, oldest first.
+    const twelveMonthsAgo = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 11, 1));
+    const recentEnrollments = await tx.enrollment.findMany({
+      where: { branchId: query.branchId, createdAt: { gte: twelveMonthsAgo, lt: monthEnd } },
+      select: { createdAt: true },
+    });
+    const trendByMonth = new Map<string, number>();
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
+      trendByMonth.set(`${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`, 0);
+    }
+    for (const e of recentEnrollments) {
+      const key = `${e.createdAt.getUTCFullYear()}-${String(e.createdAt.getUTCMonth() + 1).padStart(2, "0")}`;
+      if (trendByMonth.has(key)) {
+        trendByMonth.set(key, (trendByMonth.get(key) ?? 0) + 1);
+      }
+    }
+    const enrollmentTrend = Array.from(trendByMonth.entries()).map(([month, count]) => ({ month, count }));
+
+    // Unit 53 — headcount + how many active staff have an approved leave covering today.
+    const [headcount, onLeaveToday] = await Promise.all([
+      tx.staff.count({ where: { branchId: query.branchId, deletedAt: null } }),
+      tx.leaveRequest.count({
+        where: {
+          branchId: query.branchId,
+          status: "APPROVED",
+          fromDate: { lt: dayEnd },
+          toDate: { gte: dayStart },
+        },
+      }),
+    ]);
+
     return {
       collectionPercent,
       totalDues,
       attendancePercent,
       admissionsFunnel: { enquiries, applications, converted },
+      enrollmentTrend,
+      staffMetrics: { headcount, onLeaveToday },
+    };
+  });
+}
+
+/**
+ * Unit 69 scope #6 — a thin slice reusing existing data, not new business
+ * logic: a teacher's own assigned sections (Unit 06's TeacherAssignment),
+ * whether today's attendance is marked for each, and this month's homework
+ * they've posted (Unit 23's Homework.createdById).
+ */
+export async function getTeacherSummary(auth: RequestAuth) {
+  const staff = await getStaffByUserId(auth.tenantId, auth.userId);
+  if (!staff) {
+    throw new AppError("VALIDATION_ERROR", "dashboard.errors.staffOnly");
+  }
+
+  const now = new Date();
+  const { start: dayStart, end: dayEnd } = dayRange(now);
+  const { start: monthStart, end: monthEnd } = monthRange(now);
+
+  return withTenant(auth.tenantId, async (tx) => {
+    const assignments = await tx.teacherAssignment.findMany({ where: { staffId: staff.id } });
+    const sectionIds = [...new Set(assignments.map((a) => a.sectionId))];
+
+    let sectionsMarkedToday = 0;
+    for (const sectionId of sectionIds) {
+      const marked = await tx.attendanceRecord.findFirst({
+        where: { sectionId, date: { gte: dayStart, lt: dayEnd } },
+      });
+      if (marked) sectionsMarkedToday += 1;
+    }
+    const attendanceMarkedPercent = sectionIds.length === 0 ? 0 : Math.round((sectionsMarkedToday / sectionIds.length) * 100);
+
+    const homeworkPostedThisMonth = await tx.homework.count({
+      where: { createdById: auth.userId, createdAt: { gte: monthStart, lt: monthEnd } },
+    });
+
+    return {
+      assignedSectionCount: sectionIds.length,
+      attendanceMarkedPercent,
+      homeworkPostedThisMonth,
+    };
+  });
+}
+
+/**
+ * Unit 69 scope #6 — an accountant's own collection-today figure, reusing
+ * Unit 12's Payment model unchanged.
+ */
+export async function getAccountantSummary(auth: RequestAuth) {
+  const now = new Date();
+  const { start: dayStart, end: dayEnd } = dayRange(now);
+
+  return withTenant(auth.tenantId, async (tx) => {
+    const paymentsToday = await tx.payment.findMany({
+      where: { receivedById: auth.userId, status: "SUCCESS", createdAt: { gte: dayStart, lt: dayEnd } },
+    });
+    const collectedTodayPaise = paymentsToday.reduce((sum, p) => sum + p.amount, 0);
+
+    return {
+      collectedTodayPaise,
+      paymentsCollectedToday: paymentsToday.length,
     };
   });
 }

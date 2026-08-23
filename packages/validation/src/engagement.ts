@@ -101,6 +101,9 @@ export const createSurveySchema = z.object({
   title: z.string().trim().min(1, "engagement.errors.titleRequired"),
   audience: audienceSchema,
   questions: z.array(surveyQuestionInput).min(1, "engagement.errors.questionsRequired"),
+  // Unit 65 scope #2 — a single-question, single-choice Survey with this
+  // flag set is a "poll" in the UI. Reuses this schema, not a parallel one.
+  isPoll: z.boolean().default(false),
 });
 export type CreateSurveyInput = z.infer<typeof createSurveySchema>;
 
@@ -121,6 +124,7 @@ export type RespondSurveyInput = z.infer<typeof respondSurveySchema>;
 export const createGalleryAlbumSchema = z.object({
   branchId: z.string().min(1, "engagement.errors.branchRequired"),
   title: z.string().trim().min(1, "engagement.errors.titleRequired"),
+  isPublic: z.boolean().default(false),
 });
 export type CreateGalleryAlbumInput = z.infer<typeof createGalleryAlbumSchema>;
 

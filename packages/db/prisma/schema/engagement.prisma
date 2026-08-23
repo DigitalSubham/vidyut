@@ -126,6 +126,10 @@ model Survey {
   branchId    String
   title       String
   audience    Json?
+  // Unit 65 scope #2 — a single-question, single-choice Survey with this
+  // flag set is a "poll" in the UI; reuses this model rather than a
+  // parallel one.
+  isPoll      Boolean  @default(false)
   createdById String
   createdAt   DateTime @default(now())
 
@@ -177,6 +181,9 @@ model GalleryAlbum {
   tenantId  String
   branchId  String
   title     String
+  /// Unit 54 — reused for the public site's gallery section; only albums
+  /// with this flag set appear there (the album stays private/staff-only otherwise).
+  isPublic  Boolean  @default(false)
   createdAt DateTime @default(now())
 
   tenant Tenant         @relation(fields: [tenantId], references: [id])

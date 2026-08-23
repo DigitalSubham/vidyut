@@ -436,3 +436,58 @@ export function sendMessage(
 ) {
   return authedRequest<MessageItem>(accessToken, "/messages", { method: "POST", body: JSON.stringify(input) });
 }
+
+// -- Unit 52: Mobile App Depth --------------------------------------------------
+
+export interface LeaveRequestItem {
+  id: string;
+  staffId: string;
+  type: "CASUAL" | "SICK" | "EARNED" | "OTHER";
+  fromDate: string;
+  toDate: string;
+  halfDay: boolean;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+}
+
+/** Unit 09's `POST /leave-requests` was backend-only until now — self-scoped server-side to the caller's own Staff record, so no staffId is sent here. */
+export function applyLeave(
+  accessToken: string,
+  staffId: string,
+  input: { type: LeaveRequestItem["type"]; fromDate: string; toDate: string; halfDay?: boolean }
+) {
+  return authedRequest<LeaveRequestItem>(accessToken, "/leave-requests", {
+    method: "POST",
+    body: JSON.stringify({ staffId, ...input }),
+  });
+}
+
+export function listMyLeaveRequests(accessToken: string, staffId: string) {
+  return authedRequest<LeaveRequestItem[]>(accessToken, `/leave-requests?staffId=${encodeURIComponent(staffId)}`);
+}
+
+export interface MyTeacherItem {
+  staffId: string;
+  staffName: string;
+  subjectName: string;
+}
+
+/** Feeds the parent's PTM-booking teacher picker (needs a staffId to browse slots for). */
+export function getMyTeachers(accessToken: string, studentId: string) {
+  return authedRequest<MyTeacherItem[]>(accessToken, `/me/teachers?studentId=${encodeURIComponent(studentId)}`);
+}
+
+export interface PTMSlotItem {
+  id: string;
+  staffId: string;
+  startTime: string;
+  endTime: string;
+  bookedByGuardianId: string | null;
+}
+
+export function listPTMSlots(accessToken: string, staffId: string) {
+  return authedRequest<PTMSlotItem[]>(accessToken, `/ptm-slots?staffId=${encodeURIComponent(staffId)}`);
+}
+
+export function bookPTMSlot(accessToken: string, slotId: string) {
+  return authedRequest<PTMSlotItem>(accessToken, `/ptm-slots/${encodeURIComponent(slotId)}/book`, { method: "PATCH" });
+}

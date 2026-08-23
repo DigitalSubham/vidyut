@@ -4,7 +4,10 @@ Read `apps/api/src/modules/` broadly + `apps/web-app/app/(school)/` (Unit 27) fi
 
 ## Open Questions
 
-None — this is the one unit in this batch with no real design ambiguity. The pattern is proven (Unit 27) and just needs repeating.
+None at the spec level — the pattern is proven (Unit 27) and just needs repeating. Two implementation-time calls, resolved here per the spec's own instruction to decide during implementation, not treated as ambiguity:
+
+1. **Scope adjustment — 2 of the original 10 items are already done**, built by later units that landed after this spec was drafted: item 4 (exam/term setup + `ExamSubject` configuration) was already built in Unit 46's exams page (Subjects tab); item 8 (certificates issue/list/register) was already built in Unit 50's dedicated `/certificates` page. Neither is rebuilt here. The real remaining gap is 8 items: guardians, staff (create form + leave approval queue — list/documents/attendance/ID-card tabs already exist from Unit 42), admissions, marks entry, report cards, announcements, homework, and timetable (a real weekly grid — the existing page from Unit 47 is substitution-management only, no period-assignment grid).
+2. **Admissions pipeline view — simple stage-filtered list, not a kanban board.** A drag-and-drop kanban is meaningfully more UI work for a v1 admin panel with no validated demand for that specific interaction; a list filterable by `stage` (`NEW`/`CONTACTED`/`VISITED`/`APPLIED`/`ADMITTED`/`LOST`) with an inline stage-change action gets the same job done with the same table/form pattern every other screen in this app uses.
 
 ## Goal
 

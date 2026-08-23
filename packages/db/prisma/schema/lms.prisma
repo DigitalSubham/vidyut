@@ -1,0 +1,101 @@
+// Lesson Planning, Curriculum & LMS — Unit 67 (A10, On-Demand). See
+// context/feature-specs/67-lesson-planning-curriculum-lms.md. Content items
+// reuse Unit 04's S3 storage wrapper for files (no video hosting); live
+// classes are a link-out point to an externally-created meeting, not a real
+// SDK integration (both per the spec's own Open Question recommendations).
+
+enum ContentItemType {
+  FILE
+  LINK
+}
+
+/// A syllabus checklist item for a subject+class. Tenant-owned — RLS-scoped.
+model SyllabusChapter {
+  id          String    @id @default(cuid())
+  tenantId    String
+  branchId    String
+  subjectId   String
+  classId     String
+  title       String
+  order       Int
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+  branch  Branch  @relation(fields: [branchId], references: [id])
+  subject Subject @relation(fields: [subjectId], references: [id])
+  class   Class   @relation(fields: [classId], references: [id])
+
+  @@index([tenantId])
+}
+
+/// A teacher's lesson plan for one section+subject on one date. No approval
+/// gate by default (spec scope #2 — don't build unrequested workflow).
+/// Tenant-owned — RLS-scoped.
+model LessonPlan {
+  id        String   @id @default(cuid())
+  tenantId  String
+  branchId  String
+  staffId   String
+  subjectId String
+  sectionId String
+  date      DateTime
+  topic     String
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+  branch  Branch  @relation(fields: [branchId], references: [id])
+  staff   Staff   @relation(fields: [staffId], references: [id])
+  subject Subject @relation(fields: [subjectId], references: [id])
+  section Section @relation(fields: [sectionId], references: [id])
+
+  @@index([tenantId])
+}
+
+/// The document/link content library (scope #3, Open Question 1 — no video
+/// hosting). Tenant-owned — RLS-scoped.
+model ContentItem {
+  id          String          @id @default(cuid())
+  tenantId    String
+  branchId    String
+  title       String
+  type        ContentItemType
+  fileUrl     String?
+  linkUrl     String?
+  subjectId   String
+  classId     String
+  createdById String
+  createdAt   DateTime        @default(now())
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+  branch  Branch  @relation(fields: [branchId], references: [id])
+  subject Subject @relation(fields: [subjectId], references: [id])
+  class   Class   @relation(fields: [classId], references: [id])
+
+  @@index([tenantId])
+}
+
+/// A scheduled live-class entry pointing at an externally-created meeting
+/// link (Open Question 2 — link-out only, no SDK integration). Tenant-owned
+/// — RLS-scoped.
+model LiveClassLink {
+  id          String   @id @default(cuid())
+  tenantId    String
+  branchId    String
+  sectionId   String
+  subjectId   String
+  startTime   DateTime
+  joinUrl     String
+  createdById String
+  createdAt   DateTime @default(now())
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+  branch  Branch  @relation(fields: [branchId], references: [id])
+  section Section @relation(fields: [sectionId], references: [id])
+  subject Subject @relation(fields: [subjectId], references: [id])
+
+  @@index([tenantId])
+}

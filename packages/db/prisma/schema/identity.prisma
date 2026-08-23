@@ -36,6 +36,8 @@ model User {
   // Null means "no device registered," a real fallback-to-SMS signal, not
   // just "userId exists."
   pushToken        String?
+  // Unit 69 scope #4 — a client-side onboarding-tour flag, no CMS content behind it.
+  hasSeenTour      Boolean    @default(false)
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
   deletedAt        DateTime?
@@ -47,6 +49,7 @@ model User {
   guardianProfiles  Guardian[]
   staffProfile      Staff?
   studentProfile    Student?
+  communicationPreferences CommunicationPreference[]
 
   @@unique([tenantId, phone])
   @@unique([tenantId, email])

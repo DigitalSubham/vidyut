@@ -4,7 +4,7 @@ Read `apps/web-site/` (Unit 29) first.
 
 ## Open Questions
 
-1. **CMS scope** — a full page-builder CMS is real, substantial scope. **Recommendation:** v1 = a small fixed set of editable sections (About, Notices list, Gallery, Contact) backed by simple models, not a generic page/block editor. Confirm this is enough before building a heavier CMS.
+1. **CMS scope** — a full page-builder CMS is real, substantial scope. **Resolved: adopted the spec's own recommendation** — a small fixed set of sections (Notices, Gallery, Contact) backed by simple models (`PublicNotice`, reused `GalleryAlbum.isPublic`, flat `Tenant` contact fields), not a generic page/block editor. A full CMS (or an "About" section, which turned out not to need its own model — the existing `Tenant.name`/`address`/`logoUrl` from Unit 29/36 already cover it) remains out of scope.
 
 ## Goal
 

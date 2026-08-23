@@ -1,10 +1,10 @@
 # Unit 58 — Library Management (D2, full On-Demand module)
 
-Same On-Demand caveat as Unit 57 — build when a paying school asks (`build-approach.md` §6).
+Same On-Demand caveat as Unit 57 — build when a paying school asks (`build-approach.md` §6). **Built at the user's explicit request** ("continue with unit 58", following the same confirmed exception as Unit 57) — no real school demand was confirmed before implementation. Flagged here for visibility, not as a defect.
 
 ## Open Questions
 
-1. **ISBN/bibliographic auto-fetch** needs a real external API (Open Library, Google Books) — free tier likely sufficient, but confirm it's wanted before adding an external dependency for what could just be manual catalog entry.
+1. **ISBN/bibliographic auto-fetch** needs a real external API (Open Library, Google Books) — **Resolved: not built.** No confirmation was given that this is wanted, and it would add an external API dependency for what manual catalog entry (`title`/`author`/`isbn` as plain fields on `Book`) already covers. Revisit if a school specifically asks for auto-fetch.
 
 ## Goal
 
@@ -27,6 +27,13 @@ OPAC (public catalog browsing — no validated demand); digital library/e-books 
 - Issue/return/renew correctly tracks copy status and due dates; an overdue return correctly generates a fine invoice via the existing fee engine.
 - Tenant-isolation tests.
 - `progress-tracker.md` updated.
+
+## Decisions made during build
+
+- `LibraryMember` is a thin link row (`branchId` + one of `studentId`/`staffId`) — no duplicated name/contact fields, per scope #2's "not a new identity."
+- Fines only bill student members (`Invoice.studentId` is a hard FK — there's no staff fee ledger to attach a staff fine to). A staff member returning a book late is recorded (`BookIssue.returnedAt`) but generates no invoice; this is a real gap if a school needs staff fines, not an oversight — revisit if it comes up.
+- Fine amount: a flat `FINE_PER_DAY_PAISE` constant (₹2/day) — a real school would want this configurable per tenant; deferred until one asks (`ponytail`-style — a config knob for a value nobody has told us they need yet).
+- No nightly overdue-reminder cron was built — the spec's scope only calls for a fine "generated on overdue return" (i.e., at the return event), not a proactive alert while a book is still outstanding. Unit 57's cron-scan pattern is the template to reuse if that's wanted later.
 
 ## Next unit
 

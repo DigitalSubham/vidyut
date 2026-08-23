@@ -38,7 +38,7 @@ export const listStaffQuerySchema = z.object({
 });
 export type ListStaffQueryInput = z.infer<typeof listStaffQuerySchema>;
 
-const leaveTypeValues = ["CASUAL", "SICK", "EARNED", "OTHER"] as const;
+const leaveTypeValues = ["CASUAL", "SICK", "EARNED", "UNPAID", "OTHER"] as const;
 
 export const createLeaveRequestSchema = z.object({
   staffId: z.string().min(1, "staff.errors.staffRequired"),

@@ -17,7 +17,7 @@ export async function createAlbum(auth: RequestAuth, input: CreateGalleryAlbumIn
 
   return withTenant(auth.tenantId, (tx) =>
     tx.galleryAlbum.create({
-      data: { tenantId: auth.tenantId, branchId: input.branchId, title: input.title },
+      data: { tenantId: auth.tenantId, branchId: input.branchId, title: input.title, isPublic: input.isPublic },
     })
   );
 }

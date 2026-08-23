@@ -11,6 +11,8 @@ export const createGuardianSchema = z.object({
   name: z.string().trim().min(1, "guardian.errors.nameRequired"),
   relation: z.enum(guardianRelationValues),
   phone: z.string().trim().min(1, "guardian.errors.phoneRequired"),
+  alternatePhone: z.string().trim().min(1).optional(),
+  whatsappOptIn: z.boolean().default(false),
   email: z.string().trim().email("guardian.errors.invalidEmail").optional(),
   occupation: z.string().trim().min(1).optional(),
 });
@@ -20,6 +22,8 @@ export const patchGuardianSchema = z.object({
   name: z.string().trim().min(1).optional(),
   relation: z.enum(guardianRelationValues).optional(),
   phone: z.string().trim().min(1).optional(),
+  alternatePhone: z.string().trim().min(1).optional(),
+  whatsappOptIn: z.boolean().optional(),
   email: z.string().trim().email("guardian.errors.invalidEmail").optional(),
   occupation: z.string().trim().min(1).optional(),
 });

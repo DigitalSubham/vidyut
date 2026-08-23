@@ -4,8 +4,9 @@ Read `apps/mobile/src/screens/` (Units 16, 24–26) first.
 
 ## Open Questions
 
-1. **Messaging/leave from the teacher app** — depends on Unit 49's `Message`/leave-apply patterns existing first; sequence this after Unit 49 and Unit 09's existing `LeaveRequest` apply endpoint (already built, just never surfaced on mobile).
-2. **Student materials/online exams** — depends on Unit 46's `OnlineExam` and a study-material model (not yet specced anywhere — **flag to user**: is a content library (A10, LMS territory, currently fully deferred) actually wanted, or just online exams without materials? Building online-exam-taking without any study material to prepare from is a valid, smaller scope — confirm before assuming A10 is now in scope too.
+1. **Messaging/leave from the teacher app** — resolved: messaging (Unit 49) and the unified calendar were already wired into `TeacherHomeScreen`/`ParentStudentHomeScreen` by Unit 49's own mobile pass. The only real gap left was leave-apply — Unit 09's `POST /leave-requests` was backend-only until this unit added a `LeaveScreen` tab to the teacher app.
+2. **Student materials/online exams** — resolved by auto-pacing (per this session's operating mode) to the smaller, already-spec-endorsed option: online-exam-taking without a study-material library. A10 (content library, LMS territory) remains fully deferred, untouched by this unit. This was **already built** by Unit 46/49's own mobile passes (`OnlineExamTaker` wired into `ParentStudentHomeScreen`'s `onlineExams` section) — nothing new needed here.
+3. **Scope discovered at implementation time**: auditing `apps/mobile/src/screens/` and `navigation/` before writing anything showed messaging, the unified calendar, and online-exam-taking were *already* wired in (Units 46/49), leaving only two real gaps: (a) leave-apply on the teacher app, (b) PTM slot booking on the parent app (Unit 49's own mobile pass explicitly scoped this out — "PTM-slot booking did not get a mobile screen this pass"). PTM booking needed one small backend addition: `GET /me/teachers` (self-scoped, resolves a student's current-session subject teachers) to give the parent a staffId to browse slots for — the existing `GET /ptm-slots?staffId=` required one, and no self-scoped way to discover it existed.
 
 ## Goal
 

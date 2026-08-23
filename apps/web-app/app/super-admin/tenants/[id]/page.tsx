@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,6 +20,8 @@ export default function TenantDetailPage() {
   const [invoiceAmount, setInvoiceAmount] = useState("");
   const [invoiceDueDate, setInvoiceDueDate] = useState("");
   const [rechargeAmount, setRechargeAmount] = useState("");
+  const [branding, setBranding] = useState({ logoUrl: "", primaryColor: "", customDomain: "" });
+  const [brandingInitialized, setBrandingInitialized] = useState(false);
 
   const tenantQuery = useQuery({
     queryKey: ["platform", "tenant", params.id],
@@ -32,6 +34,30 @@ export default function TenantDetailPage() {
   const invoicesQuery = useQuery({
     queryKey: ["platform", "tenant", params.id, "invoices"],
     queryFn: () => platformApi.listInvoices(params.id),
+  });
+
+  useEffect(() => {
+    const tenant = tenantQuery.data?.data;
+    if (tenant && !brandingInitialized) {
+      setBranding({
+        logoUrl: tenant.logoUrl ?? "",
+        primaryColor: tenant.primaryColor ?? "",
+        customDomain: tenant.customDomain ?? "",
+      });
+      setBrandingInitialized(true);
+    }
+  }, [tenantQuery.data, brandingInitialized]);
+
+  const brandingMutation = useMutation({
+    mutationFn: () =>
+      platformApi.patchTenantBranding(params.id, {
+        ...(branding.logoUrl ? { logoUrl: branding.logoUrl } : {}),
+        ...(branding.primaryColor ? { primaryColor: branding.primaryColor } : {}),
+        ...(branding.customDomain ? { customDomain: branding.customDomain } : {}),
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["platform", "tenant", params.id] });
+    },
   });
 
   const suspendMutation = useMutation({
@@ -151,6 +177,50 @@ export default function TenantDetailPage() {
           </CardContent>
         </Card>
       )}
+
+      <Card className="rounded-xl">
+        <CardHeader>
+          <CardTitle className="text-base">{t("platform.branding.title")}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              brandingMutation.mutate();
+            }}
+            className="flex flex-wrap items-end gap-3"
+          >
+            <div className="flex flex-col gap-1">
+              <label className="text-sm text-text-muted">{t("platform.branding.logoUrl")}</label>
+              <Input
+                className="w-64"
+                value={branding.logoUrl}
+                onChange={(e) => setBranding({ ...branding, logoUrl: e.target.value })}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-sm text-text-muted">{t("platform.branding.primaryColor")}</label>
+              <Input
+                className="w-32"
+                placeholder="#4F46E5"
+                value={branding.primaryColor}
+                onChange={(e) => setBranding({ ...branding, primaryColor: e.target.value })}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-sm text-text-muted">{t("platform.branding.customDomain")}</label>
+              <Input
+                className="w-52"
+                value={branding.customDomain}
+                onChange={(e) => setBranding({ ...branding, customDomain: e.target.value })}
+              />
+            </div>
+            <Button type="submit" disabled={brandingMutation.isPending}>
+              {t("platform.branding.save")}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
 
       <Card className="rounded-xl">
         <CardHeader>

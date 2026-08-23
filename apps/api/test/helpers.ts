@@ -96,8 +96,12 @@ export async function cleanupTenant(tenantId: string) {
     // AuditLog IS RLS-scoped (unlike the platform tables above) — must be
     // deleted inside withTenant, or the delete silently matches zero rows.
     await tx.auditLog.deleteMany({ where: { tenantId } });
+    await tx.supportTicket.deleteMany({ where: { tenantId } });
     await tx.dataDeletionRequest.deleteMany({ where: { tenantId } });
     await tx.notificationTemplate.deleteMany({ where: { tenantId } });
+    // Unit 68 — deleted before User/Branch.
+    await tx.communicationPreference.deleteMany({ where: { tenantId } });
+    await tx.newsletter.deleteMany({ where: { tenantId } });
     await tx.refreshToken.deleteMany({ where: { tenantId } });
     await tx.userRole.deleteMany({ where: { tenantId } });
     await tx.branchMembership.deleteMany({ where: { tenantId } });
@@ -117,7 +121,10 @@ export async function cleanupTenant(tenantId: string) {
     await tx.exam.deleteMany({ where: { tenantId } });
     await tx.notificationLog.deleteMany({ where: { tenantId } });
     await tx.announcement.deleteMany({ where: { tenantId } });
+    await tx.publicNotice.deleteMany({ where: { tenantId } });
     await tx.certificate.deleteMany({ where: { tenantId } });
+    await tx.certificateTemplate.deleteMany({ where: { tenantId } });
+    await tx.document.deleteMany({ where: { tenantId } });
     await tx.substitution.deleteMany({ where: { tenantId } });
     await tx.timetablePeriod.deleteMany({ where: { tenantId } });
     await tx.homeworkSubmission.deleteMany({ where: { tenantId } });
@@ -129,6 +136,53 @@ export async function cleanupTenant(tenantId: string) {
     await tx.invoiceItem.deleteMany({ where: { tenantId } });
     await tx.invoice.deleteMany({ where: { tenantId } });
     await tx.concession.deleteMany({ where: { tenantId } });
+    // Unit 65 — deleted before Staff.
+    await tx.staffTask.deleteMany({ where: { tenantId } });
+    // Unit 64 — deleted before Student/Branch/FeeAssignment references.
+    await tx.storeOrder.deleteMany({ where: { tenantId } });
+    await tx.storeItem.deleteMany({ where: { tenantId } });
+    await tx.grnLine.deleteMany({ where: { tenantId } });
+    await tx.grn.deleteMany({ where: { tenantId } });
+    await tx.purchaseOrder.deleteMany({ where: { tenantId } });
+    await tx.stockMovement.deleteMany({ where: { tenantId } });
+    await tx.inventoryItem.deleteMany({ where: { tenantId } });
+    await tx.store.deleteMany({ where: { tenantId } });
+    await tx.asset.deleteMany({ where: { tenantId } });
+    // Unit 63 — deleted before Staff.
+    await tx.salaryStructure.deleteMany({ where: { tenantId } });
+    // Unit 62 — deleted before Branch.
+    await tx.expense.deleteMany({ where: { tenantId } });
+    await tx.expenseHead.deleteMany({ where: { tenantId } });
+    // Unit 61 — deleted before Student.
+    await tx.canteenTxn.deleteMany({ where: { tenantId } });
+    await tx.canteenWallet.deleteMany({ where: { tenantId } });
+    await tx.award.deleteMany({ where: { tenantId } });
+    await tx.disciplineIncident.deleteMany({ where: { tenantId } });
+    await tx.healthRecord.deleteMany({ where: { tenantId } });
+    await tx.lostFoundEntry.deleteMany({ where: { tenantId } });
+    // Unit 60 — deleted before Student/Staff.
+    await tx.gatePass.deleteMany({ where: { tenantId } });
+    await tx.visitor.deleteMany({ where: { tenantId } });
+    await tx.complaintDeskEntry.deleteMany({ where: { tenantId } });
+    await tx.callLogEntry.deleteMany({ where: { tenantId } });
+    await tx.postalLogEntry.deleteMany({ where: { tenantId } });
+    // Unit 59 — deleted before FeeAssignment/Room/HostelBlock/Student, which they reference.
+    await tx.hostelAttendanceRecord.deleteMany({ where: { tenantId } });
+    await tx.roomAllocation.deleteMany({ where: { tenantId } });
+    await tx.room.deleteMany({ where: { tenantId } });
+    await tx.hostelBlock.deleteMany({ where: { tenantId } });
+    // Unit 58 — deleted before Invoice/LibraryMember/BookCopy, which they reference.
+    await tx.bookIssue.deleteMany({ where: { tenantId } });
+    await tx.libraryMember.deleteMany({ where: { tenantId } });
+    await tx.bookCopy.deleteMany({ where: { tenantId } });
+    await tx.book.deleteMany({ where: { tenantId } });
+    // Unit 57 — deleted before FeeAssignment/Vehicle/Route, which they reference.
+    await tx.locationPing.deleteMany({ where: { tenantId } });
+    await tx.studentRouteAllocation.deleteMany({ where: { tenantId } });
+    await tx.driver.deleteMany({ where: { tenantId } });
+    await tx.vehicle.deleteMany({ where: { tenantId } });
+    await tx.routeStop.deleteMany({ where: { tenantId } });
+    await tx.route.deleteMany({ where: { tenantId } });
     await tx.feeAssignment.deleteMany({ where: { tenantId } });
     await tx.fineRule.deleteMany({ where: { tenantId } });
     await tx.feeStructureItem.deleteMany({ where: { tenantId } });
@@ -152,6 +206,11 @@ export async function cleanupTenant(tenantId: string) {
     await tx.message.deleteMany({ where: { tenantId } });
     await tx.teacherAssignment.deleteMany({ where: { tenantId } });
     await tx.staffAttendanceRecord.deleteMany({ where: { tenantId } });
+    // Unit 67 — deleted before Staff/Section/Class/Subject.
+    await tx.syllabusChapter.deleteMany({ where: { tenantId } });
+    await tx.lessonPlan.deleteMany({ where: { tenantId } });
+    await tx.contentItem.deleteMany({ where: { tenantId } });
+    await tx.liveClassLink.deleteMany({ where: { tenantId } });
     await tx.staff.deleteMany({ where: { tenantId } });
     await tx.user.deleteMany({ where: { tenantId } });
     await tx.studentElectiveChoice.deleteMany({ where: { tenantId } });
@@ -160,7 +219,11 @@ export async function cleanupTenant(tenantId: string) {
     await tx.studentGuardian.deleteMany({ where: { tenantId } });
     await tx.guardian.deleteMany({ where: { tenantId } });
     await tx.enrollment.deleteMany({ where: { tenantId } });
+    // Unit 66 — deleted before Student (its FK is ON DELETE SET NULL, but
+    // deleted explicitly for clarity); the timeline entries reference Student directly.
+    await tx.studentTimelineEntry.deleteMany({ where: { tenantId } });
     await tx.student.deleteMany({ where: { tenantId } });
+    await tx.siblingGroup.deleteMany({ where: { tenantId } });
     await tx.house.deleteMany({ where: { tenantId } });
     await tx.section.deleteMany({ where: { tenantId } });
     await tx.class.deleteMany({ where: { tenantId } });

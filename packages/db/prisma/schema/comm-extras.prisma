@@ -1,0 +1,44 @@
+// Communication Extras — Unit 68. See
+// context/feature-specs/68-communication-extras.md. Guardian's alternate
+// contact fields live in guardians.prisma (extending the existing model,
+// not a new one).
+
+/// Open Question 1 — a real per-channel opt-out gate checked by the send
+/// functions before dispatch, not just a UI toggle with no effect. Absence
+/// of a row for (userId, channel) means "opted in" (the default for every
+/// channel, confirmed with the user for birthday automation specifically —
+/// Open Question 2); an explicit row with optedIn=false is how a user opts
+/// out. Tenant-owned — RLS-scoped, no branchId (a user-level preference).
+model CommunicationPreference {
+  id       String       @id @default(cuid())
+  tenantId String
+  userId   String
+  channel  NotifChannel
+  optedIn  Boolean      @default(true)
+  updatedAt DateTime    @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@unique([userId, channel])
+  @@index([tenantId])
+}
+
+/// Scope #3 — reuses Unit 20's Announcement fan-out mechanism (via a real
+/// Announcement row + the existing `announcement.fanout` job, same pattern
+/// as Unit 56's platform-wide announcements) with a distinct template key,
+/// not a parallel send pipeline. Branch-owned — RLS-scoped.
+model Newsletter {
+  id        String    @id @default(cuid())
+  tenantId  String
+  branchId  String
+  title     String
+  body      String
+  sentAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  branch Branch @relation(fields: [branchId], references: [id])
+
+  @@index([tenantId])
+}

@@ -1,6 +1,7 @@
 import { prisma, withTenant } from "@vidyut/db";
 import type { PublicCreateEnquiryInput } from "@vidyut/validation";
 import { AppError } from "../../core/errors";
+import { getDownloadUrl } from "../../core/storage";
 
 /**
  * Unit 29 — the public school-site's tenant resolution + admission intake.
@@ -56,4 +57,52 @@ export async function submitPublicEnquiry(schoolCode: string, input: PublicCreat
       },
     });
   });
+}
+
+// -- Unit 54: Public Site Depth (notices, gallery, contact) --------------------
+
+/** Newest-first, across all of the tenant's active branches — the public site has no branch picker. */
+export async function getPublicNotices(schoolCode: string) {
+  const tenant = await resolveTenantBySchoolCode(schoolCode);
+
+  return withTenant(tenant.id, (tx) => tx.publicNotice.findMany({ orderBy: { publishedAt: "desc" }, take: 50 }));
+}
+
+/** Only albums a staff member has explicitly flagged `isPublic` — everything else stays staff-only. */
+export async function getPublicGallery(schoolCode: string) {
+  const tenant = await resolveTenantBySchoolCode(schoolCode);
+
+  const albums = await withTenant(tenant.id, (tx) =>
+    tx.galleryAlbum.findMany({
+      where: { isPublic: true },
+      include: { photos: true },
+      orderBy: { createdAt: "desc" },
+    })
+  );
+
+  return Promise.all(
+    albums.map(async (album) => ({
+      id: album.id,
+      title: album.title,
+      photos: await Promise.all(
+        album.photos.map(async (p) => ({ id: p.id, caption: p.caption, url: await getDownloadUrl(p.key) }))
+      ),
+    }))
+  );
+}
+
+export async function getPublicContact(schoolCode: string) {
+  const tenant = await resolveTenantBySchoolCode(schoolCode);
+
+  const branches = await withTenant(tenant.id, (tx) =>
+    tx.branch.findMany({ where: { isActive: true }, orderBy: { createdAt: "asc" } })
+  );
+
+  return {
+    phone: tenant.contactPhone,
+    email: tenant.contactEmail,
+    address: tenant.address,
+    mapUrl: tenant.mapUrl,
+    branches: branches.map((b) => ({ id: b.id, name: b.name, address: b.address })),
+  };
 }

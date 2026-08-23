@@ -1,0 +1,92 @@
+// Hostel / Dormitory — Unit 59 (D3, third fully On-Demand module). See
+// context/feature-specs/59-hostel-dormitory.md.
+
+/// A hostel building/wing. Branch-owned — RLS-scoped.
+model HostelBlock {
+  id        String    @id @default(cuid())
+  tenantId  String
+  branchId  String
+  name      String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  branch Branch @relation(fields: [branchId], references: [id])
+  rooms  Room[]
+
+  @@index([tenantId])
+}
+
+/// A room within a block. Branch-owned — RLS-scoped.
+model Room {
+  id        String    @id @default(cuid())
+  tenantId  String
+  branchId  String
+  blockId   String
+  roomNo    String
+  capacity  Int
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  tenant      Tenant           @relation(fields: [tenantId], references: [id])
+  branch      Branch           @relation(fields: [branchId], references: [id])
+  block       HostelBlock      @relation(fields: [blockId], references: [id])
+  allocations RoomAllocation[]
+
+  @@unique([blockId, roomNo])
+  @@index([tenantId])
+}
+
+/// A student's stay in a room. `toDate: null` means still resident — capacity
+/// is enforced at the service layer against the count of such active rows
+/// (spec's "Decisions made during build"). `feeAssignmentId` links to the
+/// hostel fee FeeAssignment created alongside (same reuse pattern as
+/// transport/library — Unit 11's fee engine, no parallel billing model).
+/// Branch-owned — RLS-scoped.
+model RoomAllocation {
+  id              String    @id @default(cuid())
+  tenantId        String
+  branchId        String
+  studentId       String
+  roomId          String
+  fromDate        DateTime
+  toDate          DateTime?
+  feeAssignmentId String?
+  createdAt       DateTime  @default(now())
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id])
+  branch        Branch         @relation(fields: [branchId], references: [id])
+  student       Student        @relation(fields: [studentId], references: [id])
+  room          Room           @relation(fields: [roomId], references: [id])
+  feeAssignment FeeAssignment? @relation(fields: [feeAssignmentId], references: [id])
+
+  @@unique([studentId, roomId])
+  @@index([tenantId])
+}
+
+/// One student's night roll-call attendance for one day — its own model,
+/// mirroring `StaffAttendanceRecord`'s precedent (no `sectionId`, same
+/// `AttendanceStatus`/`AttendanceSource` enums), not a tagged extension of
+/// the class-attendance `AttendanceRecord` (see spec's "Decisions made
+/// during build"). Branch-owned — RLS-scoped.
+model HostelAttendanceRecord {
+  id         String           @id @default(cuid())
+  tenantId   String
+  branchId   String
+  studentId  String
+  date       DateTime
+  status     AttendanceStatus
+  markedById String
+  source     AttendanceSource @default(WEB)
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+  branch  Branch  @relation(fields: [branchId], references: [id])
+  student Student @relation(fields: [studentId], references: [id])
+
+  @@unique([studentId, date])
+  @@index([tenantId])
+}

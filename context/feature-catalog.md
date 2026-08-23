@@ -61,7 +61,7 @@
 | Unique admission/enrollment number | ✅ | Auto-generated (`nextAdmissionNo`), sequential per branch — built (Unit 07) | ADM | P0 |
 | Roll number management | ✅ | `Enrollment.rollNo`, settable per section — built (Unit 07) | ADM, TCH | P0 |
 | Guardian/parent linkage | ✅ | Multiple guardians, primary/pay flags — built (Unit 08) | ADM, PAR | P0 |
-| Sibling linking | ❌ | Group siblings for fees/discounts/comms — not built | ADM, ACC | P1 |
+| Sibling linking | ✅ | `SiblingGroup` tag (no auto fee-discount, stays a manual `Concession`) — built (Unit 66) | ADM, ACC | P1 |
 | Category/caste/religion fields | ✅ | `Student.category`/`religion` fields exist — built (Unit 07) | ADM | P0 |
 | Student documents vault | ❌ | Birth cert, Aadhaar, prev. TC, photos (upload/store) — not built | ADM | P1 |
 | Medical/health info | ❌ | Allergies, conditions, emergency contact — not built | ADM, PRIN | P1 |
@@ -70,12 +70,12 @@
 | Student status | ✅ | Active, inactive, TC issued, alumni, struck-off (`StudentStatus` enum) — built | ADM | P0 |
 | Class/section assignment | ✅ | Assign & reassign via `Enrollment` — built (Unit 07) | ADM | P0 |
 | Student promotion (year-end) | ✅ | Bulk promote/detain to next class/session — built and tested (Unit 33 rollover) | ADM, PRIN | P0/P1 |
-| Roll-back / re-admission | ⚠️ | Rollover supports REPEAT; there's no explicit "re-admit a previously withdrawn student" flow | ADM | P1 |
-| Transfer between sections/branches | ❌ | Move students; multi-branch — not built as a dedicated feature | ADM | P2 |
-| Alumni management | ❌ | Post-graduation records, alumni portal — not built | ADM | P3 |
-| Student ID card generation | ⚠️ | Templated, with photo + barcode/QR — built (Unit 21, single-issue only via `Certificate.ID_CARD`); no bulk print, no QR/photo layout | ADM | P1 |
+| Roll-back / re-admission | ✅ | Standalone `POST /students/:id/readmit`, distinct from Unit 33's rollover-time REPEAT — built (Unit 66) | ADM | P1 |
+| Transfer between sections/branches | ✅ | `POST /students/:id/transfer` — moves current Enrollment + `Student.branchId`; old attendance/marks/fee history stays put — built (Unit 66) | ADM | P2 |
+| Alumni management | ⚠️ | `Student.status = ALUMNI` transition + filtered `GET /students/alumni` list — built (Unit 66); no distinct alumni-portal login (reuses existing parent/student login) | ADM | P3 |
+| Student ID card generation | ⚠️ | Single-issue (Unit 21) and bulk-by-section (Unit 50, `POST /certificates/bulk-ids`, QR-data payload) both built via `Certificate.ID_CARD`; no real QR image/photo layout rendered yet — PDF gen is still a stub job | ADM | P1 |
 | Student search & filters | ✅ | By name, admission no.; built (Unit 07, `search` query param) | ADM, TCH | P0 |
-| Student timeline/log | ❌ | Activity, discipline, achievements — not built | PRIN, TCH | P2 |
+| Student timeline/log | ✅ | `StudentTimelineEntry` (`DISCIPLINE`/`ACHIEVEMENT`/`NOTE`), append-only, surfaced on the student profile — built (Unit 66) | PRIN, TCH | P2 |
 
 ## A2. Admission & Enquiry (CRM) `[P1 — light version P0]`
 | Feature | Status | Detail | Roles | Phase |
@@ -97,9 +97,9 @@
 |---|---|---|---|---|
 | Parent accounts | ✅ | Login per guardian; linked to child(ren) — built (Unit 08, OTP login) | PAR | P0 |
 | Multi-child single login | ✅ | One parent → many students — built (`resolveGuardianStudentIds`) | PAR | P0 |
-| Contact management | ⚠️ | Phone + email exist on `Guardian`; no dedicated "alternate contact" or WhatsApp-specific field | ADM, PAR | P0 |
+| Contact management | ✅ | `Guardian.alternatePhone`/`whatsappOptIn` added alongside phone/email — built (Unit 68) | ADM, PAR | P0 |
 | Parent app onboarding | ✅ | Invite via SMS/link; OTP login — built (Unit 08); the SMS itself is a stub, same caveat as the whole notifications engine | PAR | P0 |
-| Communication preferences | ❌ | Opt-in SMS/WhatsApp/push/email — not built (nothing to opt out of yet, since sends are stubbed) | PAR | P1 |
+| Communication preferences | ✅ | Per-channel opt-out (`CommunicationPreference`), a real send-time gate checked by the announcement fan-out — built (Unit 68); no granular per-message-type preferences | PAR | P1 |
 | Guardian access control | ✅ | `StudentGuardian.isPrimary`/`canPay` flags — built (Unit 08) | ADM | P2 |
 
 ## A4. Staff / Teacher / HR Records `[P0 basic → P2 full HR]`
@@ -187,15 +187,15 @@
 ## A10. Lesson Planning, Curriculum & LMS `[P2/P3]`
 | Feature | Status | Detail | Roles | Phase |
 |---|---|---|---|---|
-| Syllabus / curriculum tracking | ❌ | Chapters, progress — not built | TCH, PRIN | P2 |
-| Lesson plans | ❌ | Weekly/daily plans — not built | TCH | P2 |
-| Study material / content library | ❌ | Notes, PDFs, videos — not built | TCH, STU | P2 |
-| Online classes / live video | ❌ | Zoom/Meet integration — not built | TCH, STU | P3 |
-| Recorded lectures | ❌ | Store & stream — not built | STU | P3 |
+| Syllabus / curriculum tracking | ✅ | `SyllabusChapter` — a plain checklist (`order` + `completedAt`), not a rich curriculum-mapping tool — built (Unit 67) | TCH, PRIN | P2 |
+| Lesson plans | ✅ | `LessonPlan` (staffId/subjectId/sectionId/date/topic/notes), no approval-gate workflow — built (Unit 67) | TCH | P2 |
+| Study material / content library | ✅ | `ContentItem` (`FILE`, via Unit 04's S3 wrapper, or `LINK`) — built (Unit 67); no video hosting/transcoding (external link-out only) | TCH, STU | P2 |
+| Online classes / live video | ⚠️ | `LiveClassLink` — a scheduled link-out to an externally-created Zoom/Meet/Jitsi meeting — built (Unit 67); no real SDK integration | TCH, STU | P3 |
+| Recorded lectures | ❌ | Store & stream — not built (would need the video-hosting infra explicitly deferred above) | STU | P3 |
 | Digital assignments/quizzes | ❌ | (see A7/A8) — not built beyond what's listed there | TCH | P2 |
-| Learning analytics | ❌ | Engagement, completion — not built | PRIN | P3 |
+| Learning analytics | ❌ | Engagement, completion — not built (premature before there's real content to measure engagement against) | PRIN | P3 |
 
-*A10 is entirely On-Demand scope (`build-approach.md` §6) — nothing here was in the v1 plan, so "not built" reflects the plan, not a gap.*
+*A10 was entirely On-Demand scope (`build-approach.md` §6); the core of it shipped in Unit 67 at the user's explicit request. Recorded lectures and learning analytics remain deferred.*
 
 ---
 
@@ -225,42 +225,51 @@
 | Multi-currency | ❌ | (rarely needed) — explicitly skipped as pure speculation (Unit 48's own Open Question 1) | ACC | P3 |
 | Payment-gateway platform fee | ✅ | Our revenue on transactions — built (Unit 13, `Payment.platformFeeAmount`); revenue summary built (Unit 30) | SA | P1 |
 
-## B2. Accounting & Finance `[P2 — On-Demand, not built]`
-| Feature | Status | Detail | Roles | Phase |
-|---|---|---|---|---|
-| Income/expense tracking | ❌ | Vouchers, heads | ACC | P2 |
-| Chart of accounts / ledgers | ❌ | General ledger | ACC | P2 |
-| Cash book / day book / bank book | ❌ | Registers | ACC | P2 |
-| Vendor/supplier payments | ❌ | Bills, payables | ACC | P2 |
-| Bank reconciliation | ❌ | Statement match | ACC | P2 |
-| Financial statements | ❌ | P&L, balance sheet, trial balance | OWN, ACC | P3 |
-| GST / tax handling | ❌ | Invoices, returns | ACC | P2 |
-| Tally / accounting export | ❌ | Push to Tally/Zoho Books | ACC | P2 |
-| Budgeting | ❌ | Plan vs actual | OWN | P3 |
+## B2. Accounting & Finance `[P2 — On-Demand, export-first path built]`
 
-## B3. Payroll & Salary `[P2 — On-Demand, not built]`
-| Feature | Status | Detail | Roles | Phase |
-|---|---|---|---|---|
-| Salary structure | ❌ | Basic, HRA, allowances, deductions | HR | P2 |
-| Attendance/leave-linked salary | ❌ | Auto-compute | HR | P2 |
-| Statutory: PF, ESI, TDS, PT | ❌ | Compliance | HR | P2 |
-| Payslip generation | ❌ | PDF, share | HR | P2 |
-| Salary disbursement / bank file | ❌ | NEFT/bank export | HR | P2 |
-| Loans / advances | ❌ | Track & recover | HR | P3 |
-| Increments / arrears | ❌ | Revisions | HR | P3 |
-| Payroll reports | ❌ | Register, statutory | HR | P2 |
+**Status ✅ built (export-first path only)** — Unit 62. The build-vs-buy call (native ledger vs. export) was put to the user directly rather than defaulted; the user confirmed export-first. See progress-tracker.md's own note.
 
-## B4. Inventory, Assets & Procurement `[P2/P3 — On-Demand, not built]`
 | Feature | Status | Detail | Roles | Phase |
 |---|---|---|---|---|
-| Stock/inventory | ❌ | Stationery, uniforms, supplies | ADM | P2 |
-| Item categories & stores | ❌ | Multiple stores | ADM | P3 |
-| Purchase orders & GRN | ❌ | Procurement flow | ADM | P3 |
-| Issue/return tracking | ❌ | To staff/departments | ADM | P3 |
-| Asset register | ❌ | Fixed assets, depreciation | ADM | P3 |
-| Vendor management | ❌ | Suppliers | ADM | P3 |
-| Low-stock alerts | ❌ | Reorder | ADM | P3 |
-| Uniform/book store & sales | ❌ | Sell to parents, link fees | ACC | P3 |
+| Income/expense tracking | ⚠️ | A simple `Expense` log (category + amount + vendor + note) — not a payables workflow, deliberately | ACC | P2 |
+| Chart of accounts / ledgers | ❌ | Non-default path, not confirmed — not built | ACC | P2 |
+| Cash book / day book / bank book | ❌ | Non-default path, not confirmed — not built | ACC | P2 |
+| Vendor/supplier payments | ❌ | Non-default path, not confirmed — not built | ACC | P2 |
+| Bank reconciliation | ❌ | Non-default path, not confirmed — not built | ACC | P2 |
+| Financial statements | ❌ | Non-default path, not confirmed — not built | OWN, ACC | P3 |
+| GST / tax handling | ❌ | Not confirmed GST applies to this fee category — not built, per spec's own "confirm, don't assume" | ACC | P2 |
+| Tally / accounting export | ⚠️ | A CSV export (not literal Tally XML) merging existing `Payment` income and logged `Expense` rows — **not verified against a real Tally/Zoho import**, no live account exists in this environment | ACC | P2 |
+| Budgeting | ❌ | Not built | OWN | P3 |
+
+## B3. Payroll & Salary `[P2 — On-Demand, export-first path built]`
+
+**Status ✅ built (export-first path only)** — Unit 63. Same build-vs-buy call as Unit 62 (B2), put to the user directly given real statutory-compliance risk; the user confirmed export-first over a native PF/ESI/TDS/PT calculator. See progress-tracker.md's own note.
+
+| Feature | Status | Detail | Roles | Phase |
+|---|---|---|---|---|
+| Salary structure | ✅ | Basic, HRA, allowances, deductions (as JSON) | HR | P2 |
+| Attendance/leave-linked salary | ✅ | Unpaid-leave days reduce gross via a flat per-day rate — a real simplification of true proration, not statutory-accurate | HR | P2 |
+| Statutory: PF, ESI, TDS, PT | ❌ | Non-default path, not confirmed — not built, exported to a real payroll tool instead | HR | P2 |
+| Payslip generation | ❌ | Depends on statutory net-pay being computed externally and re-imported — no re-import format confirmed, not built | HR | P2 |
+| Salary disbursement / bank file | ❌ | Depends on which payroll tool is chosen — not this codebase's concern | HR | P2 |
+| Loans / advances | ❌ | Not built | HR | P3 |
+| Increments / arrears | ❌ | Not built | HR | P3 |
+| Payroll reports | ⚠️ | A CSV export for Paybooks-style import — not a register/statutory report | HR | P2 |
+
+## B4. Inventory, Assets & Procurement `[P2/P3 — On-Demand, built including parent store]`
+
+**Status ✅ built** (Unit 64 — the parent-facing store scope question was put to the user directly; the user confirmed it's in scope). See progress-tracker.md's own note.
+
+| Feature | Status | Detail | Roles | Phase |
+|---|---|---|---|---|
+| Stock/inventory | ✅ | Stationery, uniforms, supplies — running quantity kept in sync by stock movements | ADM | P2 |
+| Item categories & stores | ✅ | Multiple `Store` locations per branch | ADM | P3 |
+| Purchase orders & GRN | ✅ | A simple two-step flow (order then receipt) — no vendor RFQ/bidding | ADM | P3 |
+| Issue/return tracking | ⚠️ | Covered by generic `StockMovement(direction: OUT, reason)` — no separate per-department issue register | ADM | P3 |
+| Asset register | ✅ | A register (item, purchase date/price), not a depreciation-accounting engine — Unit 62's territory if ever built natively | ADM | P3 |
+| Vendor management | ⚠️ | A plain `vendorName` string on `PurchaseOrder` — no separate vendor directory/contact model | ADM | P3 |
+| Low-stock alerts | ✅ | Nightly cron scan (Unit 14/57's own pattern), IN_APP alert to OWNERs | ADM | P3 |
+| Uniform/book store & sales | ✅ | `StoreItem`/`StoreOrder` reuse Unit 11/12's existing fee engine (a one-off MISC-FeeHead invoice), same reuse pattern as Unit 58/59 — not a separate payment path | ACC | P3 |
 
 ---
 
@@ -286,13 +295,13 @@
 | Circulars (with attachments) | ✅ | Attachment URL + audience match (same shape as Announcements) + per-user ack tracking — `Circular`/`CircularAck`, web create/ack-count + mobile list/ack (Unit 49) | ADM, PAR | P1 |
 | Parent-teacher messaging/chat | ✅ | Async/REST-polled 1:1, not real-time (deliberate — no websocket infra for the demand level) — `Message`, mobile `MessagesScreen` shared by teacher + parent apps (Unit 49) | TCH, PAR | P2 |
 | Class/group broadcast | ⚠️ | Announcements cover this in practice (class-audience targeting); no dedicated "broadcast" UX | TCH | P1 |
-| PTM scheduling | ⚠️ | `PTMSlot` + booking endpoint built, web management (offer/list) built; **mobile parent-side booking UI not built** — a real, stated gap (Unit 49) | TCH, PAR | P2 |
+| PTM scheduling | ✅ | `PTMSlot` + booking endpoint (Unit 49), web management (offer/list), mobile parent-side booking UI (`PTMScreen`, Unit 52) | TCH, PAR | P2 |
 | Events & school calendar | ✅ | `CalendarEvent` merged at read time with exam dates + homework due-dates into one `GET /me/calendar` — replaced the old homework-only mobile calendar (Unit 49) | all | P1 |
 | Complaint / grievance / feedback | ✅ | Raise (self-scoped, branch-verified via own student) + staff resolve — web + mobile (Unit 49) | PAR, ADM | P2 |
 | Surveys / polls / feedback forms | ⚠️ | Single-choice/text only, no branching — create/respond/tally-results built; **mobile response UI not built**, web-only (Unit 49) | PRIN, PAR | P2 |
-| Newsletter | ❌ | Periodic, rich content — not built | ADM | P3 |
+| Newsletter | ✅ | Plain text/body compose, reuses the existing Announcement fan-out with a distinct template key — not rich/HTML content — built (Unit 68) | ADM | P3 |
 | Gallery / photos / achievements | ⚠️ | S3-backed album/photo upload built (web); **mobile viewing UI not built** (Unit 49) | ADM, PAR | P2 |
-| Birthday / greeting automation | ❌ | Auto wishes — not built | PAR | P3 |
+| Birthday / greeting automation | ⚠️ | Nightly cron, on by default (confirmed with the user), opt-outable via `CommunicationPreference` — built (Unit 68); **student birthdays only**, `Staff` has no `dob` field in the schema yet | PAR | P3 |
 | Emergency / SOS broadcast | ❌ | Instant all-parent alert — **deliberately not built**, needs the user's sign-off on bypassing the SMS-wallet balance check (a real billing-impact policy call, Unit 49's own Open Question 3) | PRIN | P2 |
 
 ---
@@ -302,71 +311,85 @@
 *Parts D1–D4/D6 are entirely On-Demand scope (`build-approach.md` §6) — none of this was in the v1 plan. Marked ❌ for completeness, not because anything failed.*
 
 ## D1. Transport Management `[P2]`
+**Status ✅ built** (Unit 57 — built at explicit user request ahead of confirmed real demand, see progress-tracker.md's own note; `build-approach.md`'s on-demand-only-when-needed rule otherwise applies to D2+ below).
+
 | Feature | Status | Roles | Phase |
 |---|---|---|---|
-| Routes & stops | ❌ | TRN | P2 |
-| Vehicles & documents | ❌ | TRN | P2 |
-| Driver/attendant management | ❌ | TRN | P2 |
-| Student route allocation | ❌ | TRN, ADM | P2 |
-| Transport fees | ❌ | ACC | P2 |
-| GPS live vehicle tracking | ❌ | PAR, TRN | P3 |
-| Pickup/drop notifications | ❌ | PAR | P3 |
-| In-bus attendance | ❌ | TRN | P3 |
-| Route optimization | ❌ | TRN | P3 |
+| Routes & stops | ✅ | TRN | P2 |
+| Vehicles & documents | ✅ | TRN | P2 |
+| Driver/attendant management | ✅ | TRN | P2 |
+| Student route allocation | ✅ | TRN, ADM | P2 |
+| Transport fees | ✅ | Reuses Unit 11's fee engine (`FeeHead(type: TRANSPORT)`/`FeeStructureItem` per route) — no parallel billing model | ACC | P2 |
+| GPS live vehicle tracking | ⚠️ | Generic, vendor-agnostic ingestion (`POST /transport/location-ping`) built; no specific device/SDK integration (Unit 57's own Open Question 1 — deferred until a real device exists) | PAR, TRN | P3 |
+| Pickup/drop notifications | ✅ | A location ping crossing a stop's 200m geofence alerts guardians via the existing PUSH/SMS pipeline | PAR | P3 |
+| In-bus attendance | ❌ | Depends on Unit 44's device-scan endpoint — not built | TRN | P3 |
+| Route optimization | ❌ | A real logistics-optimization problem, no validated demand — not built | TRN | P3 |
 
 ## D2. Library Management `[P2]`
+
+**Status ✅ built** (Unit 58 — same posture as Unit 57: built at explicit user request ahead of confirmed real demand, see progress-tracker.md's own note; `build-approach.md`'s on-demand-only-when-needed rule otherwise applies to D3+ below).
+
 | Feature | Status | Roles | Phase |
 |---|---|---|---|
-| Book catalog | ❌ | LIB | P2 |
-| Barcode/QR | ❌ | LIB | P2 |
-| Members | ❌ | LIB | P2 |
-| Issue / return / renew | ❌ | LIB | P2 |
-| Fines for late return | ❌ | LIB, ACC | P2 |
-| Reservations / hold | ❌ | STU | P3 |
-| Digital library / e-books | ❌ | STU | P3 |
-| Stock audit | ❌ | LIB | P3 |
+| Book catalog | ✅ | LIB | P2 |
+| Barcode/QR | ⚠️ | Barcode field on `BookCopy` (manual entry/scan-to-text); no QR generation/printing built | LIB | P2 |
+| Members | ✅ | LIB | P2 |
+| Issue / return / renew | ✅ | LIB | P2 |
+| Fines for late return | ✅ | A flat per-day fine, reuses Unit 12's Invoice/InvoiceItem engine on a MISC FeeHead — student members only (no staff fee ledger to bill against) | LIB, ACC | P2 |
+| Reservations / hold | ❌ | No validated demand — not built | STU | P3 |
+| Digital library / e-books | ❌ | A content-licensing question, not just engineering — not built | STU | P3 |
+| Stock audit | ❌ | Not built | LIB | P3 |
 
 ## D3. Hostel / Dormitory `[P3]`
+
+**Status ✅ built** (Unit 59 — same posture as Units 57/58: built at explicit user request ahead of confirmed real demand, see progress-tracker.md's own note; `build-approach.md`'s on-demand-only-when-needed rule otherwise applies to D4+ below).
+
 | Feature | Status | Roles | Phase |
 |---|---|---|---|
-| Hostels & rooms | ❌ | ADM | P3 |
-| Room allocation | ❌ | ADM | P3 |
-| Hostel attendance | ❌ | ADM | P3 |
-| Mess/meal management | ❌ | ADM | P3 |
-| Hostel fees | ❌ | ACC | P3 |
-| Visitor/leave (hostel) | ❌ | ADM | P3 |
+| Hostels & rooms | ✅ | ADM | P3 |
+| Room allocation | ✅ | Capacity-enforced (active-allocation count vs `Room.capacity`) | ADM | P3 |
+| Hostel attendance | ✅ | Its own `HostelAttendanceRecord` model (mirrors Unit 42's `StaffAttendanceRecord` precedent, not a tagged `AttendanceRecord`); reuses `attendance.mark`/`.view` | ADM | P3 |
+| Mess/meal management | ❌ | Not built — no confirmed demand, not even the spec's own simplified text-menu fallback | ADM | P3 |
+| Hostel fees | ✅ | A flat per-block MISC FeeHead, reuses Unit 11's fee engine — same reuse pattern as transport/library | ACC | P3 |
+| Visitor/leave (hostel) | ❌ | Depends on Unit 60's (Front Office) not-yet-built gate-pass model — not built | ADM | P3 |
 
 ## D4. Front Office & Reception `[P2]`
+
+**Status ✅ built** (Unit 60 — same posture as Units 57–59: built at explicit user request ahead of confirmed real demand, see progress-tracker.md's own note).
+
 | Feature | Status | Detail | Roles | Phase |
 |---|---|---|---|---|
-| Visitor/gate management | ❌ | Log in/out, photo, pass — not built | GATE, ADM | P2 |
+| Visitor/gate management | ✅ | Check-in/out log, optional host staff link and photo URL — no biometric check-in (Unit 44's device-scan is the reuse precedent if wanted later) | GATE, ADM | P2 |
 | Enquiry log | ✅ | Covered by A2's Enquiry capture (same feature, not a separate one) | ADM | P1 |
-| Call log | ❌ | Incoming/outgoing — not built | ADM | P3 |
-| Postal / courier register | ❌ | Inward/outward — not built | ADM | P3 |
-| Complaint desk | ❌ | Log & route — not built | ADM | P2 |
-| Gate pass / early-leave | ❌ | Student exit approval + parent alert — not built | GATE, PRIN | P2 |
+| Call log | ✅ | Incoming/outgoing, create/list only, no workflow | ADM | P3 |
+| Postal / courier register | ✅ | Inward/outward, create/list only, no workflow | ADM | P3 |
+| Complaint desk | ✅ | Its own `ComplaintDeskEntry` model (not Unit 49's `Complaint` directly — that model requires a real `User`, walk-ins often don't have one), reuses the same `ComplaintStatus` enum | ADM | P2 |
+| Gate pass / early-leave | ✅ | Approval alerts guardians via the existing PUSH/SMS pipeline (same reuse as Unit 57's geofence alert) | GATE, PRIN | P2 |
 
 ## D5. Certificates & Documents `[P1]`
 | Feature | Status | Detail | Roles | Phase |
 |---|---|---|---|---|
 | Transfer Certificate (TC) | ✅ | Generate, number, register — built (Unit 21) | ADM | P1 |
-| Bonafide / character / conduct | ⚠️ | Numbered issue built (Unit 21); no visual template/PDF yet — PDF gen is a stub job | ADM | P1 |
-| Custom certificate builder | ❌ | Design own templates — not built (`CUSTOM` type exists in schema, no builder UI) | ADM | P2 |
-| ID cards (student/staff) | ⚠️ | Student ID: single-issue only, no bulk print, no QR/photo layout (Unit 21). Staff ID: ❌ not possible at all — `Certificate.studentId` is required | ADM | P1 |
+| Bonafide / character / conduct | ⚠️ | Numbered issue built (Unit 21) with token-based templates (Unit 50); PDF gen is still a stub job — no real PDF pipeline yet | ADM | P1 |
+| Custom certificate builder | ✅ | Token-based (`{{studentName}}` etc.), not a visual designer — built (Unit 50, `CertificateTemplate` + `renderCertificateTemplate()`). Visual drag-and-drop explicitly out of scope | ADM | P2 |
+| ID cards (student/staff) | ⚠️ | Bulk generation by section built (Unit 50, `POST /certificates/bulk-ids`, one `ID_CARD` per enrolled student + QR-data payload for a future PDF pipeline). Staff ID single-issue built (Unit 42). No QR image/photo layout rendered yet — same stub-PDF posture as everything else in this module | ADM | P1 |
 | Admit cards | ✅ | (see A8) — built (Unit 21) | ADM | P1 |
 | Certificate register/log | ✅ | Issued docs record — built (`Certificate` table is the register) | ADM | P1 |
-| Document management (DMS) | ❌ | Central file store, tags — not built | ADM | P2 |
-| Digital signature / e-sign | ❌ | On certificates — not built | PRIN | P3 |
+| Document management (DMS) | ✅ | Central tagged file store, scoped to owner+branch — built (Unit 50, `Document` model + `apps/api/src/modules/documents/`). Unit 07/42's ad-hoc `docs` fields on Student/Staff not migrated to it (not required) | ADM | P2 |
+| Digital signature / e-sign | ⚠️ | Integration point built and gated on credentials (Unit 50, `request-signature` + provider webhook) — same honest-stub posture as Units 31/40; no real e-sign provider account exists yet, so nothing has run against a live account | PRIN | P3 |
 
 ## D6. Health, Discipline & Others `[P2/P3]`
+
+**Status ✅ built** (Unit 61 — same posture as Units 57–60: built at explicit user request ahead of confirmed real demand, see progress-tracker.md's own note).
+
 | Feature | Status | Roles | Phase |
 |---|---|---|---|
-| Health/medical records | ❌ | ADM, PRIN | P3 |
-| Discipline / behavior | ❌ | TCH, PRIN | P2 |
-| Awards / achievements | ❌ | PRIN | P3 |
-| Canteen / cafeteria | ❌ | ADM | P3 |
-| Biometric/RFID device hub | ❌ | ADM | P2 |
-| Lost & found / general registers | ❌ | ADM | P3 |
+| Health/medical records | ✅ | One record per student | ADM, PRIN | P3 |
+| Discipline / behavior | ✅ | A plain merit/demerit point log — deliberately not wired into house points (Unit 43) or report cards, unconfirmed | TCH, PRIN | P2 |
+| Awards / achievements | ✅ | PRIN | P3 |
+| Canteen / cafeteria | ✅ | Prepaid wallet per student (mirrors `SmsWallet`'s shape), never goes negative | ADM | P3 |
+| Biometric/RFID device hub | ✅ | Reuses Unit 44's existing generic device-scan endpoint — no new ingestion point built | ADM | P2 |
+| Lost & found / general registers | ✅ | Plain list + mark-claimed, no matching/notification logic | ADM | P3 |
 
 ---
 
@@ -382,18 +405,18 @@
 | Module/feature toggles per plan | ✅ | Enable modules per tenant — built (Unit 05) | SA | P0 |
 | Usage metering | ⚠️ | Student/user/branch counts real (Unit 30 fixed a hardcoded-0 student-count bug) + SMS wallet balance shown; storage/txn metering not wired | SA | P1 |
 | Payment-gateway platform-fee tracking | ✅ | Our txn revenue — built (Unit 13, aggregated in Unit 30's revenue summary) | SA | P1 |
-| Global announcements | ❌ | To all/segment of schools — not built | SA | P2 |
-| Support / ticket console | ❌ | Handle school issues — not built | SA | P1 |
-| Monitoring & health | ⚠️ | `/health`/`/ready` endpoints exist; Sentry + structured JSON logs wired (Unit 35, DSN-gated — no real Sentry project to verify live capture); no dashboard | SA | P1 |
-| Audit & impersonation | ✅ | `POST /platform/tenants/:id/impersonate` — time-boxed, audited — built | SA | P1 |
-| Reseller/partner management | ❌ | Partner accounts, commissions — not built | SA | P2 |
-| White-label/branding controls | ⚠️ | Mobile app identity is now env-parameterized per tenant (Unit 31, fixed a real Google Play policy violation); no admin UI to set a logo/colors/domain, no real EAS build ever run | SA | P2 |
-| Content/template library | ⚠️ | Per-tenant `ReportCardTemplate` exists; no shared cross-tenant library UI | SA | P1 |
+| Global announcements | ✅ | `POST /platform/announcements` — fans out to every matching (or plan-filtered) ACTIVE tenant's real `Announcement` feed via a background job (Unit 56) | SA | P2 |
+| Support / ticket console | ✅ | `SupportTicket` create/list (tenant) + cross-tenant list/respond (platform, audited per read) — built (Unit 56). No SLA/escalation automation, per the unit's own scope call | SA | P1 |
+| Monitoring & health | ✅ | `GET /platform/health-summary` — real DB/Redis reachability, real BullMQ queue depth, in-process rolling 5xx counter + a super-admin dashboard (Unit 56). Reads structured logs' own instrumentation point, not a real Sentry API integration (deliberate — avoids a second credential dependency) | SA | P1 |
+| Audit & impersonation | ✅ | `POST /platform/tenants/:id/impersonate` — time-boxed, audited — built. Unit 56 extended the same audit pattern to every platform read of cross-tenant support-ticket content | SA | P1 |
+| Reseller/partner management | ❌ | Partner accounts, commissions — **blocked on a real commission-model decision** (flat %, tiered, per-plan) — a business-terms question, not an engineering gap (Unit 56's own Open Question 2) | SA | P2 |
+| White-label/branding controls | ⚠️ | Mobile app identity is env-parameterized per tenant (Unit 31); admin UI to set logo/primary color/custom domain now built (`PATCH /platform/tenants/:id/branding`, Unit 69) — no real EAS build ever run | SA | P2 |
+| Content/template library | ⚠️ | Per-tenant `ReportCardTemplate` exists; a shared cross-tenant library was scoped for Unit 69 but not built — needs real curated content to seed from, which doesn't exist yet (a content-authoring gap, not a code gap) | SA | P1 |
 
 ## E2. School Web Admin Panel 🖥️ `[P0]`
 Full management UI for OWN/PRIN/ADM/ACC/HR — surfaces all enabled modules above, role-scoped.
 
-**Status ⚠️ partial** (Unit 27, extended by Units 42/43/44/46/47): shell + login + students/fees/attendance/dashboard/staff/academic-structure/exams/timetable now have UI. Guardians, admissions, announcements, certificates all have working APIs but **no web UI** yet — same shell/table/form pattern each time, deferred as fast-follow. Homework is correctly API-only by design (mobile-first, no admin web screen warranted).
+**Status ✅ complete** (Unit 27, extended by Units 42/43/44/46/47/48/49/50/51): every reference module now has web UI — students/fees/attendance/dashboard/staff (incl. leave queue)/academic-structure/exams (incl. marks entry + report cards)/timetable (incl. weekly grid)/certificates/guardians/admissions/announcements/homework/engagement all built. Unit 51 closed the last gap.
 
 > **Note (locked decision):** E3–E5 are **role experiences inside ONE role-based mobile app** (parent · teacher/staff · student), **not separate apps**. Same codebase/binary. See `architecture-context.md` §0.
 
@@ -404,13 +427,13 @@ Full management UI for OWN/PRIN/ADM/ACC/HR — surfaces all enabled modules abov
 **Status ⚠️ partial** (Unit 24/25): multi-child, attendance, report cards, homework, timetable, fees + online payment (round-trip only, stub gateway), announcements — all built. Messaging, calendar, and real SMS fallback (since sends are stubbed) are not built.
 
 ## E5. Student (role in the app) / Portal 📱🖥️ `[P1/P2]`
-**Status ✅ built** (Unit 24, direct student login via `Student.userId`): timetable, homework, report cards, attendance — same `/me` layer as parent. Materials and online exams not built.
+**Status ✅ built** (Unit 24, direct student login via `Student.userId`): timetable, homework, report cards, attendance, MCQ online exam-taking (Unit 46/49) — same `/me` layer as parent. A study-material content library remains out of scope (A10, deferred — Unit 52's Open Question 2).
 
 ## E6. Management/Owner Dashboard 🖥️📱 `[P1]`
-**Status ⚠️ partial** (Unit 28): collection %, dues, attendance %, admissions funnel built and tested. Enrollment trends and staff metrics not built.
+**Status ✅ complete** (Unit 28, extended Unit 53): collection %, dues, attendance %, admissions funnel, enrollment trends (12-month), staff metrics (headcount, on-leave-today) — all built and tested.
 
 ## E7. Public School Website / Mini-site 🌐 `[P2]`
-**Status ⚠️ partial** (Unit 29, `apps/web-site`): school-code lookup page + online admission enquiry form + PWA built. No CMS, no notices/gallery/contact pages.
+**Status ✅ complete** (Unit 29 + Unit 54, `apps/web-site`): school-code lookup page + online admission enquiry form + PWA (Unit 29), plus notices/gallery/contact pages backed by real tenant data (Unit 54). Fixed-section content model, not a general page-builder CMS (deliberate scope call, not a gap) — a blog remains separately deferred (H-bis).
 
 ---
 
@@ -418,15 +441,15 @@ Full management UI for OWN/PRIN/ADM/ACC/HR — surfaces all enabled modules abov
 
 | Feature | Status | Detail | Roles | Phase |
 |---|---|---|---|---|
-| Role-based dashboards | ⚠️ | Owner dashboard built (Unit 28); no dedicated principal/teacher/accountant dashboard | all | P1 |
-| Standard reports | ⚠️ | Attendance/fees reports built; exam/admission/staff/transport reports not built | all | P0/P1 |
-| Custom report builder | ❌ | Pick fields, filters, export — not built | PRIN, ADM | P3 |
-| Export | ❌ | Excel, PDF, CSV, print — no general-purpose export beyond the specific PDFs already noted (stub jobs) | all | P0 |
-| Scheduled report email | ❌ | Daily/weekly to owner — not built | OWN | P2 |
-| KPI / MIS summary | ⚠️ | Owner dashboard covers a slice of this (Unit 28); no cross-module MIS report | OWN | P1 |
-| Government / UDISE+ report support | ❌ | Export data for UDISE filing — not built | ADM | P2 |
-| Board reporting (CBSE etc.) | ❌ | Registration/result uploads support — not built | PRIN | P3 |
-| Predictive analytics | ❌ | At-risk students, fee-default prediction — not built | PRIN, OWN | P3 |
+| Role-based dashboards | ⚠️ | Owner dashboard built (Unit 28/53); no dedicated principal/teacher/accountant dashboard variant (deliberate — Unit 53's own out-of-scope call, same data/screen, role-gated identically) | all | P1 |
+| Standard reports | ✅ | Attendance/fees/exams/admissions/staff — five parameterized reports + CSV export (Unit 55). No dedicated transport report (Unit 57's transport module postdates this — not retrofitted) | all | P0/P1 |
+| Custom report builder | ❌ | Pick fields, filters, export — deliberately not built (Unit 55's own Open Question 1: real query-engine security surface, not just UI; revisit only if asked) | PRIN, ADM | P3 |
+| Export | ⚠️ | CSV export built for the five standard reports (Unit 55); no Excel/PDF/print or general-purpose export beyond that | all | P0 |
+| Scheduled report email | ✅ | `POST /reports/schedule` — BullMQ repeatable job (weekly/monthly), emails the CSV (Unit 55) | OWN | P2 |
+| KPI / MIS summary | ✅ | `GET /reports/kpi-summary` merges all five reports' headline figures into one cross-module view (Unit 55) | OWN | P1 |
+| Government / UDISE+ report support | ❌ | Export data for UDISE filing — **blocked on sourcing the real UDISE+ file format spec**, not guessed at (Unit 55's own Open Question 2) | ADM | P2 |
+| Board reporting (CBSE etc.) | ❌ | Registration/result uploads support — blocked on a real CBSE portal spec, same reasoning as UDISE+ | PRIN | P3 |
+| Predictive analytics | ❌ | At-risk students, fee-default prediction — deliberately excluded (explicit user instruction: "leave AI things for now") | PRIN, OWN | P3 |
 
 ---
 
@@ -466,13 +489,13 @@ Full management UI for OWN/PRIN/ADM/ACC/HR — surfaces all enabled modules abov
 | **Search (global)** | ✅ | Students, staff, invoices — built and tested (Unit 37, Postgres `pg_trgm` + `ILIKE`, branch-scoped, dropdown in the web admin header) | P1 |
 | **Settings & configuration** | ✅ | School profile, branch mgmt, user invite/deactivate, custom-role permission editing — built and tested (Unit 36); `settings.manage`/`branch.manage`/`user.manage`/`role.manage` now enforced. Custom roles capped at one per tenant (disclosed schema constraint, see progress-tracker) | P0 |
 | **Module/plan feature flags** | ✅ | Toggle features by subscription — built and tested (Unit 05) | P0 |
-| **White-labeling / branding** | ⚠️ | App-identity pipeline partial (Unit 31); no admin UI, no real build ever run | P2 |
-| **Security: 2FA, encryption, session control** | ⚠️ | 2FA built (staff login, Unit 03); JWT rotation built; encryption-in-transit assumed at the infra layer (unverifiable without a real AWS/TLS setup); password policy not audited | P1 |
+| **White-labeling / branding** | ⚠️ | App-identity pipeline (Unit 31) + admin UI to set logo/color/domain (Unit 69) both built; no real EAS build ever run | P2 |
+| **Security: 2FA, encryption, session control** | ⚠️ | 2FA built (staff login, Unit 03); JWT rotation built; encryption-in-transit assumed at the infra layer (unverifiable without a real AWS/TLS setup); password policy reviewed and confirmed with the user (length-only, no complexity/rotation — Unit 69, `context/security-audit-unit69.md`) | P1 |
 | **DPDP / data-privacy compliance** | ⚠️ | Export ✅ (Unit 34); consent capture at invite time, documented retention policy, and a request→review→execute delete pipeline ✅ built and tested (Unit 39). Still ⚠️ overall: the consent checkbox has no legally-reviewed text bound to it yet, and retention windows are engineering defaults, not confirmed legal numbers — see `context/dpdp-policy.md` | P1 |
 | **Integrations / API** | ⚠️ | Payment (Razorpay) ✅ real; SMS (MSG91)/WhatsApp (Gupshup)/Push (FCM)/Email (SES) real-call code ✅ built (Unit 40), gated on accounts that don't exist yet; biometric/Google/Zoom/Tally/e-sign — none built | P0→P2 |
-| **Webhooks / developer API** | ❌ | For partners/large schools — not built | P3 |
-| **In-app help / onboarding tours** | ❌ | Reduce support load — not built | P1 |
-| **Feedback & feature requests** | ❌ | In-product — not built | P2 |
+| **Webhooks / developer API** | ❌ | For partners/large schools — deliberately deferred (Unit 69), no real partner request yet, per `build-approach.md` §6 | P3 |
+| **In-app help / onboarding tours** | ✅ | A 3-step hardcoded dismissible tour on first dashboard load, `User.hasSeenTour`-gated — built (Unit 69) | P1 |
+| **Feedback & feature requests** | ✅ | `POST /feedback` (any authenticated user, reuses `SupportTicket` with a `FEEDBACK` type tag) — built (Unit 69) | P2 |
 
 ## Key integrations checklist
 
@@ -484,7 +507,7 @@ Full management UI for OWN/PRIN/ADM/ACC/HR — surfaces all enabled modules abov
 | Email | ❌ | Amazon SES / Postmark — not integrated | P1 |
 | Biometric/RFID | ❌ | ESSL/Mantra device APIs — not integrated | P2 |
 | Video classes | ❌ | Zoom / Google Meet / Jitsi — not integrated | P3 |
-| Accounting | ❌ | Tally / Zoho Books export — not integrated | P2 |
+| Accounting | ⚠️ | Tally / Zoho Books CSV export built (Unit 62) — a file export, not a live API integration, and not verified against a real import | P2 |
 | Auth (optional) | ❌ | Google / Microsoft sign-in for staff — not integrated | P2 |
 | Maps/GPS | ❌ | Google Maps / traccar for transport — not integrated | P3 |
 | Error monitoring | ⚠️ | Sentry wired (Unit 35, DSN-gated, unit-tested with a mock) — no real Sentry project to verify live capture | — |
@@ -493,18 +516,18 @@ Full management UI for OWN/PRIN/ADM/ACC/HR — surfaces all enabled modules abov
 
 # PART H-bis — COMPETITOR CROSS-CHECK ADDITIONS
 
-Added after auditing this catalog against **Fedena's full 72-module feature tour** and the advertised feature sets of Entab, MyClassBoard, Teachmint and Campus365. All are P2/P3, none belong in the MSP, **none built**.
+Added after auditing this catalog against **Fedena's full 72-module feature tour** and the advertised feature sets of Entab, MyClassBoard, Teachmint and Campus365. All are P2/P3, none belong in the MSP. **Unit 65 built the two smallest, most plausible items (task management, polls); everything else here stays explicitly deferred as speculative, per the spec's own recommendation, adopted as-is** — see progress-tracker.md.
 
 | Feature | Status | Detail | Roles | Phase |
 |---|---|---|---|---|
-| Placement / career management | ❌ | Job/college placement tracking | ADM, PRIN | P3 |
-| Task / to-do management | ❌ | Assign & track tasks to staff | PRIN, ADM | P2 |
-| Discussion forums / boards | ❌ | Threaded discussions | TCH, STU | P3 |
-| Blog / school CMS content | ❌ | School blog & news articles | ADM | P3 |
-| Form builder | ❌ | Build custom forms | ADM | P2 |
-| Question-paper generator | ❌ | Generate papers from question bank | TCH | P3 |
-| Poll / voting | ❌ | Quick polls to parents/staff | PRIN | P2 |
-| Video conferencing | ❌ | Live online classes | TCH, STU | P3 |
+| Placement / career management | ❌ | Job/college placement tracking — not built | ADM, PRIN | P3 |
+| Task / to-do management | ✅ | `StaffTask` — assign & mark-done, no sub-tasks/recurrence | PRIN, ADM | P2 |
+| Discussion forums / boards | ❌ | Deferred — speculative, no validated demand | TCH, STU | P3 |
+| Blog / school CMS content | ❌ | Deferred — Unit 54's fixed public-site sections already cover the most plausible use case | ADM | P3 |
+| Form builder | ❌ | Deferred — Unit 41's admissions checklist + Unit 49's surveys already cover the two most plausible use cases | ADM | P2 |
+| Question-paper generator | ❌ | Deferred — depends on Unit 46's question bank, P3 even then | TCH | P3 |
+| Poll / voting | ✅ | Reuses Unit 49's `Survey` model with an `isPoll` flag — not a parallel model | PRIN | P2 |
+| Video conferencing | ❌ | Deferred — needs a real Zoom/Meet/Jitsi account + embed decision, no validated demand | TCH, STU | P3 |
 
 > **Verdict:** every module the major competitors publicly advertise is represented in this catalog. Differentiation is **not** matching their module count — it's reliability + local support + Hindi + fair pricing on the P0 core.
 

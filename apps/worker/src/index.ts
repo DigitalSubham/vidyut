@@ -13,6 +13,16 @@ import { processStudentsAbsenceAlert } from "./processors/students-absence-alert
 import { processReportCardGenerate } from "./processors/reportcard-generate";
 import { processAnnouncementFanout } from "./processors/announcement-fanout";
 import { processCertificateGenerate } from "./processors/certificate-generate";
+import { processCertificateEsignRequest } from "./processors/certificate-esign-request";
+import { processReportsScheduledEmail } from "./processors/reports-scheduled-email";
+import { processPlatformGlobalAnnouncementFanout } from "./processors/platform-global-announcement-fanout";
+import { processTransportGeofenceAlert } from "./processors/transport-geofence-alert";
+import { processTransportExpiryScan } from "./processors/transport-expiry-scan";
+import { processTransportExpiryAlert } from "./processors/transport-expiry-alert";
+import { processFrontofficeGatePassAlert } from "./processors/frontoffice-gatepass-alert";
+import { processInventoryLowStockScan } from "./processors/inventory-lowstock-scan";
+import { processInventoryLowStockAlert } from "./processors/inventory-lowstock-alert";
+import { processCommBirthdayScan } from "./processors/comm-birthday-scan";
 import { enqueue } from "./enqueue";
 import { initSentry, captureJobError } from "./sentry";
 
@@ -37,6 +47,16 @@ const processors: Record<JobName, (job: Job) => Promise<unknown>> = {
   "reportcard.generate": processReportCardGenerate,
   "announcement.fanout": processAnnouncementFanout,
   "certificate.generate": processCertificateGenerate,
+  "certificate.esign-request": processCertificateEsignRequest,
+  "reports.scheduledEmail": processReportsScheduledEmail,
+  "platform.globalAnnouncementFanout": processPlatformGlobalAnnouncementFanout,
+  "transport.geofenceAlert": processTransportGeofenceAlert,
+  "transport.expiryScan": processTransportExpiryScan,
+  "transport.expiryAlert": processTransportExpiryAlert,
+  "frontoffice.gatePassAlert": processFrontofficeGatePassAlert,
+  "inventory.lowStockScan": processInventoryLowStockScan,
+  "inventory.lowStockAlert": processInventoryLowStockAlert,
+  "comm.birthdayScan": processCommBirthdayScan,
 };
 
 export function startWorker(): Worker {
@@ -74,10 +94,28 @@ async function scheduleFeesReminderScan(): Promise<void> {
   await enqueue("fees.reminderScan", {}, { repeat: { pattern: "0 9 * * *" } });
 }
 
+/** Unit 57 scope #5 — same idempotent nightly-repeat registration as above. */
+async function scheduleTransportExpiryScan(): Promise<void> {
+  await enqueue("transport.expiryScan", {}, { repeat: { pattern: "0 9 * * *" } });
+}
+
+/** Unit 64 scope #5 — same idempotent nightly-repeat registration as the fee-reminder/transport-expiry scans above. */
+async function scheduleInventoryLowStockScan(): Promise<void> {
+  await enqueue("inventory.lowStockScan", {}, { repeat: { pattern: "0 9 * * *" } });
+}
+
+/** Unit 68 scope #4 — same idempotent nightly-repeat registration, fired early morning so a birthday greeting arrives before the school day starts. */
+async function scheduleCommBirthdayScan(): Promise<void> {
+  await enqueue("comm.birthdayScan", {}, { repeat: { pattern: "0 7 * * *" } });
+}
+
 if (require.main === module) {
   initSentry();
   startWorker();
   void scheduleFeesReminderScan();
+  void scheduleTransportExpiryScan();
+  void scheduleInventoryLowStockScan();
+  void scheduleCommBirthdayScan();
   // eslint-disable-next-line no-console
   console.log(`[worker] listening on queue "${QUEUE_NAME}"`);
 }

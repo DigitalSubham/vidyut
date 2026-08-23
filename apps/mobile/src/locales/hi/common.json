@@ -50,7 +50,8 @@
       "marks": "अंक",
       "homework": "गृहकार्य",
       "grading": "ग्रेडिंग",
-      "messages": "संदेश"
+      "messages": "संदेश",
+      "leave": "छुट्टी"
     }
   },
   "marks": {
@@ -91,7 +92,8 @@
       "onlineExams": "ऑनलाइन परीक्षा",
       "circulars": "परिपत्र",
       "complaints": "शिकायतें",
-      "messages": "संदेश"
+      "messages": "संदेश",
+      "ptm": "पीटीएम"
     },
     "due": "जमा करने की तारीख",
     "day": "दिन",
@@ -137,5 +139,31 @@
     "staffIdPlaceholder": "शिक्षक/स्टाफ आईडी",
     "open": "खोलें",
     "noThreads": "अभी कोई बातचीत नहीं है।"
+  },
+  "leave": {
+    "types": {
+      "CASUAL": "आकस्मिक",
+      "SICK": "बीमारी",
+      "EARNED": "अर्जित",
+      "OTHER": "अन्य"
+    },
+    "status": {
+      "PENDING": "लंबित",
+      "APPROVED": "स्वीकृत",
+      "REJECTED": "अस्वीकृत"
+    },
+    "fromDate": "से तारीख (YYYY-MM-DD)",
+    "toDate": "तक तारीख (YYYY-MM-DD)",
+    "apply": "छुट्टी के लिए आवेदन करें",
+    "applying": "आवेदन हो रहा है…",
+    "noRequests": "अभी तक कोई छुट्टी अनुरोध नहीं"
+  },
+  "ptm": {
+    "back": "← शिक्षकों पर वापस जाएं",
+    "book": "बुक करें",
+    "booking": "बुक हो रहा है…",
+    "booked": "बुक हो गया",
+    "noSlots": "कोई स्लॉट उपलब्ध नहीं",
+    "noTeachers": "कोई शिक्षक नहीं मिला"
   }
 }

@@ -15,3 +15,6 @@ dashboardRouter.get(
   validateQuery(dashboardSummaryQuerySchema),
   asyncHandler(controller.getDashboardSummary)
 );
+/** Unit 69 scope #6 — self-scoped by the caller's own Staff row, no branch/permission gate beyond having a Staff profile at all. */
+dashboardRouter.get("/teacher-summary", asyncHandler(controller.getTeacherSummary));
+dashboardRouter.get("/accountant-summary", asyncHandler(controller.getAccountantSummary));

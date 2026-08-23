@@ -4,8 +4,8 @@ Read `apps/api/src/modules/dashboard/` (Unit 28) + Unit 53's extension first. Pr
 
 ## Open Questions
 
-1. **Custom report builder** — a real "pick any field, any filter" builder is a meaningfully large UI/query-engine effort (dynamic query construction against RLS'd tables safely is a real security surface, not just a UI problem). **Recommendation:** start with a fixed set of parameterized reports (the ones already named across this catalog: attendance, fees, exam/result, admission, staff), each its own safe, hand-written query — not a generic builder. Revisit a true builder only if schools specifically ask for fields beyond what's offered.
-2. **UDISE+ export** — needs the actual UDISE+ file format spec (a real Indian government reporting format) to build against correctly. **Flag to user**: this needs the real format documentation sourced before implementation, not guessed.
+1. **Custom report builder** — **Resolved: adopted the spec's own recommendation.** Built five fixed, hand-written parameterized report queries (attendance/fees/exams/admissions/staff), not a generic field/filter builder. Revisit only if a school specifically asks for fields beyond what's offered.
+2. **UDISE+ export** — **Still blocked, not built.** No real UDISE+ file format spec was sourced this session (would require the actual Indian government format documentation, not a guess) — explicitly out of scope until that's provided. Same for board-reporting uploads (needs a real CBSE portal spec).
 
 ## Goal
 

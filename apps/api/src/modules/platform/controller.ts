@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import type { ListTenantsQueryInput } from "@vidyut/validation";
+import type { ListPlatformTicketsQueryInput, ListTenantsQueryInput } from "@vidyut/validation";
 import { created, list, ok } from "../../core/envelope";
 import * as platformService from "./service";
 
@@ -28,6 +28,12 @@ export async function getTenant(req: Request, res: Response): Promise<void> {
 export async function patchTenant(req: Request, res: Response): Promise<void> {
   const actorId = req.platformAuth!.platformUserId;
   const tenant = await platformService.patchTenant(req.params.id!, req.body, actorId);
+  ok(res, tenant);
+}
+
+export async function patchTenantBranding(req: Request, res: Response): Promise<void> {
+  const actorId = req.platformAuth!.platformUserId;
+  const tenant = await platformService.patchTenantBranding(req.params.id!, req.body, actorId);
   ok(res, tenant);
 }
 
@@ -68,5 +74,29 @@ export async function rechargeWallet(req: Request, res: Response): Promise<void>
 
 export async function getRevenueSummary(req: Request, res: Response): Promise<void> {
   const summary = await platformService.getRevenueSummary(res.locals.query);
+  ok(res, summary);
+}
+
+export async function createGlobalAnnouncement(req: Request, res: Response): Promise<void> {
+  const actorId = req.platformAuth!.platformUserId;
+  const announcement = await platformService.createGlobalAnnouncement(actorId, req.body);
+  created(res, announcement);
+}
+
+export async function listPlatformTickets(req: Request, res: Response): Promise<void> {
+  const actorId = req.platformAuth!.platformUserId;
+  const query = res.locals.query as ListPlatformTicketsQueryInput;
+  const tickets = await platformService.listPlatformTickets(actorId, query.status);
+  ok(res, tickets);
+}
+
+export async function respondToTicket(req: Request, res: Response): Promise<void> {
+  const actorId = req.platformAuth!.platformUserId;
+  const ticket = await platformService.respondToTicket(actorId, req.params.id!, req.params.ticketId!, req.body);
+  ok(res, ticket);
+}
+
+export async function getHealthSummary(_req: Request, res: Response): Promise<void> {
+  const summary = await platformService.getHealthSummary();
   ok(res, summary);
 }
