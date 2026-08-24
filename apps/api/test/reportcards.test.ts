@@ -1,14 +1,22 @@
+import type { Worker } from "bullmq";
 import request from "supertest";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma, withTenant } from "@vidyut/db";
+import { startWorker } from "@vidyut/worker";
 import { createApp } from "../src/app";
 import { signAccessToken } from "../src/core/auth/jwt";
 import { cleanupTenant, createBranch, createRoleWithPermissions, createTenant } from "./helpers";
 
 const app = createApp();
 const tenantIds: string[] = [];
+let worker: Worker;
+
+beforeAll(() => {
+  worker = startWorker();
+});
 
 afterAll(async () => {
+  await worker.close();
   for (const id of tenantIds) {
     await cleanupTenant(id);
   }
@@ -114,7 +122,16 @@ describe("report cards — template CRUD, generate (background), publish, RBAC, 
       .set("Authorization", `Bearer ${owner}`);
     expect(publishRes.status).toBe(200);
     expect(publishRes.body.data.publishedAt).not.toBeNull();
-  });
+
+    // Unit 19's real Puppeteer reportcard.generate job — waits for the async
+    // worker to render and upload the PDF, then asserts a real download URL
+    // is resolved on read (not the old stub's permanent null).
+    await new Promise((resolve) => setTimeout(resolve, 4000));
+    const listAfterRender = await request(app)
+      .get(`/api/v1/report-cards?examId=${exam.id}`)
+      .set("Authorization", `Bearer ${owner}`);
+    expect(listAfterRender.body.data[0].downloadUrl).toBeTruthy();
+  }, 10000);
 
   it("regenerating for the same exam upserts by (examId, studentId) rather than duplicating", async () => {
     const tenant = await createTenant("reportcards-upsert-tenant");

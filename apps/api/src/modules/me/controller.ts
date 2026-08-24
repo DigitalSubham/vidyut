@@ -1,7 +1,9 @@
 import type { Request, Response } from "express";
 import type {
   CreateDataDeletionRequestInput,
+  CreateStoreOrderInput,
   ListMyNotificationsQueryInput,
+  ListStoreItemsQueryInput,
   MyAttendanceQueryInput,
   MyCalendarQueryInput,
   MyHomeworkCalendarQueryInput,
@@ -116,6 +118,59 @@ export async function markTourSeen(req: Request, res: Response): Promise<void> {
 export async function getTourSeen(req: Request, res: Response): Promise<void> {
   const result = await service.getTourSeen(req.auth!);
   ok(res, { hasSeenTour: result?.hasSeenTour ?? false });
+}
+
+export async function getMyTransport(req: Request, res: Response): Promise<void> {
+  const query = res.locals.query as MyStudentScopedQueryInput;
+  const transport = await service.getMyTransport(req.auth!, query.studentId);
+  ok(res, transport);
+}
+
+export async function getMyLibrary(req: Request, res: Response): Promise<void> {
+  const query = res.locals.query as MyStudentScopedQueryInput;
+  const books = await service.getMyLibrary(req.auth!, query.studentId);
+  ok(res, books);
+}
+
+export async function getMyStoreItems(req: Request, res: Response): Promise<void> {
+  const query = res.locals.query as ListStoreItemsQueryInput;
+  const items = await service.getMyStoreItems(req.auth!, query.branchId);
+  ok(res, items);
+}
+
+export async function createMyStoreOrder(req: Request, res: Response): Promise<void> {
+  const order = await service.createMyStoreOrder(req.auth!, req.body as CreateStoreOrderInput);
+  created(res, order);
+}
+
+export async function getMyStoreOrders(req: Request, res: Response): Promise<void> {
+  const query = res.locals.query as MyStudentScopedQueryInput;
+  const orders = await service.getMyStoreOrders(req.auth!, query.studentId);
+  ok(res, orders);
+}
+
+export async function getMyStudentTimeline(req: Request, res: Response): Promise<void> {
+  const query = res.locals.query as MyStudentScopedQueryInput;
+  const entries = await service.getMyStudentTimeline(req.auth!, query.studentId);
+  ok(res, entries);
+}
+
+export async function getMySiblings(req: Request, res: Response): Promise<void> {
+  const query = res.locals.query as MyStudentScopedQueryInput;
+  const siblings = await service.getMySiblings(req.auth!, query.studentId);
+  ok(res, siblings);
+}
+
+export async function getMyLiveClasses(req: Request, res: Response): Promise<void> {
+  const query = res.locals.query as MyStudentScopedQueryInput;
+  const links = await service.getMyLiveClasses(req.auth!, query.studentId);
+  ok(res, links);
+}
+
+export async function getMyContentItems(req: Request, res: Response): Promise<void> {
+  const query = res.locals.query as MyStudentScopedQueryInput;
+  const items = await service.getMyContentItems(req.auth!, query.studentId);
+  ok(res, items);
 }
 
 export async function getMyCommunicationPreferences(req: Request, res: Response): Promise<void> {

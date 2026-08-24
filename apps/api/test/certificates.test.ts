@@ -1,14 +1,22 @@
+import type { Worker } from "bullmq";
 import request from "supertest";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma, withTenant } from "@vidyut/db";
+import { startWorker } from "@vidyut/worker";
 import { createApp } from "../src/app";
 import { signAccessToken } from "../src/core/auth/jwt";
 import { cleanupTenant, createBranch, createRoleWithPermissions, createTenant } from "./helpers";
 
 const app = createApp();
 const tenantIds: string[] = [];
+let worker: Worker;
+
+beforeAll(() => {
+  worker = startWorker();
+});
 
 afterAll(async () => {
+  await worker.close();
   for (const id of tenantIds) {
     await cleanupTenant(id);
   }
@@ -78,7 +86,17 @@ describe("certificates — issue (sequential numbering), register, RBAC, branch 
       .set("Authorization", `Bearer ${owner}`);
     expect(registerRes.status).toBe(200);
     expect(registerRes.body.data).toHaveLength(3);
-  });
+
+    // Unit 21's real Puppeteer certificate.generate job — waits for the
+    // async worker to render and upload the PDF (no template configured, so
+    // this exercises the DEFAULT_BODIES fallback path), then asserts a real
+    // download URL is resolved on read.
+    await new Promise((resolve) => setTimeout(resolve, 4000));
+    const registerAfterRender = await request(app)
+      .get(`/api/v1/certificates?branchId=${branch.id}&studentId=${student.id}`)
+      .set("Authorization", `Bearer ${owner}`);
+    expect(registerAfterRender.body.data[0].downloadUrl).toBeTruthy();
+  }, 10000);
 
   it("requires a customTitle when issuing a CUSTOM certificate", async () => {
     const tenant = await createTenant("certs-validation-tenant");

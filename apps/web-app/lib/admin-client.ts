@@ -805,6 +805,7 @@ export interface CertificateItem {
   number: string;
   signatureStatus: "NONE" | "REQUESTED" | "SIGNED";
   issuedAt: string;
+  downloadUrl: string | null;
 }
 
 export interface DocumentItem {
@@ -870,6 +871,7 @@ export interface ReportCardItem {
   studentId: string;
   templateId: string;
   publishedAt: string | null;
+  downloadUrl: string | null;
 }
 
 export interface AnnouncementItem {

@@ -208,6 +208,15 @@ export default function FeesPage() {
   });
   const invoices = data?.data ?? [];
 
+  // Gap-remediation pass — Unit 69's accountant-summary endpoint had no UI
+  // anywhere; surfaced here since ACCOUNTANT is a web-admin role, not part
+  // of the mobile app's role set.
+  const summaryQuery = useQuery({
+    queryKey: ["accountant-summary"],
+    queryFn: () => adminApi.getAccountantDashboardSummary(),
+  });
+  const summary = summaryQuery.data?.data;
+
   async function submitPayment() {
     if (!collecting) return;
     setError(null);
@@ -237,6 +246,18 @@ export default function FeesPage() {
   return (
     <div className="flex flex-col gap-4">
       <h1 className="font-heading text-2xl font-semibold text-text-primary">{t("school.fees.title")}</h1>
+
+      {summary ? (
+        <div className="rounded-lg border border-border p-4">
+          <p className="text-sm text-text-secondary">{t("school.fees.collectedToday")}</p>
+          <p className="font-heading text-2xl font-semibold text-text-primary">
+            ₹{(summary.collectedTodayPaise / 100).toFixed(2)}
+          </p>
+          <p className="text-xs text-text-secondary">
+            {summary.paymentsCollectedToday} {t("school.fees.paymentsToday")}
+          </p>
+        </div>
+      ) : null}
 
       <Tabs defaultValue="invoices">
         <TabsList>

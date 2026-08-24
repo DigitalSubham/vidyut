@@ -1,4 +1,4 @@
-import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 
 function requireEnv(name: string): string {
   const value = process.env[name];
@@ -20,6 +20,14 @@ const client = new S3Client({
     secretAccessKey: requireEnv("S3_SECRET_ACCESS_KEY"),
   },
 });
+
+/** Server-generated PDFs (receipts/report cards/certificates/ID cards) upload directly — no presigned-URL round trip needed since the worker holds the bytes already. */
+export async function putObjectBuffer(key: string, body: Buffer, contentType: string): Promise<string> {
+  await client.send(
+    new PutObjectCommand({ Bucket: requireEnv("S3_BUCKET"), Key: key, Body: body, ContentType: contentType })
+  );
+  return key;
+}
 
 export async function getObjectBuffer(key: string): Promise<Buffer> {
   const result = await client.send(

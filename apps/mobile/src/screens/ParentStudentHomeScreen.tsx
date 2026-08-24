@@ -1,11 +1,19 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Alert, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, FlatList, Linking, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import * as DocumentPicker from "expo-document-picker";
 import { useAuth } from "../lib/auth-context";
 import { OnlineExamTaker } from "./OnlineExamTaker";
 import { MessagesScreen } from "./MessagesScreen";
 import { PTMScreen } from "./PTMScreen";
+import { SurveysScreen } from "./SurveysScreen";
+import { GalleryScreen } from "./GalleryScreen";
+import { TransportScreen } from "./TransportScreen";
+import { LibraryScreen } from "./LibraryScreen";
+import { StoreScreen } from "./StoreScreen";
+import { TimelineScreen } from "./TimelineScreen";
+import { LmsScreen } from "./LmsScreen";
+import { CommunicationPreferencesScreen } from "./CommunicationPreferencesScreen";
 import {
   ackCircular,
   createComplaint,
@@ -48,7 +56,15 @@ type Section =
   | "circulars"
   | "complaints"
   | "messages"
-  | "ptm";
+  | "ptm"
+  | "surveys"
+  | "gallery"
+  | "transport"
+  | "library"
+  | "store"
+  | "timeline"
+  | "lms"
+  | "settings";
 
 const SECTIONS: Section[] = [
   "fees",
@@ -63,6 +79,14 @@ const SECTIONS: Section[] = [
   "complaints",
   "messages",
   "ptm",
+  "surveys",
+  "gallery",
+  "transport",
+  "library",
+  "store",
+  "timeline",
+  "lms",
+  "settings",
 ];
 
 /**
@@ -299,6 +323,11 @@ export function ParentStudentHomeScreen() {
                   <Text style={styles.payNow}>{t("me.fees.payNow")}</Text>
                 </TouchableOpacity>
               ) : null}
+              {item.type === "payment" && item.receiptDownloadUrl ? (
+                <TouchableOpacity onPress={() => Linking.openURL(item.receiptDownloadUrl!)}>
+                  <Text style={styles.payNow}>{t("me.fees.downloadReceipt")}</Text>
+                </TouchableOpacity>
+              ) : null}
             </View>
           )}
         />
@@ -318,7 +347,16 @@ export function ParentStudentHomeScreen() {
         <FlatList
           data={reportCards}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <Text style={styles.row2}>{item.examId}</Text>}
+          renderItem={({ item }) => (
+            <View style={styles.feeRow}>
+              <Text style={styles.row2}>{item.examId}</Text>
+              {item.downloadUrl ? (
+                <TouchableOpacity onPress={() => Linking.openURL(item.downloadUrl!)}>
+                  <Text style={styles.payNow}>{t("me.reportCards.downloadPdf")}</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          )}
         />
       ) : null}
       {section === "notices" ? (
@@ -449,6 +487,62 @@ export function ParentStudentHomeScreen() {
       {section === "ptm" ? (
         session && activeStudentId ? (
           <PTMScreen accessToken={session.accessToken} studentId={activeStudentId} />
+        ) : (
+          <Text style={styles.row2}>{t("me.messagesUnavailable")}</Text>
+        )
+      ) : null}
+      {section === "surveys" ? (
+        session && activeStudent ? (
+          <SurveysScreen accessToken={session.accessToken} branchId={activeStudent.branchId} />
+        ) : (
+          <Text style={styles.row2}>{t("me.messagesUnavailable")}</Text>
+        )
+      ) : null}
+      {section === "gallery" ? (
+        session && activeStudent ? (
+          <GalleryScreen accessToken={session.accessToken} branchId={activeStudent.branchId} />
+        ) : (
+          <Text style={styles.row2}>{t("me.messagesUnavailable")}</Text>
+        )
+      ) : null}
+      {section === "transport" ? (
+        session && activeStudentId ? (
+          <TransportScreen accessToken={session.accessToken} studentId={activeStudentId} />
+        ) : (
+          <Text style={styles.row2}>{t("me.messagesUnavailable")}</Text>
+        )
+      ) : null}
+      {section === "library" ? (
+        session && activeStudentId ? (
+          <LibraryScreen accessToken={session.accessToken} studentId={activeStudentId} />
+        ) : (
+          <Text style={styles.row2}>{t("me.messagesUnavailable")}</Text>
+        )
+      ) : null}
+      {section === "store" ? (
+        session && activeStudent && activeStudentId ? (
+          <StoreScreen accessToken={session.accessToken} branchId={activeStudent.branchId} studentId={activeStudentId} />
+        ) : (
+          <Text style={styles.row2}>{t("me.messagesUnavailable")}</Text>
+        )
+      ) : null}
+      {section === "timeline" ? (
+        session && activeStudentId ? (
+          <TimelineScreen accessToken={session.accessToken} studentId={activeStudentId} />
+        ) : (
+          <Text style={styles.row2}>{t("me.messagesUnavailable")}</Text>
+        )
+      ) : null}
+      {section === "lms" ? (
+        session && activeStudentId ? (
+          <LmsScreen accessToken={session.accessToken} studentId={activeStudentId} />
+        ) : (
+          <Text style={styles.row2}>{t("me.messagesUnavailable")}</Text>
+        )
+      ) : null}
+      {section === "settings" ? (
+        session ? (
+          <CommunicationPreferencesScreen accessToken={session.accessToken} />
         ) : (
           <Text style={styles.row2}>{t("me.messagesUnavailable")}</Text>
         )

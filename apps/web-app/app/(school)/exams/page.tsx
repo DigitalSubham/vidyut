@@ -980,10 +980,17 @@ function ReportCardsTab() {
               <TableRow key={rc.id}>
                 <TableCell className="font-mono text-xs">{rc.studentId}</TableCell>
                 <TableCell>{rc.publishedAt ? rc.publishedAt.slice(0, 10) : "—"}</TableCell>
-                <TableCell>
+                <TableCell className="flex gap-2">
                   {!rc.publishedAt ? (
                     <Button size="sm" variant="outline" onClick={() => publishMutation.mutate(rc.id)}>
                       {t("school.exams.publish")}
+                    </Button>
+                  ) : null}
+                  {rc.downloadUrl ? (
+                    <Button size="sm" variant="outline" asChild>
+                      <a href={rc.downloadUrl} target="_blank" rel="noreferrer">
+                        {t("school.exams.downloadPdf")}
+                      </a>
                     </Button>
                   ) : null}
                 </TableCell>

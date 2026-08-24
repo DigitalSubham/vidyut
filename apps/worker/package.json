@@ -18,9 +18,12 @@
     "@vidyut/validation": "workspace:*",
     "bullmq": "^5.34.5",
     "ioredis": "^5.4.2",
+    "puppeteer": "^25.8.0",
+    "qrcode": "^1.5.4",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@types/qrcode": "^1.5.6",
     "@vidyut/config": "workspace:*",
     "dotenv": "^16.4.7",
     "tsx": "^4.19.2",

@@ -125,6 +125,8 @@
       "cancelled": "रद्द",
       "cancelReasonPrompt": "इस रसीद को रद्द करने का कारण:",
       "chequesTab": "चेक",
+      "collectedToday": "आज की वसूली",
+      "paymentsToday": "भुगतान",
       "chequeNo": "चेक संख्या",
       "bankName": "बैंक का नाम",
       "chequeDueDate": "चेक की नियत तिथि",
@@ -342,7 +344,8 @@
       "templateCreated": "टेम्पलेट बनाया गया",
       "template": "टेम्पलेट",
       "generate": "बनाएं",
-      "reportCardsGenerated": "रिपोर्ट कार्ड बनाए गए"
+      "reportCardsGenerated": "रिपोर्ट कार्ड बनाए गए",
+      "downloadPdf": "पीडीएफ डाउनलोड करें"
     },
     "timetable": {
       "title": "समय सारणी",
@@ -454,6 +457,7 @@
       "issued": "प्रमाणपत्र जारी हुआ",
       "requestSignature": "ई-हस्ताक्षर का अनुरोध करें",
       "signatureRequested": "हस्ताक्षर का अनुरोध किया गया",
+      "downloadPdf": "पीडीएफ डाउनलोड करें",
       "newDocument": "दस्तावेज़ पंजीकृत करें",
       "ownerType": "स्वामी प्रकार",
       "ownerId": "स्वामी आईडी",

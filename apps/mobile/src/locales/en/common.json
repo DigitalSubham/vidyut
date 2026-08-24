@@ -51,7 +51,8 @@
       "homework": "Homework",
       "grading": "Grading",
       "messages": "Messages",
-      "leave": "Leave"
+      "leave": "Leave",
+      "summary": "Summary"
     }
   },
   "marks": {
@@ -93,7 +94,15 @@
       "circulars": "Circulars",
       "complaints": "Complaints",
       "messages": "Messages",
-      "ptm": "PTM"
+      "ptm": "PTM",
+      "surveys": "Surveys",
+      "gallery": "Gallery",
+      "transport": "Transport",
+      "library": "Library",
+      "store": "Store",
+      "timeline": "Timeline",
+      "lms": "Classes",
+      "settings": "Settings"
     },
     "due": "due",
     "day": "Day",
@@ -102,7 +111,11 @@
       "payment": "Payment",
       "payNow": "Pay Now",
       "orderCreatedTitle": "Payment order created",
-      "orderCreatedBody": "Order reference:"
+      "orderCreatedBody": "Order reference:",
+      "downloadReceipt": "Download receipt"
+    },
+    "reportCards": {
+      "downloadPdf": "Download PDF"
     },
     "submit": "Submit",
     "submitting": "Submitting…",
@@ -165,5 +178,61 @@
     "booked": "Booked",
     "noSlots": "No slots available",
     "noTeachers": "No teachers found"
+  },
+  "surveys": {
+    "back": "← Back to surveys",
+    "submit": "Submit",
+    "submitting": "Submitting…",
+    "submittedTitle": "Response submitted",
+    "none": "No surveys or polls right now",
+    "pollTag": "[Poll]"
+  },
+  "gallery": {
+    "back": "← Back to albums",
+    "noAlbums": "No albums yet",
+    "noPhotos": "No photos in this album yet"
+  },
+  "transport": {
+    "notAllocated": "Not allocated to a transport route yet",
+    "route": "Route",
+    "stop": "Stop",
+    "vehicle": "Vehicle",
+    "lastSeen": "Last seen",
+    "noLocationYet": "No location update received yet"
+  },
+  "library": {
+    "due": "Due",
+    "overdue": "Overdue",
+    "noBooks": "No books currently issued"
+  },
+  "store": {
+    "catalog": "Uniforms & Books",
+    "myOrders": "My Orders",
+    "order": "Order",
+    "ordering": "Ordering…",
+    "qty": "Qty",
+    "noItems": "Nothing in the store yet",
+    "noOrders": "No orders placed yet"
+  },
+  "timeline": {
+    "none": "No timeline entries yet"
+  },
+  "lms": {
+    "liveClasses": "Live Classes",
+    "join": "Join",
+    "noLiveClasses": "No live classes scheduled",
+    "contentLibrary": "Content Library",
+    "noContent": "No study material shared yet"
+  },
+  "commPrefs": {
+    "PUSH": "Push notifications",
+    "SMS": "SMS",
+    "WHATSAPP": "WhatsApp",
+    "EMAIL": "Email"
+  },
+  "teacherSummary": {
+    "sections": "Assigned sections",
+    "attendanceMarked": "Attendance marked today",
+    "homeworkThisMonth": "Homework posted this month"
   }
 }

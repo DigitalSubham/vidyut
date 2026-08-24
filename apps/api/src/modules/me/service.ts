@@ -12,8 +12,10 @@ import type {
 import { AppError } from "../../core/errors";
 import { resolveSelfStudentIds } from "../../core/guards/require-self";
 import type { RequestAuth } from "../../core/guards/types";
+import { getDownloadUrl } from "../../core/storage";
 import { buildStudentFeeLedgerEntries } from "../payments/service";
 import { getMergedCalendar } from "../calendar/service";
+import { createStoreOrder } from "../inventory/service";
 
 // --- Unit 34: DPDP data export ---
 
@@ -94,11 +96,21 @@ export async function getMyAttendance(auth: RequestAuth, query: MyAttendanceQuer
 export async function getMyReportCards(auth: RequestAuth, query: MyStudentScopedQueryInput) {
   await assertOwnStudent(auth, query.studentId);
 
-  return withTenant(auth.tenantId, (tx) =>
+  const reportCards = await withTenant(auth.tenantId, (tx) =>
     tx.reportCard.findMany({
       where: { studentId: query.studentId, publishedAt: { not: null } },
       orderBy: { createdAt: "desc" },
     })
+  );
+
+  // Unit 19's real Puppeteer report-card PDF — `pdfUrl` is a stored S3 key,
+  // resolved to a signed download URL at read time (Unit 50's Document.key
+  // convention).
+  return Promise.all(
+    reportCards.map(async (rc) => ({
+      ...rc,
+      downloadUrl: rc.pdfUrl ? await getDownloadUrl(rc.pdfUrl) : null,
+    }))
   );
 }
 
@@ -120,6 +132,149 @@ export async function getMyTeachers(auth: RequestAuth, query: MyStudentScopedQue
       staffName: a.staff.user.name,
       subjectName: a.subject.name,
     }));
+  });
+}
+
+/**
+ * Gap-remediation pass — Unit 57's transport module was entirely gated
+ * behind `transport.manage`, so a parent/student had no way to see their
+ * own route/stop/vehicle or its last known location, despite the
+ * geofence-alert backend already existing. Self-scoped, no permission gate,
+ * same posture as `getMyTeachers` above.
+ */
+export async function getMyTransport(auth: RequestAuth, studentId: string) {
+  await assertOwnStudent(auth, studentId);
+
+  return withTenant(auth.tenantId, async (tx) => {
+    const allocation = await tx.studentRouteAllocation.findFirst({
+      where: { studentId },
+      include: { route: true, stop: true },
+      orderBy: { createdAt: "desc" },
+    });
+    if (!allocation) {
+      return null;
+    }
+
+    const vehicle = await tx.vehicle.findFirst({ where: { routeId: allocation.routeId, deletedAt: null } });
+    const lastPing = vehicle
+      ? await tx.locationPing.findFirst({ where: { vehicleId: vehicle.id }, orderBy: { recordedAt: "desc" } })
+      : null;
+
+    return {
+      routeName: allocation.route.name,
+      stopName: allocation.stop.name,
+      vehicleRegNo: vehicle?.regNo ?? null,
+      lastLocation: lastPing ? { latitude: lastPing.latitude, longitude: lastPing.longitude, recordedAt: lastPing.recordedAt } : null,
+    };
+  });
+}
+
+/**
+ * Gap-remediation pass — Unit 58's library module was entirely gated behind
+ * `library.manage`, so a student had no "my books" view. Self-scoped, no
+ * permission gate.
+ */
+export async function getMyLibrary(auth: RequestAuth, studentId: string) {
+  await assertOwnStudent(auth, studentId);
+
+  return withTenant(auth.tenantId, async (tx) => {
+    const member = await tx.libraryMember.findFirst({ where: { studentId } });
+    if (!member) {
+      return [];
+    }
+
+    const issues = await tx.bookIssue.findMany({
+      where: { memberId: member.id, returnedAt: null },
+      include: { copy: { include: { book: true } } },
+      orderBy: { dueAt: "asc" },
+    });
+
+    const now = new Date();
+    return issues.map((issue) => ({
+      id: issue.id,
+      bookTitle: issue.copy.book.title,
+      author: issue.copy.book.author,
+      dueAt: issue.dueAt,
+      overdue: issue.dueAt < now,
+    }));
+  });
+}
+
+/**
+ * Gap-remediation pass — Unit 64's parent-facing store had **zero
+ * parent-facing UI or endpoint**: `inventory.manage` gated the entire
+ * `/inventory` router, including `store-items`/`store-orders`, so a parent
+ * could not even browse the catalog, let alone order. These are the missing
+ * self-scoped equivalents; `createMyStoreOrder` adds the ownership check
+ * `createStoreOrder` never had (it was never callable by a non-admin
+ * before).
+ */
+export async function getMyStoreItems(auth: RequestAuth, branchId: string) {
+  const items = await withTenant(auth.tenantId, (tx) =>
+    tx.storeItem.findMany({ where: { branchId }, include: { item: true } })
+  );
+  return items.map((si) => ({ id: si.id, itemName: si.item.name, pricePaise: si.pricePaise }));
+}
+
+export async function createMyStoreOrder(
+  auth: RequestAuth,
+  input: { storeItemId: string; studentId: string; quantity: number }
+) {
+  await assertOwnStudent(auth, input.studentId);
+  return createStoreOrder(auth, input);
+}
+
+export async function getMyStoreOrders(auth: RequestAuth, studentId: string) {
+  await assertOwnStudent(auth, studentId);
+  return withTenant(auth.tenantId, (tx) =>
+    tx.storeOrder.findMany({ where: { studentId }, orderBy: { createdAt: "desc" } })
+  );
+}
+
+/**
+ * Gap-remediation pass — Unit 66's timeline/siblings endpoints are gated
+ * behind `student.view` (an admin/staff permission a parent never has), so
+ * a parent had no way to see their own child's timeline or siblings
+ * despite both being built. Self-scoped, no permission gate.
+ */
+export async function getMyStudentTimeline(auth: RequestAuth, studentId: string) {
+  await assertOwnStudent(auth, studentId);
+  return withTenant(auth.tenantId, (tx) =>
+    tx.studentTimelineEntry.findMany({ where: { studentId }, orderBy: { occurredAt: "desc" } })
+  );
+}
+
+export async function getMySiblings(auth: RequestAuth, studentId: string) {
+  await assertOwnStudent(auth, studentId);
+  return withTenant(auth.tenantId, async (tx) => {
+    const student = await tx.student.findUnique({ where: { id: studentId } });
+    if (!student?.siblingGroupId) return [];
+    return tx.student.findMany({ where: { siblingGroupId: student.siblingGroupId, id: { not: studentId } } });
+  });
+}
+
+/**
+ * Gap-remediation pass — Unit 67's LMS module (content library, live-class
+ * links) was gated entirely behind `lms.manage`, so a student had zero
+ * access despite both being explicitly student-facing per the feature
+ * catalog. Self-scoped via the student's current-session section/class, no
+ * permission gate.
+ */
+export async function getMyLiveClasses(auth: RequestAuth, studentId: string) {
+  return withTenant(auth.tenantId, async (tx) => {
+    const sectionId = await resolveCurrentSectionId(tx, studentId);
+    if (!sectionId) return [];
+    return tx.liveClassLink.findMany({ where: { sectionId }, orderBy: { startTime: "asc" } });
+  });
+}
+
+export async function getMyContentItems(auth: RequestAuth, studentId: string) {
+  return withTenant(auth.tenantId, async (tx) => {
+    const sectionId = await resolveCurrentSectionId(tx, studentId);
+    if (!sectionId) return [];
+    const section = await tx.section.findUnique({ where: { id: sectionId } });
+    if (!section) return [];
+    return tx.contentItem.findMany({ where: { classId: section.classId }, orderBy: { createdAt: "desc" } });
   });
 }
 

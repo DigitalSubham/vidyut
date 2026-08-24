@@ -11,6 +11,7 @@ import { AppError } from "../../core/errors";
 import { branchAccessAllowed } from "../../core/guards/branch-scope";
 import type { RequestAuth } from "../../core/guards/types";
 import { enqueue } from "../../core/jobs";
+import { getDownloadUrl } from "../../core/storage";
 
 function assertBranchAccess(auth: RequestAuth, branchId: string): void {
   if (!branchAccessAllowed(auth, branchId)) {
@@ -66,7 +67,7 @@ export async function issueCertificate(auth: RequestAuth, input: IssueCertificat
     });
   });
 
-  await enqueue("certificate.generate", { certificateId: certificate.id });
+  await enqueue("certificate.generate", { certificateId: certificate.id, tenantId: auth.tenantId });
 
   return certificate;
 }
@@ -74,7 +75,7 @@ export async function issueCertificate(auth: RequestAuth, input: IssueCertificat
 export async function listCertificates(auth: RequestAuth, query: ListCertificatesQueryInput) {
   assertBranchAccess(auth, query.branchId);
 
-  return withTenant(auth.tenantId, (tx) =>
+  const certificates = await withTenant(auth.tenantId, (tx) =>
     tx.certificate.findMany({
       where: {
         branchId: query.branchId,
@@ -84,6 +85,10 @@ export async function listCertificates(auth: RequestAuth, query: ListCertificate
       },
       orderBy: { issuedAt: "desc" },
     })
+  );
+
+  return Promise.all(
+    certificates.map(async (c) => ({ ...c, downloadUrl: c.pdfUrl ? await getDownloadUrl(c.pdfUrl) : null }))
   );
 }
 
@@ -171,6 +176,7 @@ export async function generateBulkIds(auth: RequestAuth, query: BulkIdsQueryInpu
     certificates.map(({ certificate, admissionNo }) =>
       enqueue("certificate.generate", {
         certificateId: certificate.id,
+        tenantId: auth.tenantId,
         qrData: JSON.stringify({ studentId: certificate.studentId, admissionNo }),
       })
     )

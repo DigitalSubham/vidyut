@@ -82,6 +82,7 @@ export interface StaffInvitePayload {
  */
 export interface ReceiptGeneratePayload {
   receiptId: string;
+  tenantId: string;
 }
 
 /**
@@ -108,13 +109,9 @@ export interface StudentsAbsenceAlertPayload {
   date: string;
 }
 
-/**
- * context/feature-specs/19-report-cards.md — stubbed like receipt.generate
- * (no Puppeteer rendering yet): proves the enqueue -> worker round trip
- * without producing a real PDF.
- */
 export interface ReportCardGeneratePayload {
   reportCardId: string;
+  tenantId: string;
 }
 
 /** context/feature-specs/20-notifications-announcements.md — resolves the audience and writes one NotificationLog per targeted user. `templateKey` defaults to "announcement.published"; Unit 68's Newsletter reuses this same job with "newsletter.sent" instead, per its own "distinct template key, not a parallel pipeline" scope note. */
@@ -128,6 +125,8 @@ export interface AnnouncementFanoutPayload {
 /** context/feature-specs/21-certificates-ids.md — stubbed like receipt.generate/reportcard.generate (no PDF pipeline yet). */
 export interface CertificateGeneratePayload {
   certificateId: string;
+  tenantId: string;
+  qrData?: string;
 }
 
 /**
