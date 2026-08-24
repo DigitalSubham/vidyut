@@ -225,6 +225,7 @@ export interface MyReportCard {
   id: string;
   examId: string;
   pdfUrl: string | null;
+  downloadUrl: string | null;
   publishedAt: string;
 }
 
@@ -263,6 +264,8 @@ export interface MyFeeLedgerEntry {
   periodLabel?: string;
   status?: string;
   mode?: string;
+  receiptId?: string | null;
+  receiptDownloadUrl?: string | null;
 }
 
 export function getMyFeeLedger(accessToken: string, studentId: string) {
@@ -490,4 +493,174 @@ export function listPTMSlots(accessToken: string, staffId: string) {
 
 export function bookPTMSlot(accessToken: string, slotId: string) {
   return authedRequest<PTMSlotItem>(accessToken, `/ptm-slots/${encodeURIComponent(slotId)}/book`, { method: "PATCH" });
+}
+
+export interface MyTransportInfo {
+  routeName: string;
+  stopName: string;
+  vehicleRegNo: string | null;
+  lastLocation: { latitude: number; longitude: number; recordedAt: string } | null;
+}
+
+/** Gap-remediation pass — Unit 57's transport module had zero parent-facing view despite the geofence-alert backend already existing. */
+export function getMyTransport(accessToken: string, studentId: string) {
+  return authedRequest<MyTransportInfo | null>(accessToken, `/me/transport?studentId=${encodeURIComponent(studentId)}`);
+}
+
+export interface TeacherSummary {
+  assignedSectionCount: number;
+  attendanceMarkedPercent: number;
+  homeworkPostedThisMonth: number;
+}
+
+/** Gap-remediation pass — Unit 69's teacher-summary endpoint had no UI anywhere. */
+export function getTeacherSummary(accessToken: string) {
+  return authedRequest<TeacherSummary>(accessToken, "/dashboard/teacher-summary");
+}
+
+export interface MyCommunicationPreference {
+  id: string;
+  channel: "PUSH" | "SMS" | "WHATSAPP" | "EMAIL" | "IN_APP";
+  optedIn: boolean;
+}
+
+const ALL_CHANNELS = ["PUSH", "SMS", "WHATSAPP", "EMAIL"] as const;
+
+/** Gap-remediation pass — Unit 68's per-channel opt-out toggle had an API but no UI anywhere; this is primarily a parent concern, so it belongs here. */
+export function getMyCommunicationPreferences(accessToken: string) {
+  return authedRequest<MyCommunicationPreference[]>(accessToken, "/me/communication-preferences");
+}
+
+export function setMyCommunicationPreference(accessToken: string, channel: string, optedIn: boolean) {
+  return authedRequest<MyCommunicationPreference>(accessToken, "/me/communication-preferences", {
+    method: "PUT",
+    body: JSON.stringify({ channel, optedIn }),
+  });
+}
+
+export { ALL_CHANNELS };
+
+export interface MyLiveClassLink {
+  id: string;
+  subjectId: string;
+  startTime: string;
+  joinUrl: string;
+}
+
+export interface MyContentItem {
+  id: string;
+  title: string;
+  type: "FILE" | "LINK";
+  fileUrl: string | null;
+  linkUrl: string | null;
+}
+
+/** Gap-remediation pass — Unit 67's LMS module was gated behind `lms.manage` (staff-only), so a student had zero access despite content library/live classes being explicitly student-facing. */
+export function getMyLiveClasses(accessToken: string, studentId: string) {
+  return authedRequest<MyLiveClassLink[]>(accessToken, `/me/live-classes?studentId=${encodeURIComponent(studentId)}`);
+}
+
+export function getMyContentItems(accessToken: string, studentId: string) {
+  return authedRequest<MyContentItem[]>(accessToken, `/me/content-items?studentId=${encodeURIComponent(studentId)}`);
+}
+
+export interface MyTimelineEntry {
+  id: string;
+  type: "DISCIPLINE" | "ACHIEVEMENT" | "NOTE";
+  body: string;
+  occurredAt: string;
+}
+
+/** Gap-remediation pass — Unit 66's timeline/siblings endpoints were gated behind `student.view` (staff-only), so a parent had no way to see either despite both being built. */
+export function getMyStudentTimeline(accessToken: string, studentId: string) {
+  return authedRequest<MyTimelineEntry[]>(accessToken, `/me/student-timeline?studentId=${encodeURIComponent(studentId)}`);
+}
+
+export interface MyStoreItem {
+  id: string;
+  itemName: string;
+  pricePaise: number;
+}
+
+export interface MyStoreOrder {
+  id: string;
+  storeItemId: string;
+  studentId: string;
+  quantity: number;
+  createdAt: string;
+}
+
+/** Gap-remediation pass — Unit 64's parent store had zero parent-facing endpoint at all (the whole /inventory router was gated behind inventory.manage). */
+export function getMyStoreItems(accessToken: string, branchId: string) {
+  return authedRequest<MyStoreItem[]>(accessToken, `/me/store-items?branchId=${encodeURIComponent(branchId)}`);
+}
+
+export function createMyStoreOrder(accessToken: string, input: { storeItemId: string; studentId: string; quantity: number }) {
+  return authedRequest<MyStoreOrder>(accessToken, "/me/store-orders", { method: "POST", body: JSON.stringify(input) });
+}
+
+export function getMyStoreOrders(accessToken: string, studentId: string) {
+  return authedRequest<MyStoreOrder[]>(accessToken, `/me/store-orders?studentId=${encodeURIComponent(studentId)}`);
+}
+
+export interface MyLibraryBook {
+  id: string;
+  bookTitle: string;
+  author: string;
+  dueAt: string;
+  overdue: boolean;
+}
+
+/** Gap-remediation pass — Unit 58's library module had no "my books" mobile view. */
+export function getMyLibrary(accessToken: string, studentId: string) {
+  return authedRequest<MyLibraryBook[]>(accessToken, `/me/library?studentId=${encodeURIComponent(studentId)}`);
+}
+
+export interface GalleryAlbumItem {
+  id: string;
+  title: string;
+  isPublic: boolean;
+}
+
+export interface GalleryPhotoItem {
+  id: string;
+  albumId: string;
+  caption: string | null;
+  url: string;
+}
+
+/** Gap-remediation pass — the web album/photo upload had no mobile viewer for parents/students until now. */
+export function listGalleryAlbums(accessToken: string, branchId: string) {
+  return authedRequest<GalleryAlbumItem[]>(accessToken, `/gallery/albums?branchId=${encodeURIComponent(branchId)}`);
+}
+
+export function listGalleryPhotos(accessToken: string, albumId: string) {
+  return authedRequest<GalleryPhotoItem[]>(accessToken, `/gallery/albums/${encodeURIComponent(albumId)}/photos`);
+}
+
+export interface SurveyQuestionItem {
+  id: string;
+  questionText: string;
+  type: "SINGLE_CHOICE" | "TEXT";
+  options: string[] | null;
+  order: number;
+}
+
+export interface SurveyItem {
+  id: string;
+  title: string;
+  isPoll: boolean;
+  questions: SurveyQuestionItem[];
+}
+
+/** Gap-remediation pass — Unit 49's survey/poll list had no mobile response UI, web-only until now. */
+export function listSurveys(accessToken: string, branchId: string) {
+  return authedRequest<SurveyItem[]>(accessToken, `/surveys?branchId=${encodeURIComponent(branchId)}`);
+}
+
+export function respondSurvey(accessToken: string, surveyId: string, answers: { questionId: string; answer: string }[]) {
+  return authedRequest<unknown>(accessToken, `/surveys/${encodeURIComponent(surveyId)}/respond`, {
+    method: "POST",
+    body: JSON.stringify({ answers }),
+  });
 }

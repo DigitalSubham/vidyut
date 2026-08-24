@@ -16,7 +16,7 @@ import { AppError } from "../../core/errors";
 import { branchAccessAllowed } from "../../core/guards/branch-scope";
 import type { RequestAuth } from "../../core/guards/types";
 import { enqueue } from "../../core/jobs";
-import { getUploadUrl } from "../../core/storage";
+import { getDownloadUrl, getUploadUrl } from "../../core/storage";
 
 function assertBranchAccess(auth: RequestAuth, branchId: string): void {
   if (!branchAccessAllowed(auth, branchId)) {
@@ -178,12 +178,16 @@ export async function getStudentTranscript(auth: RequestAuth, id: string) {
   const student = await getStudentOrThrow(auth, id);
   assertBranchAccess(auth, student.branchId);
 
-  return withTenant(auth.tenantId, (tx) =>
+  const reportCards = await withTenant(auth.tenantId, (tx) =>
     tx.reportCard.findMany({
       where: { studentId: id, publishedAt: { not: null } },
       include: { session: true, exam: true },
       orderBy: [{ session: { startDate: "asc" } }, { exam: { startDate: "asc" } }],
     })
+  );
+
+  return Promise.all(
+    reportCards.map(async (rc) => ({ ...rc, downloadUrl: rc.pdfUrl ? await getDownloadUrl(rc.pdfUrl) : null }))
   );
 }
 

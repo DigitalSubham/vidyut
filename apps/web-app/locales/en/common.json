@@ -125,6 +125,8 @@
       "cancelled": "Cancelled",
       "cancelReasonPrompt": "Reason for cancelling this receipt:",
       "chequesTab": "Cheques",
+      "collectedToday": "Collected today",
+      "paymentsToday": "payments",
       "chequeNo": "Cheque No.",
       "bankName": "Bank Name",
       "chequeDueDate": "Cheque Due Date",
@@ -342,7 +344,8 @@
       "templateCreated": "Template created",
       "template": "Template",
       "generate": "Generate",
-      "reportCardsGenerated": "Report cards generated"
+      "reportCardsGenerated": "Report cards generated",
+      "downloadPdf": "Download PDF"
     },
     "timetable": {
       "title": "Timetable",
@@ -454,6 +457,7 @@
       "issued": "Certificate issued",
       "requestSignature": "Request e-signature",
       "signatureRequested": "Signature requested",
+      "downloadPdf": "Download PDF",
       "newDocument": "Register a document",
       "ownerType": "Owner type",
       "ownerId": "Owner ID",

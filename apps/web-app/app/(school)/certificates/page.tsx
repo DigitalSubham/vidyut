@@ -290,10 +290,17 @@ function RegisterTab() {
               <TableCell>
                 <Badge variant="outline">{c.signatureStatus}</Badge>
               </TableCell>
-              <TableCell>
+              <TableCell className="flex gap-2">
                 {c.signatureStatus === "NONE" ? (
                   <Button variant="outline" size="sm" onClick={() => signMutation.mutate(c.id)}>
                     {t("school.certificates.requestSignature")}
+                  </Button>
+                ) : null}
+                {c.downloadUrl ? (
+                  <Button variant="outline" size="sm" asChild>
+                    <a href={c.downloadUrl} target="_blank" rel="noreferrer">
+                      {t("school.certificates.downloadPdf")}
+                    </a>
                   </Button>
                 ) : null}
               </TableCell>

@@ -13,6 +13,7 @@ import type {
 import { AppError } from "../../core/errors";
 import { branchAccessAllowed } from "../../core/guards/branch-scope";
 import type { RequestAuth } from "../../core/guards/types";
+import { getDownloadUrl } from "../../core/storage";
 import { finalizePaymentSuccess, recomputeInvoiceStatus } from "./complete-payment";
 import { computePeriods } from "./periods";
 
@@ -251,8 +252,23 @@ export async function listPayments(auth: RequestAuth, query: ListPaymentsQueryIn
 export async function buildStudentFeeLedgerEntries(tx: Prisma.TransactionClient, studentId: string) {
   const [invoices, payments] = await Promise.all([
     tx.invoice.findMany({ where: { studentId }, include: { items: true } }),
-    tx.payment.findMany({ where: { studentId } }),
+    tx.payment.findMany({ where: { studentId }, include: { receipt: true } }),
   ]);
+
+  const paymentEntries = await Promise.all(
+    payments.map(async (payment) => ({
+      type: "payment" as const,
+      date: payment.createdAt,
+      paymentId: payment.id,
+      invoiceId: payment.invoiceId,
+      amount: payment.amount,
+      mode: payment.mode,
+      receiptId: payment.receipt?.id ?? null,
+      // Unit 12/38's real Puppeteer receipt PDF — resolved to a signed download
+      // URL at read time, same convention as Unit 50's Document.key.
+      receiptDownloadUrl: payment.receipt?.pdfUrl ? await getDownloadUrl(payment.receipt.pdfUrl) : null,
+    }))
+  );
 
   return [
     ...invoices.map((invoice) => ({
@@ -263,14 +279,7 @@ export async function buildStudentFeeLedgerEntries(tx: Prisma.TransactionClient,
       amount: invoiceTotal(invoice.items),
       status: invoice.status,
     })),
-    ...payments.map((payment) => ({
-      type: "payment" as const,
-      date: payment.createdAt,
-      paymentId: payment.id,
-      invoiceId: payment.invoiceId,
-      amount: payment.amount,
-      mode: payment.mode,
-    })),
+    ...paymentEntries,
   ].sort((a, b) => a.date.getTime() - b.date.getTime());
 }
 

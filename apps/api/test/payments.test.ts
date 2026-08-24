@@ -211,6 +211,13 @@ describe("payments — idempotent counter collection, invoice status, receipt", 
     const receipt = await withTenant(tenant.id, (tx) => tx.receipt.findUnique({ where: { paymentId } }));
     expect(receipt).not.toBeNull();
 
+    // Unit 12's real Puppeteer receipt.generate job — waits for the async
+    // worker to render and upload the PDF, then asserts a real S3 key
+    // landed on Receipt.pdfUrl (not the old stub's permanent null).
+    await new Promise((resolve) => setTimeout(resolve, 4000));
+    const receiptAfterRender = await withTenant(tenant.id, (tx) => tx.receipt.findUnique({ where: { paymentId } }));
+    expect(receiptAfterRender?.pdfUrl).toMatch(/^receipts\//);
+
     const principal = await principalToken(tenant.id, branch.id);
     const principalPay = await request(app)
       .post("/api/v1/payments")
@@ -226,7 +233,7 @@ describe("payments — idempotent counter collection, invoice status, receipt", 
       .send({ branchId: branch.id, studentId: student.id, invoiceId: invoice.id, amount: 1000, mode: "CASH" });
     expect(missingKey.status).toBe(400);
     expect(missingKey.body.error.code).toBe("VALIDATION_ERROR");
-  });
+  }, 10000);
 
   it("the fee ledger merges invoices and payments in chronological order", async () => {
     const tenant = await createTenant("payments-ledger-tenant");

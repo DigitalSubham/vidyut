@@ -10,6 +10,7 @@ import { AppError } from "../../core/errors";
 import { branchAccessAllowed } from "../../core/guards/branch-scope";
 import type { RequestAuth } from "../../core/guards/types";
 import { enqueue } from "../../core/jobs";
+import { getDownloadUrl } from "../../core/storage";
 
 function assertBranchAccess(auth: RequestAuth, branchId: string): void {
   if (!branchAccessAllowed(auth, branchId)) {
@@ -129,7 +130,7 @@ export async function generateReportCards(auth: RequestAuth, input: GenerateRepo
   });
 
   for (const reportCard of reportCards) {
-    await enqueue("reportcard.generate", { reportCardId: reportCard.id });
+    await enqueue("reportcard.generate", { reportCardId: reportCard.id, tenantId: auth.tenantId });
   }
 
   return reportCards;
@@ -142,8 +143,12 @@ export async function listReportCards(auth: RequestAuth, query: ListReportCardsQ
   }
   assertBranchAccess(auth, exam.branchId);
 
-  return withTenant(auth.tenantId, (tx) =>
+  const reportCards = await withTenant(auth.tenantId, (tx) =>
     tx.reportCard.findMany({ where: { examId: query.examId }, orderBy: { createdAt: "asc" } })
+  );
+
+  return Promise.all(
+    reportCards.map(async (rc) => ({ ...rc, downloadUrl: rc.pdfUrl ? await getDownloadUrl(rc.pdfUrl) : null }))
   );
 }
 

@@ -1,7 +1,9 @@
 import { Router } from "express";
 import {
   createDataDeletionRequestSchema,
+  createStoreOrderSchema,
   listMyNotificationsQuerySchema,
+  listStoreItemsQuerySchema,
   myAttendanceQuerySchema,
   myCalendarQuerySchema,
   myHomeworkCalendarQuerySchema,
@@ -59,6 +61,31 @@ meRouter.patch(
   "/push-token",
   validateBody(registerPushTokenSchema),
   asyncHandler(controller.registerPushToken)
+);
+meRouter.get("/transport", validateQuery(myStudentScopedQuerySchema), asyncHandler(controller.getMyTransport));
+meRouter.get("/library", validateQuery(myStudentScopedQuerySchema), asyncHandler(controller.getMyLibrary));
+meRouter.get("/store-items", validateQuery(listStoreItemsQuerySchema), asyncHandler(controller.getMyStoreItems));
+meRouter.post("/store-orders", validateBody(createStoreOrderSchema), asyncHandler(controller.createMyStoreOrder));
+meRouter.get(
+  "/store-orders",
+  validateQuery(myStudentScopedQuerySchema),
+  asyncHandler(controller.getMyStoreOrders)
+);
+meRouter.get(
+  "/student-timeline",
+  validateQuery(myStudentScopedQuerySchema),
+  asyncHandler(controller.getMyStudentTimeline)
+);
+meRouter.get("/siblings", validateQuery(myStudentScopedQuerySchema), asyncHandler(controller.getMySiblings));
+meRouter.get(
+  "/live-classes",
+  validateQuery(myStudentScopedQuerySchema),
+  asyncHandler(controller.getMyLiveClasses)
+);
+meRouter.get(
+  "/content-items",
+  validateQuery(myStudentScopedQuerySchema),
+  asyncHandler(controller.getMyContentItems)
 );
 meRouter.get("/tour-seen", asyncHandler(controller.getTourSeen));
 meRouter.patch("/tour-seen", asyncHandler(controller.markTourSeen));

@@ -74,5 +74,5 @@ export async function finalizePaymentSuccess(
     },
   });
 
-  await enqueue("receipt.generate", { receiptId: receipt.id });
+  await enqueue("receipt.generate", { receiptId: receipt.id, tenantId: params.tenantId });
 }

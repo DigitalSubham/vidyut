@@ -73,9 +73,9 @@
 | Roll-back / re-admission | ✅ | Standalone `POST /students/:id/readmit`, distinct from Unit 33's rollover-time REPEAT — built (Unit 66) | ADM | P1 |
 | Transfer between sections/branches | ✅ | `POST /students/:id/transfer` — moves current Enrollment + `Student.branchId`; old attendance/marks/fee history stays put — built (Unit 66) | ADM | P2 |
 | Alumni management | ⚠️ | `Student.status = ALUMNI` transition + filtered `GET /students/alumni` list — built (Unit 66); no distinct alumni-portal login (reuses existing parent/student login) | ADM | P3 |
-| Student ID card generation | ⚠️ | Single-issue (Unit 21) and bulk-by-section (Unit 50, `POST /certificates/bulk-ids`, QR-data payload) both built via `Certificate.ID_CARD`; no real QR image/photo layout rendered yet — PDF gen is still a stub job | ADM | P1 |
+| Student ID card generation | ✅ | Single-issue (Unit 21) and bulk-by-section (Unit 50, `POST /certificates/bulk-ids`, QR-data payload) both built via `Certificate.ID_CARD`; real Puppeteer PDF + a real embedded QR image now render (gap-remediation pass) — no photo layout beyond the QR/text card yet | ADM | P1 |
 | Student search & filters | ✅ | By name, admission no.; built (Unit 07, `search` query param) | ADM, TCH | P0 |
-| Student timeline/log | ✅ | `StudentTimelineEntry` (`DISCIPLINE`/`ACHIEVEMENT`/`NOTE`), append-only, surfaced on the student profile — built (Unit 66) | PRIN, TCH | P2 |
+| Student timeline/log | ✅ | `StudentTimelineEntry` (`DISCIPLINE`/`ACHIEVEMENT`/`NOTE`), append-only, surfaced on the student profile — built (Unit 66); now also readable by the parent (`GET /me/student-timeline` + mobile `TimelineScreen.tsx`, gap-remediation pass) | PRIN, TCH | P2 |
 
 ## A2. Admission & Enquiry (CRM) `[P1 — light version P0]`
 | Feature | Status | Detail | Roles | Phase |
@@ -99,7 +99,7 @@
 | Multi-child single login | ✅ | One parent → many students — built (`resolveGuardianStudentIds`) | PAR | P0 |
 | Contact management | ✅ | `Guardian.alternatePhone`/`whatsappOptIn` added alongside phone/email — built (Unit 68) | ADM, PAR | P0 |
 | Parent app onboarding | ✅ | Invite via SMS/link; OTP login — built (Unit 08); the SMS itself is a stub, same caveat as the whole notifications engine | PAR | P0 |
-| Communication preferences | ✅ | Per-channel opt-out (`CommunicationPreference`), a real send-time gate checked by the announcement fan-out — built (Unit 68); no granular per-message-type preferences | PAR | P1 |
+| Communication preferences | ✅ | Per-channel opt-out (`CommunicationPreference`), a real send-time gate checked by the announcement fan-out — built (Unit 68); no granular per-message-type preferences. Now toggleable from the app (`CommunicationPreferencesScreen.tsx`, gap-remediation pass — the API existed with no UI anywhere until now) | PAR | P1 |
 | Guardian access control | ✅ | `StudentGuardian.isPrimary`/`canPay` flags — built (Unit 08) | ADM | P2 |
 
 ## A4. Staff / Teacher / HR Records `[P0 basic → P2 full HR]`
@@ -162,13 +162,13 @@
 | Exam timetable | ✅ | Dates, rooms — `ExamTimetable`, distinct from Unit 22's class-period timetable (Unit 46) | ADM | P1 |
 | Marks entry | ✅ | Per subject, by teacher; app + web — built (Unit 18) | TCH | P0 |
 | Marks moderation/lock | ✅ | Approve & lock — built (Unit 18, `lockMarksEntry`) | PRIN | P1 |
-| Report card generation | ✅ | Configurable templates, school logo — built (Unit 19); PDF render is a stub job | ADM, PRIN | P0 |
+| Report card generation | ✅ | Configurable templates, school logo — built (Unit 19); real Puppeteer PDF render (marks + co-scholastic grades) closes the long-standing stub (gap-remediation pass) | ADM, PRIN | P0 |
 | CBSE/ICSE/State-board formats | ⚠️ | CBSE grading built; template is generic, not board-specific layouts | PRIN | P0/P1 |
 | Co-scholastic / grades | ✅ | Discipline, activities via `CoScholasticGrade`, alongside scholastic `MarksEntry` (Unit 46) | TCH | P1 |
 | Auto teacher remarks | ❌ | Templated/AI comments — not built | TCH | P2 |
 | Consolidated result / rank | ✅ | `GET /exams/:id/results/rank` — computed from existing `MarksEntry`, no new input data (Unit 46) | PRIN | P1 |
 | Transcripts / cumulative record | ✅ | `GET /students/:id/transcript` — multi-session published-`ReportCard` rollup (Unit 46) | ADM | P2 |
-| Progress reports to parents | ✅ | Publish to app; download PDF — built (Unit 24/25, only `publishedAt`-set rows show; PDF is a stub) | PAR | P0 |
+| Progress reports to parents | ✅ | Publish to app; download PDF — built (Unit 24/25, only `publishedAt`-set rows show); real PDF now generated and downloadable from the mobile report-cards tab (gap-remediation pass) | PAR | P0 |
 | Online examination | ✅ | MCQ-only (`OnlineExam`/`OnlineExamQuestion`/`OnlineExamSubmission`), auto-graded on submit; mobile student-facing take/submit flow via a new self-scoped `GET /online-exams/mine` discovery endpoint; descriptive/subjective out of scope (Unit 46) | TCH, STU | P2 |
 | Question bank | ✅ | `QuestionBankItem`, filterable by class/subject, copied (not referenced) into an `OnlineExam` (Unit 46) | TCH | P3 |
 | Admit card / hall ticket | ✅ | Generate for exams — built (Unit 21, `ADMIT_CARD` certificate type) | ADM | P1 |
@@ -189,8 +189,8 @@
 |---|---|---|---|---|
 | Syllabus / curriculum tracking | ✅ | `SyllabusChapter` — a plain checklist (`order` + `completedAt`), not a rich curriculum-mapping tool — built (Unit 67) | TCH, PRIN | P2 |
 | Lesson plans | ✅ | `LessonPlan` (staffId/subjectId/sectionId/date/topic/notes), no approval-gate workflow — built (Unit 67) | TCH | P2 |
-| Study material / content library | ✅ | `ContentItem` (`FILE`, via Unit 04's S3 wrapper, or `LINK`) — built (Unit 67); no video hosting/transcoding (external link-out only) | TCH, STU | P2 |
-| Online classes / live video | ⚠️ | `LiveClassLink` — a scheduled link-out to an externally-created Zoom/Meet/Jitsi meeting — built (Unit 67); no real SDK integration | TCH, STU | P3 |
+| Study material / content library | ✅ | `ContentItem` (`FILE`, via Unit 04's S3 wrapper, or `LINK`) — built (Unit 67); no video hosting/transcoding (external link-out only). A student can now actually see it (`GET /me/content-items` + mobile `LmsScreen.tsx`, gap-remediation pass — the whole `/lms` router was previously gated behind `lms.manage`, unreachable by a student) | TCH, STU | P2 |
+| Online classes / live video | ⚠️ | `LiveClassLink` — a scheduled link-out to an externally-created Zoom/Meet/Jitsi meeting — built (Unit 67); no real SDK integration. Join link is now tappable on mobile (`GET /me/live-classes` + `LmsScreen.tsx`, gap-remediation pass) | TCH, STU | P3 |
 | Recorded lectures | ❌ | Store & stream — not built (would need the video-hosting infra explicitly deferred above) | STU | P3 |
 | Digital assignments/quizzes | ❌ | (see A7/A8) — not built beyond what's listed there | TCH | P2 |
 | Learning analytics | ❌ | Engagement, completion — not built (premature before there's real content to measure engagement against) | PRIN | P3 |
@@ -210,7 +210,7 @@
 | Discounts / concessions / scholarships | ✅ | Sibling, staff, merit, RTE — built (Unit 11, generic concession, no sibling-specific auto-detect) | ACC, OWN | P0 |
 | Fine / late-fee rules | ✅ | Auto-apply after due date — built (Unit 11, `FineRule`) | ACC | P1 |
 | Fee collection (counter) | ✅ | Cash/cheque/UPI/card entry — built (Unit 12) | ACC | P0 |
-| Instant receipt | ✅ | Receipt no. — built (Unit 12); PDF render is a stub job | ACC, PAR | P0 |
+| Instant receipt | ✅ | Receipt no. — built (Unit 12); real Puppeteer PDF render, downloadable from the parent app's fee ledger (gap-remediation pass) | ACC, PAR | P0 |
 | Online fee payment | ✅ | UPI/card/netbanking via gateway — built (Unit 13, Razorpay + real HMAC webhook) | PAR | P1 |
 | Partial/advance payment | ✅ | Adjust ledger — built (Unit 12) | ACC | P1 |
 | Dues & defaulter list | ✅ | By class/amount/age of due — built (Unit 12) | ACC, OWN | P0 |
@@ -269,7 +269,7 @@
 | Asset register | ✅ | A register (item, purchase date/price), not a depreciation-accounting engine — Unit 62's territory if ever built natively | ADM | P3 |
 | Vendor management | ⚠️ | A plain `vendorName` string on `PurchaseOrder` — no separate vendor directory/contact model | ADM | P3 |
 | Low-stock alerts | ✅ | Nightly cron scan (Unit 14/57's own pattern), IN_APP alert to OWNERs | ADM | P3 |
-| Uniform/book store & sales | ✅ | `StoreItem`/`StoreOrder` reuse Unit 11/12's existing fee engine (a one-off MISC-FeeHead invoice), same reuse pattern as Unit 58/59 — not a separate payment path | ACC | P3 |
+| Uniform/book store & sales | ✅ | `StoreItem`/`StoreOrder` reuse Unit 11/12's existing fee engine (a one-off MISC-FeeHead invoice), same reuse pattern as Unit 58/59 — not a separate payment path. A parent now has a real way to actually use it (`GET/POST /me/store-*` + mobile `StoreScreen.tsx`, gap-remediation pass — the admin-only `/inventory` router had no parent-facing path at all before this) | ACC | P3 |
 
 ---
 
@@ -298,9 +298,9 @@
 | PTM scheduling | ✅ | `PTMSlot` + booking endpoint (Unit 49), web management (offer/list), mobile parent-side booking UI (`PTMScreen`, Unit 52) | TCH, PAR | P2 |
 | Events & school calendar | ✅ | `CalendarEvent` merged at read time with exam dates + homework due-dates into one `GET /me/calendar` — replaced the old homework-only mobile calendar (Unit 49) | all | P1 |
 | Complaint / grievance / feedback | ✅ | Raise (self-scoped, branch-verified via own student) + staff resolve — web + mobile (Unit 49) | PAR, ADM | P2 |
-| Surveys / polls / feedback forms | ⚠️ | Single-choice/text only, no branching — create/respond/tally-results built; **mobile response UI not built**, web-only (Unit 49) | PRIN, PAR | P2 |
+| Surveys / polls / feedback forms | ✅ | Single-choice/text only, no branching — create/respond/tally-results built; real mobile response UI now built (`SurveysScreen.tsx`, gap-remediation pass) | PRIN, PAR | P2 |
 | Newsletter | ✅ | Plain text/body compose, reuses the existing Announcement fan-out with a distinct template key — not rich/HTML content — built (Unit 68) | ADM | P3 |
-| Gallery / photos / achievements | ⚠️ | S3-backed album/photo upload built (web); **mobile viewing UI not built** (Unit 49) | ADM, PAR | P2 |
+| Gallery / photos / achievements | ✅ | S3-backed album/photo upload built (web); real mobile viewer now built (`GalleryScreen.tsx`, gap-remediation pass) | ADM, PAR | P2 |
 | Birthday / greeting automation | ⚠️ | Nightly cron, on by default (confirmed with the user), opt-outable via `CommunicationPreference` — built (Unit 68); **student birthdays only**, `Staff` has no `dob` field in the schema yet | PAR | P3 |
 | Emergency / SOS broadcast | ❌ | Instant all-parent alert — **deliberately not built**, needs the user's sign-off on bypassing the SMS-wallet balance check (a real billing-impact policy call, Unit 49's own Open Question 3) | PRIN | P2 |
 
@@ -320,14 +320,14 @@
 | Driver/attendant management | ✅ | TRN | P2 |
 | Student route allocation | ✅ | TRN, ADM | P2 |
 | Transport fees | ✅ | Reuses Unit 11's fee engine (`FeeHead(type: TRANSPORT)`/`FeeStructureItem` per route) — no parallel billing model | ACC | P2 |
-| GPS live vehicle tracking | ⚠️ | Generic, vendor-agnostic ingestion (`POST /transport/location-ping`) built; no specific device/SDK integration (Unit 57's own Open Question 1 — deferred until a real device exists) | PAR, TRN | P3 |
+| GPS live vehicle tracking | ⚠️ | Generic, vendor-agnostic ingestion (`POST /transport/location-ping`) built; no specific device/SDK integration (Unit 57's own Open Question 1 — deferred until a real device exists). A parent can now at least view route/stop/vehicle/last-known-location (`GET /me/transport` + mobile `TransportScreen.tsx`, gap-remediation pass — the whole `/transport` router was previously gated behind `transport.manage`, so a parent had no endpoint at all) | PAR, TRN | P3 |
 | Pickup/drop notifications | ✅ | A location ping crossing a stop's 200m geofence alerts guardians via the existing PUSH/SMS pipeline | PAR | P3 |
 | In-bus attendance | ❌ | Depends on Unit 44's device-scan endpoint — not built | TRN | P3 |
 | Route optimization | ❌ | A real logistics-optimization problem, no validated demand — not built | TRN | P3 |
 
 ## D2. Library Management `[P2]`
 
-**Status ✅ built** (Unit 58 — same posture as Unit 57: built at explicit user request ahead of confirmed real demand, see progress-tracker.md's own note; `build-approach.md`'s on-demand-only-when-needed rule otherwise applies to D3+ below).
+**Status ✅ built** (Unit 58 — same posture as Unit 57: built at explicit user request ahead of confirmed real demand, see progress-tracker.md's own note; `build-approach.md`'s on-demand-only-when-needed rule otherwise applies to D3+ below). A student's own currently-issued books are now visible on mobile (`GET /me/library` + `LibraryScreen.tsx`, gap-remediation pass — the whole `/library` router was previously gated behind `library.manage`, so a student had no endpoint at all).
 
 | Feature | Status | Roles | Phase |
 |---|---|---|---|
@@ -370,9 +370,9 @@
 | Feature | Status | Detail | Roles | Phase |
 |---|---|---|---|---|
 | Transfer Certificate (TC) | ✅ | Generate, number, register — built (Unit 21) | ADM | P1 |
-| Bonafide / character / conduct | ⚠️ | Numbered issue built (Unit 21) with token-based templates (Unit 50); PDF gen is still a stub job — no real PDF pipeline yet | ADM | P1 |
+| Bonafide / character / conduct | ✅ | Numbered issue built (Unit 21) with token-based templates (Unit 50); real Puppeteer PDF pipeline, with a default-body fallback when no template is configured (gap-remediation pass) | ADM | P1 |
 | Custom certificate builder | ✅ | Token-based (`{{studentName}}` etc.), not a visual designer — built (Unit 50, `CertificateTemplate` + `renderCertificateTemplate()`). Visual drag-and-drop explicitly out of scope | ADM | P2 |
-| ID cards (student/staff) | ⚠️ | Bulk generation by section built (Unit 50, `POST /certificates/bulk-ids`, one `ID_CARD` per enrolled student + QR-data payload for a future PDF pipeline). Staff ID single-issue built (Unit 42). No QR image/photo layout rendered yet — same stub-PDF posture as everything else in this module | ADM | P1 |
+| ID cards (student/staff) | ✅ | Bulk generation by section built (Unit 50, `POST /certificates/bulk-ids`, one `ID_CARD` per enrolled student). Staff ID single-issue built (Unit 42). Real PDF + a real embedded QR image now render (gap-remediation pass) — no photo layout beyond the QR/text card | ADM | P1 |
 | Admit cards | ✅ | (see A8) — built (Unit 21) | ADM | P1 |
 | Certificate register/log | ✅ | Issued docs record — built (`Certificate` table is the register) | ADM | P1 |
 | Document management (DMS) | ✅ | Central tagged file store, scoped to owner+branch — built (Unit 50, `Document` model + `apps/api/src/modules/documents/`). Unit 07/42's ad-hoc `docs` fields on Student/Staff not migrated to it (not required) | ADM | P2 |
@@ -441,7 +441,7 @@ Full management UI for OWN/PRIN/ADM/ACC/HR — surfaces all enabled modules abov
 
 | Feature | Status | Detail | Roles | Phase |
 |---|---|---|---|---|
-| Role-based dashboards | ⚠️ | Owner dashboard built (Unit 28/53); no dedicated principal/teacher/accountant dashboard variant (deliberate — Unit 53's own out-of-scope call, same data/screen, role-gated identically) | all | P1 |
+| Role-based dashboards | ⚠️ | Owner dashboard built (Unit 28/53); no dedicated principal dashboard variant (deliberate — Unit 53's own out-of-scope call). Teacher/accountant slices built API-only in Unit 69, now with real UI — a "Summary" tab in the mobile teacher app (`TeacherSummaryScreen.tsx`) and a "Collected today" card on the web Fees page for accountants (gap-remediation pass) | all | P1 |
 | Standard reports | ✅ | Attendance/fees/exams/admissions/staff — five parameterized reports + CSV export (Unit 55). No dedicated transport report (Unit 57's transport module postdates this — not retrofitted) | all | P0/P1 |
 | Custom report builder | ❌ | Pick fields, filters, export — deliberately not built (Unit 55's own Open Question 1: real query-engine security surface, not just UI; revisit only if asked) | PRIN, ADM | P3 |
 | Export | ⚠️ | CSV export built for the five standard reports (Unit 55); no Excel/PDF/print or general-purpose export beyond that | all | P0 |
