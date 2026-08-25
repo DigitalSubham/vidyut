@@ -13,6 +13,9 @@ out/
 dist/
 build/
 
+# Expo
+.expo/
+
 # Env
 .env
 .env*.local
