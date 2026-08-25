@@ -12,7 +12,10 @@ const EAS_PROJECT_ID = process.env.EAS_PROJECT_ID;
  * fall back to shared-mode defaults for local dev.
  */
 const appMode = process.env.VIDYUT_APP_MODE ?? "SHARED";
-const otaChannel = appMode === "DEDICATED" ? `dedicated-${process.env.VIDYUT_TENANT_ID ?? "unknown"}` : "shared";
+const otaChannel =
+  appMode === "DEDICATED"
+    ? `dedicated-${process.env.VIDYUT_TENANT_ID ?? "unknown"}`
+    : "shared";
 
 // Real bug fixed here (Unit 31): applicationId/bundleIdentifier/name were
 // hardcoded to "com.vidyut.app" / "Vidyut" for every build, which directly
@@ -25,7 +28,9 @@ const otaChannel = appMode === "DEDICATED" ? `dedicated-${process.env.VIDYUT_TEN
 // original shared identity.
 const tenantSlug = process.env.VIDYUT_TENANT_SLUG;
 const appName = process.env.VIDYUT_APP_NAME ?? "Vidyut";
-const applicationId = tenantSlug ? `com.vidyut.school.${tenantSlug}` : "com.vidyut.app";
+const applicationId = tenantSlug
+  ? `com.vidyut.school.${tenantSlug}`
+  : "com.vidyut.app";
 
 /**
  * Base config, still shared-mode by default (context/feature-specs/15b's
@@ -41,6 +46,14 @@ const config: ExpoConfig = {
   userInterfaceStyle: "light",
   assetBundlePatterns: ["**/*"],
   runtimeVersion: { policy: "appVersion" },
+  // Pinned to Legacy Architecture for the SDK 54 bump (Expo's own upgrade
+  // guidance: don't change SDK and New Architecture in the same step).
+  // @nozbe/watermelondb's SQLiteAdapter has no confirmed New Architecture
+  // support statement as of this upgrade. SDK 54 is the last release where
+  // Legacy Architecture is selectable at all — New Architecture becomes
+  // mandatory in SDK 55, so this is a deliberately deferred follow-up, not
+  // a long-term setting.
+  newArchEnabled: false,
   updates: {
     url: EAS_PROJECT_ID ? `https://u.expo.dev/${EAS_PROJECT_ID}` : undefined,
     requestHeaders: { "expo-channel-name": otaChannel },
@@ -55,7 +68,8 @@ const config: ExpoConfig = {
   extra: {
     // Points at the local apps/api dev server by default; overridden per
     // environment via EAS build profiles / app.config env vars later.
-    apiBaseUrl: process.env.VIDYUT_API_BASE_URL ?? "http://localhost:4000/api/v1",
+    apiBaseUrl:
+      process.env.VIDYUT_API_BASE_URL ?? "http://10.101.239.252:4000/api/v1",
     eas: EAS_PROJECT_ID ? { projectId: EAS_PROJECT_ID } : undefined,
   },
 };

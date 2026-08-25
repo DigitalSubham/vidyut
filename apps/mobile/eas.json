@@ -12,7 +12,8 @@
     "dedicated": {
       "channel": "dedicated",
       "env": {
-        "VIDYUT_APP_MODE": "DEDICATED"
+        "VIDYUT_APP_MODE": "DEDICATED",
+        "apiBaseUrl": "http://10.101.239.252:4000/api/v1"
       }
     }
   },

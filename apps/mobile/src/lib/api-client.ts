@@ -1,6 +1,8 @@
 import Constants from "expo-constants";
 
-const API_BASE_URL = (Constants.expoConfig?.extra?.apiBaseUrl as string | undefined) ?? "http://localhost:4000/api/v1";
+const API_BASE_URL =
+  (Constants.expoConfig?.extra?.apiBaseUrl as string | undefined) ??
+  "http://10.101.239.252:4000/api/v1";
 
 export interface ApiEnvelope<T> {
   data?: T;
@@ -8,6 +10,8 @@ export interface ApiEnvelope<T> {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  console.log(`API API_BASE_URL: ${API_BASE_URL}`);
+  console.log(`API request: ${path}`, init);
   const res = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     headers: { "Content-Type": "application/json", ...init?.headers },
@@ -19,8 +23,15 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return body.data as T;
 }
 
-function authedRequest<T>(accessToken: string, path: string, init?: RequestInit): Promise<T> {
-  return request<T>(path, { ...init, headers: { Authorization: `Bearer ${accessToken}`, ...init?.headers } });
+function authedRequest<T>(
+  accessToken: string,
+  path: string,
+  init?: RequestInit,
+): Promise<T> {
+  return request<T>(path, {
+    ...init,
+    headers: { Authorization: `Bearer ${accessToken}`, ...init?.headers },
+  });
 }
 
 export interface StudentListItem {
@@ -35,19 +46,32 @@ export interface MyTeacherAssignment {
   staffId: string;
   sectionId: string;
   subjectId: string;
-  section: { id: string; name: string; branchId: string; classId: string; class: { name: string } };
+  section: {
+    id: string;
+    name: string;
+    branchId: string;
+    classId: string;
+    class: { name: string };
+  };
   subject: { id: string; name: string };
 }
 
 /** Unit 26 — closes Unit 16's flagged gap: the teacher's own sections, self-derived (no staffId param needed). */
 export function listMyTeacherAssignments(accessToken: string) {
-  return authedRequest<MyTeacherAssignment[]>(accessToken, "/academic/teacher-assignments/me");
+  return authedRequest<MyTeacherAssignment[]>(
+    accessToken,
+    "/academic/teacher-assignments/me",
+  );
 }
 
-export function listSectionStudents(accessToken: string, branchId: string, sectionId: string) {
+export function listSectionStudents(
+  accessToken: string,
+  branchId: string,
+  sectionId: string,
+) {
   return authedRequest<StudentListItem[]>(
     accessToken,
-    `/students?branchId=${encodeURIComponent(branchId)}&sectionId=${encodeURIComponent(sectionId)}&page=1&pageSize=200`
+    `/students?branchId=${encodeURIComponent(branchId)}&sectionId=${encodeURIComponent(sectionId)}&page=1&pageSize=200`,
   );
 }
 
@@ -61,7 +85,13 @@ export interface AttendanceRecordPush {
  * is an addition alongside daily, not a replacement for it). */
 export function pushAttendance(
   accessToken: string,
-  input: { branchId: string; sectionId: string; date: string; periodId?: string; records: AttendanceRecordPush[] }
+  input: {
+    branchId: string;
+    sectionId: string;
+    date: string;
+    periodId?: string;
+    records: AttendanceRecordPush[];
+  },
 ) {
   return authedRequest(accessToken, "/attendance", {
     method: "POST",
@@ -79,7 +109,10 @@ export interface TimetablePeriodItem {
 
 /** Unit 44 — feeds the period picker on the teacher's attendance screen. */
 export function listTimetablePeriods(accessToken: string, sectionId: string) {
-  return authedRequest<TimetablePeriodItem[]>(accessToken, `/timetable?sectionId=${encodeURIComponent(sectionId)}`);
+  return authedRequest<TimetablePeriodItem[]>(
+    accessToken,
+    `/timetable?sectionId=${encodeURIComponent(sectionId)}`,
+  );
 }
 
 export interface ExamListItem {
@@ -88,7 +121,10 @@ export interface ExamListItem {
 }
 
 export function listExams(accessToken: string, branchId: string) {
-  return authedRequest<ExamListItem[]>(accessToken, `/exams?branchId=${encodeURIComponent(branchId)}`);
+  return authedRequest<ExamListItem[]>(
+    accessToken,
+    `/exams?branchId=${encodeURIComponent(branchId)}`,
+  );
 }
 
 export interface ExamSubjectListItem {
@@ -99,14 +135,23 @@ export interface ExamSubjectListItem {
 }
 
 export function listExamSubjects(accessToken: string, examId: string) {
-  return authedRequest<ExamSubjectListItem[]>(accessToken, `/exams/${encodeURIComponent(examId)}/subjects`);
+  return authedRequest<ExamSubjectListItem[]>(
+    accessToken,
+    `/exams/${encodeURIComponent(examId)}/subjects`,
+  );
 }
 
 export function submitMarks(
   accessToken: string,
-  input: { examSubjectId: string; entries: Array<{ studentId: string; marks?: number; isAbsent: boolean }> }
+  input: {
+    examSubjectId: string;
+    entries: Array<{ studentId: string; marks?: number; isAbsent: boolean }>;
+  },
 ) {
-  return authedRequest(accessToken, "/marks", { method: "POST", body: JSON.stringify(input) });
+  return authedRequest(accessToken, "/marks", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
 }
 
 /** Unit 45 — teacher-facing homework list for a section, feeding the grading screen. */
@@ -117,7 +162,10 @@ export interface SectionHomeworkItem {
 }
 
 export function listSectionHomework(accessToken: string, sectionId: string) {
-  return authedRequest<SectionHomeworkItem[]>(accessToken, `/homework?sectionId=${encodeURIComponent(sectionId)}`);
+  return authedRequest<SectionHomeworkItem[]>(
+    accessToken,
+    `/homework?sectionId=${encodeURIComponent(sectionId)}`,
+  );
 }
 
 export interface HomeworkSubmissionItem {
@@ -129,15 +177,29 @@ export interface HomeworkSubmissionItem {
   feedback: string | null;
 }
 
-export function listHomeworkSubmissions(accessToken: string, homeworkId: string) {
-  return authedRequest<HomeworkSubmissionItem[]>(accessToken, `/homework/${encodeURIComponent(homeworkId)}/submissions`);
+export function listHomeworkSubmissions(
+  accessToken: string,
+  homeworkId: string,
+) {
+  return authedRequest<HomeworkSubmissionItem[]>(
+    accessToken,
+    `/homework/${encodeURIComponent(homeworkId)}/submissions`,
+  );
 }
 
-export function gradeHomeworkSubmission(accessToken: string, submissionId: string, input: { grade: string; feedback?: string }) {
-  return authedRequest<HomeworkSubmissionItem>(accessToken, `/homework/submissions/${encodeURIComponent(submissionId)}`, {
-    method: "PATCH",
-    body: JSON.stringify(input),
-  });
+export function gradeHomeworkSubmission(
+  accessToken: string,
+  submissionId: string,
+  input: { grade: string; feedback?: string },
+) {
+  return authedRequest<HomeworkSubmissionItem>(
+    accessToken,
+    `/homework/submissions/${encodeURIComponent(submissionId)}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    },
+  );
 }
 
 /** Unit 45 — same two-step presigned-upload pattern as staff documents: get a
@@ -145,21 +207,26 @@ export function gradeHomeworkSubmission(accessToken: string, submissionId: strin
 export function requestHomeworkSubmissionUpload(
   accessToken: string,
   homeworkId: string,
-  input: { studentId: string; fileName: string; contentType: string }
+  input: { studentId: string; fileName: string; contentType: string },
 ) {
   return authedRequest<HomeworkSubmissionItem & { uploadUrl: string }>(
     accessToken,
     `/homework/${encodeURIComponent(homeworkId)}/submissions`,
-    { method: "POST", body: JSON.stringify(input) }
+    { method: "POST", body: JSON.stringify(input) },
   );
 }
 
 export type MyHomeworkCalendar = Record<string, MyHomeworkItem[]>;
 
-export function getMyHomeworkCalendar(accessToken: string, studentId: string, month: number, year: number) {
+export function getMyHomeworkCalendar(
+  accessToken: string,
+  studentId: string,
+  month: number,
+  year: number,
+) {
   return authedRequest<MyHomeworkCalendar>(
     accessToken,
-    `/me/homework/calendar?studentId=${encodeURIComponent(studentId)}&month=${month}&year=${year}`
+    `/me/homework/calendar?studentId=${encodeURIComponent(studentId)}&month=${month}&year=${year}`,
   );
 }
 
@@ -172,13 +239,18 @@ export function postHomework(
     title: string;
     description: string;
     dueDate: string;
-  }
+  },
 ) {
-  return authedRequest(accessToken, "/homework", { method: "POST", body: JSON.stringify(input) });
+  return authedRequest(accessToken, "/homework", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
 }
 
 export function resolveSchoolCode(schoolCode: string) {
-  return request<{ tenantSlug: string }>(`/tenants/resolve/${encodeURIComponent(schoolCode)}`);
+  return request<{ tenantSlug: string }>(
+    `/tenants/resolve/${encodeURIComponent(schoolCode)}`,
+  );
 }
 
 export function requestOtp(tenantSlug: string, phone: string) {
@@ -189,10 +261,13 @@ export function requestOtp(tenantSlug: string, phone: string) {
 }
 
 export function verifyOtp(tenantSlug: string, phone: string, code: string) {
-  return request<{ accessToken: string; refreshToken: string }>("/auth/otp/verify", {
-    method: "POST",
-    body: JSON.stringify({ tenantSlug, phone, code }),
-  });
+  return request<{ accessToken: string; refreshToken: string }>(
+    "/auth/otp/verify",
+    {
+      method: "POST",
+      body: JSON.stringify({ tenantSlug, phone, code }),
+    },
+  );
 }
 
 export interface MyStudent {
@@ -214,10 +289,15 @@ export interface MyAttendanceRecord {
   status: string;
 }
 
-export function getMyAttendance(accessToken: string, studentId: string, month: number, year: number) {
+export function getMyAttendance(
+  accessToken: string,
+  studentId: string,
+  month: number,
+  year: number,
+) {
   return authedRequest<MyAttendanceRecord[]>(
     accessToken,
-    `/me/attendance?studentId=${encodeURIComponent(studentId)}&month=${month}&year=${year}`
+    `/me/attendance?studentId=${encodeURIComponent(studentId)}&month=${month}&year=${year}`,
   );
 }
 
@@ -230,7 +310,10 @@ export interface MyReportCard {
 }
 
 export function getMyReportCards(accessToken: string, studentId: string) {
-  return authedRequest<MyReportCard[]>(accessToken, `/me/report-cards?studentId=${encodeURIComponent(studentId)}`);
+  return authedRequest<MyReportCard[]>(
+    accessToken,
+    `/me/report-cards?studentId=${encodeURIComponent(studentId)}`,
+  );
 }
 
 export interface MyHomeworkItem {
@@ -241,7 +324,10 @@ export interface MyHomeworkItem {
 }
 
 export function getMyHomework(accessToken: string, studentId: string) {
-  return authedRequest<MyHomeworkItem[]>(accessToken, `/me/homework?studentId=${encodeURIComponent(studentId)}`);
+  return authedRequest<MyHomeworkItem[]>(
+    accessToken,
+    `/me/homework?studentId=${encodeURIComponent(studentId)}`,
+  );
 }
 
 export interface MyTimetablePeriod {
@@ -253,7 +339,10 @@ export interface MyTimetablePeriod {
 }
 
 export function getMyTimetable(accessToken: string, studentId: string) {
-  return authedRequest<MyTimetablePeriod[]>(accessToken, `/me/timetable?studentId=${encodeURIComponent(studentId)}`);
+  return authedRequest<MyTimetablePeriod[]>(
+    accessToken,
+    `/me/timetable?studentId=${encodeURIComponent(studentId)}`,
+  );
 }
 
 export interface MyFeeLedgerEntry {
@@ -269,7 +358,10 @@ export interface MyFeeLedgerEntry {
 }
 
 export function getMyFeeLedger(accessToken: string, studentId: string) {
-  return authedRequest<MyFeeLedgerEntry[]>(accessToken, `/me/fees/ledger?studentId=${encodeURIComponent(studentId)}`);
+  return authedRequest<MyFeeLedgerEntry[]>(
+    accessToken,
+    `/me/fees/ledger?studentId=${encodeURIComponent(studentId)}`,
+  );
 }
 
 export interface MyAnnouncement {
@@ -280,7 +372,10 @@ export interface MyAnnouncement {
 }
 
 export function getMyAnnouncements(accessToken: string, studentId: string) {
-  return authedRequest<MyAnnouncement[]>(accessToken, `/me/announcements?studentId=${encodeURIComponent(studentId)}`);
+  return authedRequest<MyAnnouncement[]>(
+    accessToken,
+    `/me/announcements?studentId=${encodeURIComponent(studentId)}`,
+  );
 }
 
 export interface OnlinePaymentOrder {
@@ -299,12 +394,22 @@ export interface OnlinePaymentOrder {
  */
 export function initiateOnlinePayment(
   accessToken: string,
-  input: { branchId: string; studentId: string; invoiceId?: string; amount: number; mode: "UPI" | "CARD" | "NETBANKING" | "WALLET" }
+  input: {
+    branchId: string;
+    studentId: string;
+    invoiceId?: string;
+    amount: number;
+    mode: "UPI" | "CARD" | "NETBANKING" | "WALLET";
+  },
 ) {
-  return authedRequest<OnlinePaymentOrder>(accessToken, "/payments/online/initiate", {
-    method: "POST",
-    body: JSON.stringify(input),
-  });
+  return authedRequest<OnlinePaymentOrder>(
+    accessToken,
+    "/payments/online/initiate",
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+    },
+  );
 }
 
 // -- Unit 46: MCQ online exams (student-facing) --------------------------------
@@ -322,7 +427,10 @@ export interface MyOnlineExamListItem {
  * doesn't carry, so the backend grew this self-scoped `/mine` variant
  * alongside it purely to make this screen possible. */
 export function listMyOnlineExams(accessToken: string, studentId: string) {
-  return authedRequest<MyOnlineExamListItem[]>(accessToken, `/online-exams/mine?studentId=${encodeURIComponent(studentId)}`);
+  return authedRequest<MyOnlineExamListItem[]>(
+    accessToken,
+    `/online-exams/mine?studentId=${encodeURIComponent(studentId)}`,
+  );
 }
 
 export interface OnlineExamQuestionForStudent {
@@ -333,11 +441,18 @@ export interface OnlineExamQuestionForStudent {
   order: number;
 }
 
-export function getOnlineExamToTake(accessToken: string, examId: string, studentId: string) {
+export function getOnlineExamToTake(
+  accessToken: string,
+  examId: string,
+  studentId: string,
+) {
   return authedRequest<{
     exam: { id: string; title: string; durationMinutes: number };
     questions: OnlineExamQuestionForStudent[];
-  }>(accessToken, `/online-exams/${encodeURIComponent(examId)}/take?studentId=${encodeURIComponent(studentId)}`);
+  }>(
+    accessToken,
+    `/online-exams/${encodeURIComponent(examId)}/take?studentId=${encodeURIComponent(studentId)}`,
+  );
 }
 
 export interface OnlineExamSubmissionResult {
@@ -349,12 +464,16 @@ export interface OnlineExamSubmissionResult {
 export function submitOnlineExam(
   accessToken: string,
   examId: string,
-  input: { studentId: string; answers: number[] }
+  input: { studentId: string; answers: number[] },
 ) {
-  return authedRequest<OnlineExamSubmissionResult>(accessToken, `/online-exams/${encodeURIComponent(examId)}/submit`, {
-    method: "POST",
-    body: JSON.stringify(input),
-  });
+  return authedRequest<OnlineExamSubmissionResult>(
+    accessToken,
+    `/online-exams/${encodeURIComponent(examId)}/submit`,
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+    },
+  );
 }
 
 // -- Unit 49: Messaging & Engagement --------------------------------------------
@@ -374,11 +493,18 @@ export function getMyGuardian(accessToken: string) {
 }
 
 export function getMyCirculars(accessToken: string, studentId: string) {
-  return authedRequest<MyCircular[]>(accessToken, `/me/circulars?studentId=${encodeURIComponent(studentId)}`);
+  return authedRequest<MyCircular[]>(
+    accessToken,
+    `/me/circulars?studentId=${encodeURIComponent(studentId)}`,
+  );
 }
 
 export function ackCircular(accessToken: string, circularId: string) {
-  return authedRequest(accessToken, `/circulars/${encodeURIComponent(circularId)}/ack`, { method: "POST" });
+  return authedRequest(
+    accessToken,
+    `/circulars/${encodeURIComponent(circularId)}/ack`,
+    { method: "POST" },
+  );
 }
 
 export interface MyCalendarItem {
@@ -389,10 +515,15 @@ export interface MyCalendarItem {
 }
 
 /** Unified calendar (Unit 49) — merges CalendarEvent + exam dates + homework due-dates server-side, replacing the homework-only calendar this screen used before. */
-export function getMyCalendar(accessToken: string, studentId: string, month: number, year: number) {
+export function getMyCalendar(
+  accessToken: string,
+  studentId: string,
+  month: number,
+  year: number,
+) {
   return authedRequest<MyCalendarItem[]>(
     accessToken,
-    `/me/calendar?studentId=${encodeURIComponent(studentId)}&month=${month}&year=${year}`
+    `/me/calendar?studentId=${encodeURIComponent(studentId)}&month=${month}&year=${year}`,
   );
 }
 
@@ -404,8 +535,14 @@ export interface MyComplaint {
   resolution: string | null;
 }
 
-export function createComplaint(accessToken: string, input: { branchId: string; category: string; body: string }) {
-  return authedRequest<MyComplaint>(accessToken, "/complaints", { method: "POST", body: JSON.stringify(input) });
+export function createComplaint(
+  accessToken: string,
+  input: { branchId: string; category: string; body: string },
+) {
+  return authedRequest<MyComplaint>(accessToken, "/complaints", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
 }
 
 export function listMyComplaints(accessToken: string) {
@@ -426,18 +563,30 @@ export function listMyThreads(accessToken: string) {
   return authedRequest<MessageItem[]>(accessToken, "/messages/threads/mine");
 }
 
-export function listThread(accessToken: string, staffId: string, guardianId: string) {
+export function listThread(
+  accessToken: string,
+  staffId: string,
+  guardianId: string,
+) {
   return authedRequest<MessageItem[]>(
     accessToken,
-    `/messages?staffId=${encodeURIComponent(staffId)}&guardianId=${encodeURIComponent(guardianId)}`
+    `/messages?staffId=${encodeURIComponent(staffId)}&guardianId=${encodeURIComponent(guardianId)}`,
   );
 }
 
 export function sendMessage(
   accessToken: string,
-  input: { branchId: string; staffId: string; guardianId: string; body: string }
+  input: {
+    branchId: string;
+    staffId: string;
+    guardianId: string;
+    body: string;
+  },
 ) {
-  return authedRequest<MessageItem>(accessToken, "/messages", { method: "POST", body: JSON.stringify(input) });
+  return authedRequest<MessageItem>(accessToken, "/messages", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
 }
 
 // -- Unit 52: Mobile App Depth --------------------------------------------------
@@ -456,7 +605,12 @@ export interface LeaveRequestItem {
 export function applyLeave(
   accessToken: string,
   staffId: string,
-  input: { type: LeaveRequestItem["type"]; fromDate: string; toDate: string; halfDay?: boolean }
+  input: {
+    type: LeaveRequestItem["type"];
+    fromDate: string;
+    toDate: string;
+    halfDay?: boolean;
+  },
 ) {
   return authedRequest<LeaveRequestItem>(accessToken, "/leave-requests", {
     method: "POST",
@@ -465,7 +619,10 @@ export function applyLeave(
 }
 
 export function listMyLeaveRequests(accessToken: string, staffId: string) {
-  return authedRequest<LeaveRequestItem[]>(accessToken, `/leave-requests?staffId=${encodeURIComponent(staffId)}`);
+  return authedRequest<LeaveRequestItem[]>(
+    accessToken,
+    `/leave-requests?staffId=${encodeURIComponent(staffId)}`,
+  );
 }
 
 export interface MyTeacherItem {
@@ -476,7 +633,10 @@ export interface MyTeacherItem {
 
 /** Feeds the parent's PTM-booking teacher picker (needs a staffId to browse slots for). */
 export function getMyTeachers(accessToken: string, studentId: string) {
-  return authedRequest<MyTeacherItem[]>(accessToken, `/me/teachers?studentId=${encodeURIComponent(studentId)}`);
+  return authedRequest<MyTeacherItem[]>(
+    accessToken,
+    `/me/teachers?studentId=${encodeURIComponent(studentId)}`,
+  );
 }
 
 export interface PTMSlotItem {
@@ -488,23 +648,37 @@ export interface PTMSlotItem {
 }
 
 export function listPTMSlots(accessToken: string, staffId: string) {
-  return authedRequest<PTMSlotItem[]>(accessToken, `/ptm-slots?staffId=${encodeURIComponent(staffId)}`);
+  return authedRequest<PTMSlotItem[]>(
+    accessToken,
+    `/ptm-slots?staffId=${encodeURIComponent(staffId)}`,
+  );
 }
 
 export function bookPTMSlot(accessToken: string, slotId: string) {
-  return authedRequest<PTMSlotItem>(accessToken, `/ptm-slots/${encodeURIComponent(slotId)}/book`, { method: "PATCH" });
+  return authedRequest<PTMSlotItem>(
+    accessToken,
+    `/ptm-slots/${encodeURIComponent(slotId)}/book`,
+    { method: "PATCH" },
+  );
 }
 
 export interface MyTransportInfo {
   routeName: string;
   stopName: string;
   vehicleRegNo: string | null;
-  lastLocation: { latitude: number; longitude: number; recordedAt: string } | null;
+  lastLocation: {
+    latitude: number;
+    longitude: number;
+    recordedAt: string;
+  } | null;
 }
 
 /** Gap-remediation pass — Unit 57's transport module had zero parent-facing view despite the geofence-alert backend already existing. */
 export function getMyTransport(accessToken: string, studentId: string) {
-  return authedRequest<MyTransportInfo | null>(accessToken, `/me/transport?studentId=${encodeURIComponent(studentId)}`);
+  return authedRequest<MyTransportInfo | null>(
+    accessToken,
+    `/me/transport?studentId=${encodeURIComponent(studentId)}`,
+  );
 }
 
 export interface TeacherSummary {
@@ -515,7 +689,10 @@ export interface TeacherSummary {
 
 /** Gap-remediation pass — Unit 69's teacher-summary endpoint had no UI anywhere. */
 export function getTeacherSummary(accessToken: string) {
-  return authedRequest<TeacherSummary>(accessToken, "/dashboard/teacher-summary");
+  return authedRequest<TeacherSummary>(
+    accessToken,
+    "/dashboard/teacher-summary",
+  );
 }
 
 export interface MyCommunicationPreference {
@@ -528,14 +705,25 @@ const ALL_CHANNELS = ["PUSH", "SMS", "WHATSAPP", "EMAIL"] as const;
 
 /** Gap-remediation pass — Unit 68's per-channel opt-out toggle had an API but no UI anywhere; this is primarily a parent concern, so it belongs here. */
 export function getMyCommunicationPreferences(accessToken: string) {
-  return authedRequest<MyCommunicationPreference[]>(accessToken, "/me/communication-preferences");
+  return authedRequest<MyCommunicationPreference[]>(
+    accessToken,
+    "/me/communication-preferences",
+  );
 }
 
-export function setMyCommunicationPreference(accessToken: string, channel: string, optedIn: boolean) {
-  return authedRequest<MyCommunicationPreference>(accessToken, "/me/communication-preferences", {
-    method: "PUT",
-    body: JSON.stringify({ channel, optedIn }),
-  });
+export function setMyCommunicationPreference(
+  accessToken: string,
+  channel: string,
+  optedIn: boolean,
+) {
+  return authedRequest<MyCommunicationPreference>(
+    accessToken,
+    "/me/communication-preferences",
+    {
+      method: "PUT",
+      body: JSON.stringify({ channel, optedIn }),
+    },
+  );
 }
 
 export { ALL_CHANNELS };
@@ -557,11 +745,17 @@ export interface MyContentItem {
 
 /** Gap-remediation pass — Unit 67's LMS module was gated behind `lms.manage` (staff-only), so a student had zero access despite content library/live classes being explicitly student-facing. */
 export function getMyLiveClasses(accessToken: string, studentId: string) {
-  return authedRequest<MyLiveClassLink[]>(accessToken, `/me/live-classes?studentId=${encodeURIComponent(studentId)}`);
+  return authedRequest<MyLiveClassLink[]>(
+    accessToken,
+    `/me/live-classes?studentId=${encodeURIComponent(studentId)}`,
+  );
 }
 
 export function getMyContentItems(accessToken: string, studentId: string) {
-  return authedRequest<MyContentItem[]>(accessToken, `/me/content-items?studentId=${encodeURIComponent(studentId)}`);
+  return authedRequest<MyContentItem[]>(
+    accessToken,
+    `/me/content-items?studentId=${encodeURIComponent(studentId)}`,
+  );
 }
 
 export interface MyTimelineEntry {
@@ -573,7 +767,10 @@ export interface MyTimelineEntry {
 
 /** Gap-remediation pass — Unit 66's timeline/siblings endpoints were gated behind `student.view` (staff-only), so a parent had no way to see either despite both being built. */
 export function getMyStudentTimeline(accessToken: string, studentId: string) {
-  return authedRequest<MyTimelineEntry[]>(accessToken, `/me/student-timeline?studentId=${encodeURIComponent(studentId)}`);
+  return authedRequest<MyTimelineEntry[]>(
+    accessToken,
+    `/me/student-timeline?studentId=${encodeURIComponent(studentId)}`,
+  );
 }
 
 export interface MyStoreItem {
@@ -592,15 +789,27 @@ export interface MyStoreOrder {
 
 /** Gap-remediation pass — Unit 64's parent store had zero parent-facing endpoint at all (the whole /inventory router was gated behind inventory.manage). */
 export function getMyStoreItems(accessToken: string, branchId: string) {
-  return authedRequest<MyStoreItem[]>(accessToken, `/me/store-items?branchId=${encodeURIComponent(branchId)}`);
+  return authedRequest<MyStoreItem[]>(
+    accessToken,
+    `/me/store-items?branchId=${encodeURIComponent(branchId)}`,
+  );
 }
 
-export function createMyStoreOrder(accessToken: string, input: { storeItemId: string; studentId: string; quantity: number }) {
-  return authedRequest<MyStoreOrder>(accessToken, "/me/store-orders", { method: "POST", body: JSON.stringify(input) });
+export function createMyStoreOrder(
+  accessToken: string,
+  input: { storeItemId: string; studentId: string; quantity: number },
+) {
+  return authedRequest<MyStoreOrder>(accessToken, "/me/store-orders", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
 }
 
 export function getMyStoreOrders(accessToken: string, studentId: string) {
-  return authedRequest<MyStoreOrder[]>(accessToken, `/me/store-orders?studentId=${encodeURIComponent(studentId)}`);
+  return authedRequest<MyStoreOrder[]>(
+    accessToken,
+    `/me/store-orders?studentId=${encodeURIComponent(studentId)}`,
+  );
 }
 
 export interface MyLibraryBook {
@@ -613,7 +822,10 @@ export interface MyLibraryBook {
 
 /** Gap-remediation pass — Unit 58's library module had no "my books" mobile view. */
 export function getMyLibrary(accessToken: string, studentId: string) {
-  return authedRequest<MyLibraryBook[]>(accessToken, `/me/library?studentId=${encodeURIComponent(studentId)}`);
+  return authedRequest<MyLibraryBook[]>(
+    accessToken,
+    `/me/library?studentId=${encodeURIComponent(studentId)}`,
+  );
 }
 
 export interface GalleryAlbumItem {
@@ -631,11 +843,17 @@ export interface GalleryPhotoItem {
 
 /** Gap-remediation pass — the web album/photo upload had no mobile viewer for parents/students until now. */
 export function listGalleryAlbums(accessToken: string, branchId: string) {
-  return authedRequest<GalleryAlbumItem[]>(accessToken, `/gallery/albums?branchId=${encodeURIComponent(branchId)}`);
+  return authedRequest<GalleryAlbumItem[]>(
+    accessToken,
+    `/gallery/albums?branchId=${encodeURIComponent(branchId)}`,
+  );
 }
 
 export function listGalleryPhotos(accessToken: string, albumId: string) {
-  return authedRequest<GalleryPhotoItem[]>(accessToken, `/gallery/albums/${encodeURIComponent(albumId)}/photos`);
+  return authedRequest<GalleryPhotoItem[]>(
+    accessToken,
+    `/gallery/albums/${encodeURIComponent(albumId)}/photos`,
+  );
 }
 
 export interface SurveyQuestionItem {
@@ -655,12 +873,23 @@ export interface SurveyItem {
 
 /** Gap-remediation pass — Unit 49's survey/poll list had no mobile response UI, web-only until now. */
 export function listSurveys(accessToken: string, branchId: string) {
-  return authedRequest<SurveyItem[]>(accessToken, `/surveys?branchId=${encodeURIComponent(branchId)}`);
+  return authedRequest<SurveyItem[]>(
+    accessToken,
+    `/surveys?branchId=${encodeURIComponent(branchId)}`,
+  );
 }
 
-export function respondSurvey(accessToken: string, surveyId: string, answers: { questionId: string; answer: string }[]) {
-  return authedRequest<unknown>(accessToken, `/surveys/${encodeURIComponent(surveyId)}/respond`, {
-    method: "POST",
-    body: JSON.stringify({ answers }),
-  });
+export function respondSurvey(
+  accessToken: string,
+  surveyId: string,
+  answers: { questionId: string; answer: string }[],
+) {
+  return authedRequest<unknown>(
+    accessToken,
+    `/surveys/${encodeURIComponent(surveyId)}/respond`,
+    {
+      method: "POST",
+      body: JSON.stringify({ answers }),
+    },
+  );
 }
