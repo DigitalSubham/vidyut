@@ -1,8 +1,12 @@
 import { decodeJwtPayload } from "./jwt";
 
 const TOKEN_KEY = "vidyut_admin_token";
+const REFRESH_KEY = "vidyut_admin_refresh_token";
 const BRANCH_KEY = "vidyut_admin_branch";
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+
+/** Dispatched whenever the access token is set or cleared — see components/token-refresher.tsx. Same reasoning as BRANCH_CHANGE_EVENT below: a plain getAdminToken() call only reads localStorage at whatever moment a component happens to render, so login/logout elsewhere is otherwise invisible to an already-mounted refresh scheduler. */
+export const TOKEN_CHANGE_EVENT = "vidyut:token-changed";
 
 export function getAdminToken(): string | null {
   if (typeof window === "undefined") return null;
@@ -11,11 +15,26 @@ export function getAdminToken(): string | null {
 
 export function setAdminToken(token: string): void {
   window.localStorage.setItem(TOKEN_KEY, token);
+  window.dispatchEvent(new Event(TOKEN_CHANGE_EVENT));
+}
+
+export function getAdminRefreshToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return window.localStorage.getItem(REFRESH_KEY);
+}
+
+export function setAdminRefreshToken(token: string): void {
+  window.localStorage.setItem(REFRESH_KEY, token);
 }
 
 export function clearAdminToken(): void {
   window.localStorage.removeItem(TOKEN_KEY);
+  window.localStorage.removeItem(REFRESH_KEY);
+  window.dispatchEvent(new Event(TOKEN_CHANGE_EVENT));
 }
+
+/** Dispatched whenever setAdminBranchId() runs — see hooks/use-admin-branch-id.ts. A plain getAdminBranchId() call only reads localStorage at whatever moment a component happens to render, so a sibling BranchSelector's write is otherwise invisible to an already-mounted screen until something else forces a re-render. */
+export const BRANCH_CHANGE_EVENT = "vidyut:branch-changed";
 
 export function getAdminBranchId(): string | null {
   if (typeof window === "undefined") return null;
@@ -24,6 +43,7 @@ export function getAdminBranchId(): string | null {
 
 export function setAdminBranchId(branchId: string): void {
   window.localStorage.setItem(BRANCH_KEY, branchId);
+  window.dispatchEvent(new Event(BRANCH_CHANGE_EVENT));
 }
 
 interface AccessTokenClaims {
@@ -52,7 +72,42 @@ export class AdminApiError extends Error {
   }
 }
 
-async function adminFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
+/**
+ * A plain `fetch` (deliberately *not* routed through adminFetch below) —
+ * used both here and by components/token-refresher.tsx's proactive timer.
+ * Kept separate so a refresh failure can never recursively trigger
+ * adminFetch's own 401-retry logic on itself.
+ */
+async function rawRefreshAccessToken(refreshToken: string): Promise<{ accessToken: string; refreshToken: string }> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/auth/refresh`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refreshToken }),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new AdminApiError(body as ApiErrorBody);
+  }
+  return (body as { data: { accessToken: string; refreshToken: string } }).data;
+}
+
+// Refresh tokens rotate server-side (single-use) — if several requests 401
+// at once, they must all await the *same* refresh call rather than each
+// spending the stored refresh token independently, or every one after the
+// first would fail. Exported so token-refresher.tsx's proactive timer
+// shares the same in-flight guard instead of racing this reactive path.
+let refreshInFlight: Promise<{ accessToken: string; refreshToken: string }> | null = null;
+
+export function refreshAccessTokenOnce(refreshToken: string): Promise<{ accessToken: string; refreshToken: string }> {
+  if (!refreshInFlight) {
+    refreshInFlight = rawRefreshAccessToken(refreshToken).finally(() => {
+      refreshInFlight = null;
+    });
+  }
+  return refreshInFlight;
+}
+
+async function adminFetch<T>(path: string, options: RequestInit = {}, isRetry = false): Promise<T> {
   const token = getAdminToken();
   const res = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
@@ -65,7 +120,27 @@ async function adminFetch<T>(path: string, options: RequestInit = {}): Promise<T
 
   const body = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new AdminApiError(body as ApiErrorBody);
+    const error = new AdminApiError(body as ApiErrorBody);
+    // A silent refresh-and-retry safety net for whenever the proactive
+    // timer (token-refresher.tsx) hasn't fired yet — a backgrounded tab,
+    // the very first request right after expiry, etc. Only ever retried
+    // once (isRetry guards against a refresh that "succeeds" but still
+    // yields a token the server rejects, which would otherwise loop).
+    if (error.code === "UNAUTHENTICATED" && !isRetry) {
+      const refreshToken = getAdminRefreshToken();
+      if (refreshToken) {
+        try {
+          const tokens = await refreshAccessTokenOnce(refreshToken);
+          setAdminToken(tokens.accessToken);
+          setAdminRefreshToken(tokens.refreshToken);
+          return adminFetch<T>(path, options, true);
+        } catch {
+          clearAdminToken();
+          throw error;
+        }
+      }
+    }
+    throw error;
   }
   return body as T;
 }
@@ -92,12 +167,15 @@ export interface ClassItem {
   id: string;
   name: string;
   order: number;
+  branchId: string;
 }
 
 export interface SectionItem {
   id: string;
   name: string;
   classId: string;
+  capacity: number | null;
+  classTeacherId: string | null;
 }
 
 export interface InvoiceItem {
@@ -557,6 +635,23 @@ export interface StaffAttendanceRow {
   staffId: string;
   date: string;
   status: string;
+}
+
+// -- Unit 06: Academic Structure (classes/sections/subjects) -------------------
+// The backend has always had this CRUD (apps/api/src/modules/academic) — no
+// web UI ever called it until now, so a school's Class/Section/Subject rows
+// only ever existed via direct API calls or the demo seed script.
+// (ClassItem/SectionItem already existed above, for read-only dropdown use —
+// extended in place rather than duplicated; only SubjectType/SubjectItem are new.)
+
+export type SubjectType = "CORE" | "ELECTIVE" | "CO_SCHOLASTIC" | "PRACTICAL";
+
+export interface SubjectItem {
+  id: string;
+  name: string;
+  code: string;
+  type: SubjectType;
+  branchId: string;
 }
 
 // -- Unit 43: Academic Structure Depth -----------------------------------------
@@ -1120,6 +1215,32 @@ export const adminApi = {
     }),
   listCertificates: (branchId: string) =>
     adminFetch<{ data: CertificateItem[] }>(`/api/v1/certificates?branchId=${encodeURIComponent(branchId)}`),
+
+  // -- Unit 06: Academic Structure (classes/sections/subjects) -------------------
+  // listClasses/listSections already existed above (for read-only dropdown
+  // use elsewhere) — reused as-is, just adding the mutations that never
+  // existed at all.
+  createClass: (input: { branchId: string; name: string; order: number }) =>
+    adminFetch<{ data: ClassItem }>("/api/v1/academic/classes", { method: "POST", body: JSON.stringify(input) }),
+  patchClass: (id: string, input: { name?: string; order?: number }) =>
+    adminFetch<{ data: ClassItem }>(`/api/v1/academic/classes/${id}`, { method: "PATCH", body: JSON.stringify(input) }),
+  deleteClass: (id: string) => adminFetch<void>(`/api/v1/academic/classes/${id}`, { method: "DELETE" }),
+
+  createSection: (classId: string, input: { name: string; capacity?: number }) =>
+    adminFetch<{ data: SectionItem }>(`/api/v1/academic/classes/${classId}/sections`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  deleteSection: (classId: string, id: string) =>
+    adminFetch<void>(`/api/v1/academic/classes/${classId}/sections/${id}`, { method: "DELETE" }),
+
+  listSubjects: (branchId: string) =>
+    adminFetch<{ data: SubjectItem[]; meta: { total: number } }>(
+      `/api/v1/academic/subjects?branchId=${encodeURIComponent(branchId)}&pageSize=100`
+    ),
+  createSubject: (input: { branchId: string; name: string; code: string; type?: SubjectType }) =>
+    adminFetch<{ data: SubjectItem }>("/api/v1/academic/subjects", { method: "POST", body: JSON.stringify(input) }),
+  deleteSubject: (id: string) => adminFetch<void>(`/api/v1/academic/subjects/${id}`, { method: "DELETE" }),
 
   // -- Unit 43: Academic Structure Depth -----------------------------------------
   createElectiveGroup: (input: { branchId: string; classId: string; name: string }) =>

@@ -71,7 +71,10 @@ export function listSectionStudents(
 ) {
   return authedRequest<StudentListItem[]>(
     accessToken,
-    `/students?branchId=${encodeURIComponent(branchId)}&sectionId=${encodeURIComponent(sectionId)}&page=1&pageSize=200`,
+    // pageSize is capped at 100 server-side (packages/validation) — 200
+    // here silently 400'd on every call, which is exactly why this needs
+    // its own error handling below rather than a bare .then().
+    `/students?branchId=${encodeURIComponent(branchId)}&sectionId=${encodeURIComponent(sectionId)}&page=1&pageSize=100`,
   );
 }
 
@@ -268,6 +271,13 @@ export function verifyOtp(tenantSlug: string, phone: string, code: string) {
       body: JSON.stringify({ tenantSlug, phone, code }),
     },
   );
+}
+
+export function refreshAccessToken(refreshToken: string) {
+  return request<{ accessToken: string; refreshToken: string }>("/auth/refresh", {
+    method: "POST",
+    body: JSON.stringify({ refreshToken }),
+  });
 }
 
 export interface MyStudent {

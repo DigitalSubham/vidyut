@@ -10,6 +10,7 @@ import type {
 import { AppError } from "../../core/errors";
 import { verifyPassword } from "../../core/auth/password";
 import { generateAndStoreOtp, sendOtpSms, verifyAndConsumeOtp } from "../../core/auth/otp";
+import { normalizePhone } from "../../core/auth/phone";
 import { createTwoFaChallenge, sendTwoFaCode, verifyAndConsumeTwoFaChallenge } from "../../core/auth/two-fa";
 import { issueTokenPair, loadUserAuthContext, rotateRefreshToken, revokeRefreshToken, type TokenPair } from "../../core/auth/tokens";
 
@@ -37,10 +38,11 @@ async function resolveTenantBySlug(tenantSlug: string) {
 export async function requestOtp(
   input: OtpRequestInput
 ): Promise<{ phone: string; devCode?: string }> {
+  const phone = normalizePhone(input.phone);
   const tenant = await resolveTenantBySlug(input.tenantSlug);
   const user = tenant
     ? await withTenant(tenant.id, (tx) =>
-        tx.user.findUnique({ where: { tenantId_phone: { tenantId: tenant.id, phone: input.phone } } })
+        tx.user.findUnique({ where: { tenantId_phone: { tenantId: tenant.id, phone } } })
       )
     : null;
 
@@ -51,25 +53,26 @@ export async function requestOtp(
     return { phone: input.phone };
   }
 
-  const code = await generateAndStoreOtp(`${tenant.id}:${input.phone}`);
-  sendOtpSms(input.phone, code);
+  const code = await generateAndStoreOtp(`${tenant.id}:${phone}`);
+  sendOtpSms(phone, code);
 
   return { phone: input.phone, ...(isDev ? { devCode: code } : {}) };
 }
 
 export async function verifyOtp(input: OtpVerifyInput): Promise<TokenPair> {
+  const phone = normalizePhone(input.phone);
   const tenant = await resolveTenantBySlug(input.tenantSlug);
   if (!tenant) {
     invalidOtp();
   }
 
-  const ok = await verifyAndConsumeOtp(`${tenant.id}:${input.phone}`, input.code);
+  const ok = await verifyAndConsumeOtp(`${tenant.id}:${phone}`, input.code);
   if (!ok) {
     invalidOtp();
   }
 
   const user = await withTenant(tenant.id, (tx) =>
-    tx.user.findUnique({ where: { tenantId_phone: { tenantId: tenant.id, phone: input.phone } } })
+    tx.user.findUnique({ where: { tenantId_phone: { tenantId: tenant.id, phone } } })
   );
   if (!user) {
     // Only reachable if the user was deleted between OTP request and verify.

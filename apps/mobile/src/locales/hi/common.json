@@ -1,4 +1,7 @@
 {
+  "app": {
+    "name": "विद्युत"
+  },
   "schoolCode": {
     "title": "अपना स्कूल कोड डालें",
     "placeholder": "जैसे AB12CD",
@@ -20,7 +23,8 @@
     "teacher": "शिक्षक होम",
     "staff": "स्टाफ होम",
     "student": "छात्र होम",
-    "logout": "लॉग आउट"
+    "logout": "लॉग आउट",
+    "openMenu": "मेनू खोलें"
   },
   "language": {
     "english": "English",
@@ -39,7 +43,10 @@
     "status": {
       "PRESENT": "उपस्थित",
       "ABSENT": "अनुपस्थित",
-      "LATE": "देर से"
+      "LATE": "देर से",
+      "LEAVE": "छुट्टी",
+      "HALF_DAY": "आधा दिन",
+      "HOLIDAY": "अवकाश"
     },
     "daily": "दैनिक",
     "period": "पीरियड"
@@ -53,6 +60,16 @@
       "messages": "संदेश",
       "leave": "छुट्टी",
       "summary": "सारांश"
+    },
+    "menuGroups": {
+      "overview": "सारांश",
+      "classroom": "कक्षा",
+      "communication": "संचार",
+      "account": "खाता"
+    },
+    "attendanceUnavailable": {
+      "title": "इस प्रीव्यू में उपलब्ध नहीं",
+      "body": "ऑफ़लाइन उपस्थिति के लिए असली ऐप बिल्ड चाहिए — यह Expo Go में नहीं चल सकता। ऐप के बाकी सभी हिस्से सामान्य रूप से काम करते हैं।"
     }
   },
   "marks": {
@@ -64,7 +81,13 @@
     "markAbsent": "अनुपस्थित करें",
     "markPresent": "उपस्थित करें",
     "next": "अगला",
-    "done": "सभी छात्रों के अंक दर्ज हो गए"
+    "done": "सभी छात्रों के अंक दर्ज हो गए",
+    "examLabel": "परीक्षा",
+    "studentProgress": "{{total}} में से छात्र {{current}}",
+    "admissionNo": "प्रवेश क्रमांक {{no}}",
+    "outOfMax": "{{max}} में से",
+    "retry": "फिर कोशिश करें",
+    "noStudents": "इस सेक्शन में कोई छात्र नहीं मिला"
   },
   "homework": {
     "title": "गृहकार्य दें",
@@ -112,7 +135,32 @@
       "payNow": "अभी भुगतान करें",
       "orderCreatedTitle": "भुगतान ऑर्डर बन गया",
       "orderCreatedBody": "ऑर्डर संदर्भ:",
-      "downloadReceipt": "रसीद डाउनलोड करें"
+      "downloadReceipt": "रसीद डाउनलोड करें",
+      "summary": {
+        "totalDue": "कुल बकाया",
+        "totalPaid": "कुल भुगतान",
+        "allClear": "सभी फीस भर दी गई है"
+      },
+      "dueOn": "देय तिथि",
+      "paidVia": "भुगतान माध्यम",
+      "empty": "अभी तक कोई फीस रिकॉर्ड नहीं",
+      "status": {
+        "PAID": "भुगतान हुआ",
+        "PENDING": "बकाया",
+        "PARTIAL": "आंशिक भुगतान",
+        "OVERDUE": "अतिदेय",
+        "CANCELLED": "रद्द"
+      },
+      "mode": {
+        "CASH": "नकद",
+        "CHEQUE": "चेक",
+        "DD": "डिमांड ड्राफ्ट",
+        "CARD": "कार्ड",
+        "UPI": "यूपीआई",
+        "NETBANKING": "नेट बैंकिंग",
+        "BANK": "बैंक ट्रांसफर",
+        "WALLET": "वॉलेट"
+      }
     },
     "reportCards": {
       "downloadPdf": "पीडीएफ डाउनलोड करें"
@@ -133,6 +181,32 @@
       "event": "कार्यक्रम",
       "exam": "परीक्षा",
       "homework": "गृहकार्य"
+    },
+    "menuGroups": {
+      "academics": "शिक्षा",
+      "fees": "फीस",
+      "communication": "संचार",
+      "campus": "कैंपस",
+      "account": "खाता"
+    },
+    "attendance": {
+      "months": [
+        "जनवरी",
+        "फरवरी",
+        "मार्च",
+        "अप्रैल",
+        "मई",
+        "जून",
+        "जुलाई",
+        "अगस्त",
+        "सितंबर",
+        "अक्टूबर",
+        "नवंबर",
+        "दिसंबर"
+      ],
+      "summary": "{{total}} में से {{present}} दिन उपस्थित ({{pct}}%)",
+      "empty": "इस महीने के लिए अभी तक उपस्थिति दर्ज नहीं हुई",
+      "noSchoolDays": "इस महीने के लिए कोई स्कूल दिवस दर्ज नहीं है"
     }
   },
   "onlineExams": {

@@ -9,7 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { adminApi } from "@/lib/admin-client";
+import { SearchableSelect } from "@/components/searchable-select";
+import { adminApi, type GuardianItem, type Student } from "@/lib/admin-client";
+import { useAdminBranchId } from "@/lib/use-admin-branch-id";
 
 const RELATIONS = ["FATHER", "MOTHER", "GUARDIAN", "OTHER"];
 
@@ -23,9 +25,10 @@ export default function GuardiansPage() {
   const [whatsappOptIn, setWhatsappOptIn] = useState(false);
   const [email, setEmail] = useState("");
   const [search, setSearch] = useState("");
+  const branchId = useAdminBranchId();
 
-  const [studentId, setStudentId] = useState("");
-  const [guardianId, setGuardianId] = useState("");
+  const [linkStudent, setLinkStudent] = useState<Student | null>(null);
+  const [linkGuardian, setLinkGuardian] = useState<GuardianItem | null>(null);
 
   const guardiansQuery = useQuery({
     queryKey: ["guardians", search],
@@ -54,10 +57,10 @@ export default function GuardiansPage() {
   });
 
   const linkMutation = useMutation({
-    mutationFn: () => adminApi.linkGuardianToStudent(studentId, guardianId),
+    mutationFn: () => adminApi.linkGuardianToStudent(linkStudent!.id, linkGuardian!.id),
     onSuccess: () => {
-      setStudentId("");
-      setGuardianId("");
+      setLinkStudent(null);
+      setLinkGuardian(null);
       toast.success(t("school.guardians.linked") as string);
     },
   });
@@ -121,14 +124,33 @@ export default function GuardiansPage() {
         <h3 className="font-heading text-sm font-semibold text-text-primary">{t("school.guardians.linkToStudent")}</h3>
         <div className="flex flex-wrap items-end gap-2">
           <div className="flex flex-col gap-1.5">
-            <Label>{t("school.guardians.studentId")}</Label>
-            <Input className="max-w-xs" value={studentId} onChange={(e) => setStudentId(e.target.value)} />
+            <Label>{t("school.guardians.student")}</Label>
+            <SearchableSelect<Student>
+              queryKey={["students-picker", branchId]}
+              disabled={!branchId}
+              fetchOptions={(query) => adminApi.listStudents(branchId, query || undefined).then((r) => r.data)}
+              getId={(s) => s.id}
+              getLabel={(s) => `${s.firstName} ${s.lastName} (${s.rollNo ? `Roll ${s.rollNo}` : `Adm. ${s.admissionNo}`})`}
+              value={linkStudent}
+              onChange={setLinkStudent}
+              placeholder={t("school.guardians.searchStudent") as string}
+              emptyText={t("school.guardians.noStudentsFound") as string}
+            />
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label>{t("school.guardians.guardianId")}</Label>
-            <Input className="max-w-xs" value={guardianId} onChange={(e) => setGuardianId(e.target.value)} />
+            <Label>{t("school.guardians.guardian")}</Label>
+            <SearchableSelect<GuardianItem>
+              queryKey={["guardians-picker"]}
+              fetchOptions={(query) => adminApi.listGuardians(query || undefined).then((r) => r.data)}
+              getId={(g) => g.id}
+              getLabel={(g) => `${g.name} (${g.phone})`}
+              value={linkGuardian}
+              onChange={setLinkGuardian}
+              placeholder={t("school.guardians.searchGuardian") as string}
+              emptyText={t("school.guardians.noGuardiansFound") as string}
+            />
           </div>
-          <Button onClick={() => linkMutation.mutate()} disabled={!studentId || !guardianId}>
+          <Button onClick={() => linkMutation.mutate()} disabled={!linkStudent || !linkGuardian}>
             {t("school.guardians.link")}
           </Button>
         </div>

@@ -3,6 +3,11 @@ import { redis } from "../redis";
 import { config } from "../config";
 import { AppError } from "../errors";
 
+/** Same non-production gate as `devCode` in modules/auth/service.ts — a staging deploy that doesn't set NODE_ENV=production gets this too, by the same convention. */
+const isDev = process.env.NODE_ENV !== "production";
+/** Dev/staging convenience: always accepted in place of the real code, so nobody has to read it out of server logs. Still requires a real OTP to have been requested first (the Redis key must exist) — this only skips "copy the code," not "request one." */
+const DEV_FIXED_OTP = "1234";
+
 function codeKey(phone: string): string {
   return `otp:code:${phone}`;
 }
@@ -32,7 +37,10 @@ export async function generateAndStoreOtp(phone: string): Promise<string> {
 
 export async function verifyAndConsumeOtp(phone: string, code: string): Promise<boolean> {
   const stored = await redis.get(codeKey(phone));
-  if (!stored || stored !== code) {
+  if (!stored) {
+    return false;
+  }
+  if (stored !== code && !(isDev && code === DEV_FIXED_OTP)) {
     return false;
   }
   await redis.del(codeKey(phone));

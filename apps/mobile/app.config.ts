@@ -69,7 +69,7 @@ const config: ExpoConfig = {
     // Points at the local apps/api dev server by default; overridden per
     // environment via EAS build profiles / app.config env vars later.
     apiBaseUrl:
-      process.env.VIDYUT_API_BASE_URL ?? "http://10.101.239.252:4000/api/v1",
+      process.env.VIDYUT_API_BASE_URL ?? "http://192.168.1.16:4000/api/v1",
     eas: EAS_PROJECT_ID ? { projectId: EAS_PROJECT_ID } : undefined,
   },
 };

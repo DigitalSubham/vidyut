@@ -2,7 +2,13 @@ import React, { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Alert, FlatList, Linking, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import * as DocumentPicker from "expo-document-picker";
+import { Menu } from "lucide-react-native";
 import { useAuth } from "../lib/auth-context";
+import { AppDrawer } from "../components/AppDrawer";
+import { PARENT_MENU_GROUP_KEYS, SECTION_ICONS, type Section } from "../lib/parent-menu";
+import { colors } from "../theme";
+import { AttendanceScreen } from "./AttendanceScreen";
+import { FeesScreen } from "./FeesScreen";
 import { OnlineExamTaker } from "./OnlineExamTaker";
 import { MessagesScreen } from "./MessagesScreen";
 import { PTMScreen } from "./PTMScreen";
@@ -44,51 +50,6 @@ import {
   type MyTimetablePeriod,
 } from "../lib/api-client";
 
-type Section =
-  | "fees"
-  | "attendance"
-  | "reportCards"
-  | "notices"
-  | "homework"
-  | "timetable"
-  | "calendar"
-  | "onlineExams"
-  | "circulars"
-  | "complaints"
-  | "messages"
-  | "ptm"
-  | "surveys"
-  | "gallery"
-  | "transport"
-  | "library"
-  | "store"
-  | "timeline"
-  | "lms"
-  | "settings";
-
-const SECTIONS: Section[] = [
-  "fees",
-  "attendance",
-  "reportCards",
-  "notices",
-  "homework",
-  "timetable",
-  "calendar",
-  "onlineExams",
-  "circulars",
-  "complaints",
-  "messages",
-  "ptm",
-  "surveys",
-  "gallery",
-  "transport",
-  "library",
-  "store",
-  "timeline",
-  "lms",
-  "settings",
-];
-
 /**
  * Unit 24 built the self-scope layer with a minimal proof screen; Unit 25
  * fills it out into the real Parent App — fees + pay, attendance, results,
@@ -102,6 +63,32 @@ export function ParentStudentHomeScreen() {
   const [students, setStudents] = useState<MyStudent[]>([]);
   const [activeStudentId, setActiveStudentId] = useState<string | null>(null);
   const [section, setSection] = useState<Section>("fees");
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  // Attendance defaults to the current month, but nothing forces the parent
+  // to stay there — a real school year means looking back at prior months
+  // too, and the API already accepts any month/year (apps/api/src/modules/
+  // me/service.ts's getMyAttendance), so this is purely a mobile UI gap.
+  const [attendanceMonth, setAttendanceMonth] = useState(() => new Date().getMonth() + 1);
+  const [attendanceYear, setAttendanceYear] = useState(() => new Date().getFullYear());
+  const shiftAttendanceMonth = useCallback((delta: -1 | 1) => {
+    setAttendanceMonth((prevMonth) => {
+      let nextMonth = prevMonth + delta;
+      let nextYear = attendanceYear;
+      if (nextMonth < 1) {
+        nextMonth = 12;
+        nextYear -= 1;
+      } else if (nextMonth > 12) {
+        nextMonth = 1;
+        nextYear += 1;
+      }
+      if (nextYear !== attendanceYear) setAttendanceYear(nextYear);
+      return nextMonth;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [attendanceYear]);
+  const now = new Date();
+  const canGoForwardInAttendance =
+    attendanceYear < now.getFullYear() || (attendanceYear === now.getFullYear() && attendanceMonth < now.getMonth() + 1);
   const [loading, setLoading] = useState(true);
   const [ledger, setLedger] = useState<MyFeeLedgerEntry[]>([]);
   const [attendance, setAttendance] = useState<MyAttendanceRecord[]>([]);
@@ -142,7 +129,7 @@ export function ParentStudentHomeScreen() {
     if (section === "fees") {
       setLedger(await getMyFeeLedger(session.accessToken, activeStudentId));
     } else if (section === "attendance") {
-      setAttendance(await getMyAttendance(session.accessToken, activeStudentId, now.getMonth() + 1, now.getFullYear()));
+      setAttendance(await getMyAttendance(session.accessToken, activeStudentId, attendanceMonth, attendanceYear));
     } else if (section === "reportCards") {
       setReportCards(await getMyReportCards(session.accessToken, activeStudentId));
     } else if (section === "notices") {
@@ -160,7 +147,7 @@ export function ParentStudentHomeScreen() {
     } else if (section === "complaints") {
       setComplaints(await listMyComplaints(session.accessToken));
     }
-  }, [session, activeStudentId, section]);
+  }, [session, activeStudentId, section, attendanceMonth, attendanceYear]);
 
   const activeStudent = students.find((s) => s.id === activeStudentId);
 
@@ -276,11 +263,31 @@ export function ParentStudentHomeScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.row}>
-        <Text style={styles.title}>{t("home.parent")}</Text>
-        <TouchableOpacity onPress={logout}>
-          <Text style={styles.logoutLink}>{t("home.logout")}</Text>
+        <TouchableOpacity
+          onPress={() => setDrawerOpen(true)}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel={t("home.openMenu")}
+        >
+          <Menu size={24} color={colors.textPrimary} />
         </TouchableOpacity>
+        <Text style={styles.title}>{t(`me.tabs.${section}`)}</Text>
+        <View style={{ width: 24 }} />
       </View>
+
+      <AppDrawer<Section>
+        visible={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        groups={PARENT_MENU_GROUP_KEYS.map((group) => ({ label: t(`me.menuGroups.${group.label}`), items: group.items }))}
+        activeItem={section}
+        onSelect={setSection}
+        getLabel={(s) => t(`me.tabs.${s}`)}
+        getIcon={(s) => SECTION_ICONS[s]}
+        brandName={t("app.name")}
+        subtitle={activeStudent ? `${activeStudent.firstName} ${activeStudent.lastName}` : undefined}
+        onLogout={logout}
+        logoutLabel={t("home.logout")}
+      />
 
       {students.length > 1 ? (
         <View style={styles.childRow}>
@@ -296,51 +303,14 @@ export function ParentStudentHomeScreen() {
         </View>
       ) : null}
 
-      <View style={styles.tabRow}>
-        {SECTIONS.map((tab) => (
-          <TouchableOpacity
-            key={tab}
-            style={[styles.tab, tab === section ? styles.tabActive : null]}
-            onPress={() => setSection(tab)}
-          >
-            <Text>{t(`me.tabs.${tab}`)}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {section === "fees" ? (
-        <FlatList
-          data={ledger}
-          keyExtractor={(item, index) => item.invoiceId ?? `${item.type}-${index}`}
-          renderItem={({ item }) => (
-            <View style={styles.feeRow}>
-              <Text>
-                {item.type === "invoice" ? item.periodLabel : t("me.fees.payment")} — ₹
-                {(item.amount / 100).toFixed(2)}
-              </Text>
-              {item.type === "invoice" && item.status !== "PAID" ? (
-                <TouchableOpacity onPress={() => payDue(item)}>
-                  <Text style={styles.payNow}>{t("me.fees.payNow")}</Text>
-                </TouchableOpacity>
-              ) : null}
-              {item.type === "payment" && item.receiptDownloadUrl ? (
-                <TouchableOpacity onPress={() => Linking.openURL(item.receiptDownloadUrl!)}>
-                  <Text style={styles.payNow}>{t("me.fees.downloadReceipt")}</Text>
-                </TouchableOpacity>
-              ) : null}
-            </View>
-          )}
-        />
-      ) : null}
+      {section === "fees" ? <FeesScreen entries={ledger} onPayNow={payDue} /> : null}
       {section === "attendance" ? (
-        <FlatList
-          data={attendance}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <Text style={styles.row2}>
-              {item.date.slice(0, 10)} — {item.status}
-            </Text>
-          )}
+        <AttendanceScreen
+          records={attendance}
+          month={attendanceMonth}
+          year={attendanceYear}
+          onShiftMonth={shiftAttendanceMonth}
+          canGoForward={canGoForwardInAttendance}
         />
       ) : null}
       {section === "reportCards" ? (
@@ -578,13 +548,9 @@ const styles = StyleSheet.create({
   centered: { flex: 1, justifyContent: "center", alignItems: "center" },
   row: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   title: { fontSize: 20, fontWeight: "600" },
-  logoutLink: { color: "#4F46E5", fontWeight: "600" },
   childRow: { flexDirection: "row", gap: 8 },
   childChip: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 999, backgroundColor: "#E5E7EB" },
   childChipActive: { backgroundColor: "#4F46E5" },
-  tabRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
-  tab: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: 6, backgroundColor: "#F3F4F6" },
-  tabActive: { backgroundColor: "#DCFCE7" },
   row2: { paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: "#E5E7EB" },
   textInput: { borderWidth: 1, borderColor: "#D1D5DB", borderRadius: 8, padding: 8 },
   feeRow: {

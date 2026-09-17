@@ -37,7 +37,8 @@
     "userPlaceholder": "अतिथि उपयोगकर्ता",
     "searchPlaceholder": "विद्यार्थी, स्टाफ़, इनवॉइस खोजें…",
     "searchEmpty": "कोई परिणाम नहीं।",
-    "searchStaffTag": "स्टाफ़"
+    "searchStaffTag": "स्टाफ़",
+    "logout": "लॉग आउट"
   },
   "language": {
     "label": "भाषा",
@@ -49,7 +50,7 @@
     "description": "फीस, उपस्थिति और परिणाम — अपने स्कूल को कम मेहनत में चलाएँ।"
   },
   "school": {
-    "branchIdPlaceholder": "ब्रांच आईडी",
+    "branchIdPlaceholder": "ब्रांच चुनें",
     "tour": {
       "step1Title": "विद्युत में आपका स्वागत है",
       "step1Body": "यह डैशबोर्ड आपके स्कूल की फीस वसूली, उपस्थिति और प्रवेश की एक झलक दिखाता है।",
@@ -75,7 +76,8 @@
       "cancel": "रद्द करें",
       "search": "खोजें",
       "load": "लोड करें",
-      "select": "चुनें…"
+      "select": "चुनें…",
+      "delete": "हटाएं"
     },
     "students": {
       "title": "विद्यार्थी",
@@ -103,7 +105,8 @@
         "siblingIdPlaceholder": "भाई-बहन छात्र आईडी",
         "link": "जोड़ें",
         "timeline": "समयरेखा",
-        "add": "जोड़ें"
+        "add": "जोड़ें",
+        "transferred": "छात्र स्थानांतरित किया गया"
       }
     },
     "fees": {
@@ -284,7 +287,35 @@
       "houseColor": "हाउस का रंग",
       "houseId": "हाउस आईडी",
       "viewRoster": "सूची देखें",
-      "admissionNo": "प्रवेश संख्या"
+      "admissionNo": "प्रवेश संख्या",
+      "classesTab": "क्लास",
+      "subjectsTab": "विषय",
+      "className": "क्लास का नाम",
+      "classNamePlaceholder": "जैसे Class 9",
+      "classOrder": "क्रम",
+      "createClass": "क्लास बनाएँ",
+      "classCreated": "क्लास बन गई",
+      "noClasses": "अभी तक कोई क्लास नहीं — ऊपर से जोड़ें।",
+      "manageSections": "सेक्शन प्रबंधित करें",
+      "sectionsHeading": "सेक्शन",
+      "sectionName": "सेक्शन का नाम",
+      "sectionCapacity": "क्षमता",
+      "createSection": "सेक्शन जोड़ें",
+      "sectionCreated": "सेक्शन बन गया",
+      "noSections": "इस क्लास में अभी तक कोई सेक्शन नहीं।",
+      "subjectName": "विषय का नाम",
+      "subjectNamePlaceholder": "जैसे गणित",
+      "subjectCode": "कोड",
+      "subjectType": "प्रकार",
+      "createSubject": "विषय बनाएँ",
+      "subjectCreated": "विषय बन गया",
+      "noSubjects": "अभी तक कोई विषय नहीं — ऊपर से जोड़ें।",
+      "subjectTypes": {
+        "CORE": "मुख्य",
+        "ELECTIVE": "वैकल्पिक",
+        "CO_SCHOLASTIC": "सह-शैक्षणिक",
+        "PRACTICAL": "प्रायोगिक"
+      }
     },
     "exams": {
       "title": "परीक्षाएँ",
@@ -477,10 +508,14 @@
       "email": "ईमेल",
       "created": "अभिभावक बनाया गया",
       "linkToStudent": "छात्र से जोड़ें",
-      "studentId": "छात्र आईडी",
-      "guardianId": "अभिभावक आईडी",
       "link": "जोड़ें",
-      "linked": "अभिभावक जोड़ा गया"
+      "linked": "अभिभावक जोड़ा गया",
+      "student": "छात्र",
+      "guardian": "अभिभावक",
+      "searchStudent": "नाम या रोल नंबर से खोजें…",
+      "searchGuardian": "नाम या फ़ोन से खोजें…",
+      "noStudentsFound": "कोई छात्र नहीं मिला",
+      "noGuardiansFound": "कोई अभिभावक नहीं मिला"
     },
     "admissions": {
       "title": "प्रवेश",
@@ -750,7 +785,17 @@
       "loading": "लोड हो रहा है…"
     },
     "errors": {
-      "unknown": "कुछ गड़बड़ हो गई। कृपया फिर से प्रयास करें।"
+      "unknown": "कुछ गड़बड़ हो गई। कृपया फिर से प्रयास करें।",
+      "validation": "कृपया हाइलाइट किए गए फ़ील्ड जांचें और फिर से प्रयास करें।",
+      "notFound": "यह नहीं मिला — शायद हटा दिया गया हो।",
+      "unauthenticated": "आपका सत्र समाप्त हो गया है। कृपया फिर से साइन इन करें।",
+      "forbidden": "आपके पास यह करने की अनुमति नहीं है।",
+      "conflict": "यह पहले से मौजूद किसी चीज़ से टकराता है।",
+      "rateLimited": "बहुत अधिक प्रयास — कृपया थोड़ी देर बाद फिर से प्रयास करें।",
+      "tenantSuspended": "इस स्कूल का खाता फ़िलहाल निलंबित है।",
+      "moduleDisabled": "यह सुविधा आपकी योजना में सक्षम नहीं है।",
+      "limitExceeded": "आप इसकी योजना सीमा तक पहुँच गए हैं।",
+      "payment": "भुगतान संसाधित नहीं हो सका। कृपया फिर से प्रयास करें।"
     },
     "login": {
       "title": "सुपर-एडमिन लॉगिन",

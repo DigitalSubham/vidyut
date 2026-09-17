@@ -13,6 +13,8 @@ allowBuilds:
   puppeteer: true
   sharp: true
   unrs-resolver: true
+minimumReleaseAgeExclude:
+  - lucide-react-native@1.37.0
 onlyBuiltDependencies:
   - "@prisma/client"
   - "@prisma/engines"

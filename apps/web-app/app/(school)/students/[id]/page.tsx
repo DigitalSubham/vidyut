@@ -3,6 +3,8 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/error-message";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -38,6 +40,7 @@ export default function StudentDetailPage() {
   const [targetClassId, setTargetClassId] = useState("");
   const [sections, setSections] = useState<SectionItem[]>([]);
   const [targetSectionId, setTargetSectionId] = useState("");
+  const [transferring, setTransferring] = useState(false);
 
   function refreshLifecycle(id: string) {
     adminApi.listSiblings(id).then((res) => setSiblings(res.data));
@@ -69,8 +72,32 @@ export default function StudentDetailPage() {
 
   async function handleTransfer() {
     if (!student || !targetBranchId || !targetClassId || !targetSectionId) return;
-    const res = await adminApi.transferStudent(student.id, { targetBranchId, targetClassId, targetSectionId });
-    setStudent(res.data);
+    setTransferring(true);
+    try {
+      const res = await adminApi.transferStudent(student.id, { targetBranchId, targetClassId, targetSectionId });
+      setStudent(res.data);
+      // Clear the picker back to empty — the fields it held (this branch's
+      // old class/section) no longer describe anything after a successful
+      // transfer, and leaving them populated reads as "this is still
+      // selected" when it isn't.
+      setTargetBranchId("");
+      setTargetClassId("");
+      setTargetSectionId("");
+      setClasses([]);
+      setSections([]);
+      toast.success(t("school.students.lifecycle.transferred") as string);
+    } catch (err) {
+      // handleTransfer is a plain click handler, not a useQuery/useMutation
+      // call — components/query-provider.tsx's global error handler only
+      // wraps those, so this needed its own try/catch (same reason every
+      // other manual `await adminApi...` call in this file has none today:
+      // it's not this screen's own inconsistency, it's a real gap in every
+      // handler here — this is scoped to Transfer, as asked).
+      const { title, description } = getErrorMessage(err);
+      toast.error(title, { description });
+    } finally {
+      setTransferring(false);
+    }
   }
 
   async function handleMarkAlumni() {
@@ -202,9 +229,9 @@ export default function StudentDetailPage() {
               type="button"
               variant="secondary"
               onClick={handleTransfer}
-              disabled={!targetBranchId || !targetClassId || !targetSectionId}
+              disabled={!targetBranchId || !targetClassId || !targetSectionId || transferring}
             >
-              {t("school.students.lifecycle.transfer")}
+              {transferring ? t("school.common.loading") : t("school.students.lifecycle.transfer")}
             </Button>
             {student.status === "ACTIVE" ? (
               <Button type="button" variant="secondary" onClick={handleMarkAlumni}>

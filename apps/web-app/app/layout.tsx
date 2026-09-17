@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, Inter, Noto_Sans_Devanagari } from "next/font/google";
 import { I18nProvider } from "@/components/i18n-provider";
 import { QueryProvider } from "@/components/query-provider";
+import { Toaster } from "@/components/ui/sonner";
+import { TokenRefresher } from "@/components/token-refresher";
 import "./globals.css";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
@@ -36,7 +38,17 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <I18nProvider>
-          <QueryProvider>{children}</QueryProvider>
+          <QueryProvider>
+            <TokenRefresher />
+            {children}
+            {/*
+             * Was never mounted anywhere in the app — every toast.success()/
+             * toast.error() call across the whole codebase (including the
+             * new global error handler in query-provider.tsx) has been
+             * silently doing nothing until this line existed.
+             */}
+            <Toaster richColors position="top-right" />
+          </QueryProvider>
         </I18nProvider>
       </body>
     </html>

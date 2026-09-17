@@ -1,0 +1,31 @@
+STUDENT/PARENT LOGIN - 
+SCHOOL_CODE = U8PTFC
+PHONE = 9999999999 
+OTP = CHECK CONSOLE
+
+
+TEACHER LOGIN - 
+SCHOOL_CODE = U8PTFC
+PHONE = 9812340001 
+OTP = CHECK CONSOLE
+
+Above Credentials works for App Only
+
+
+
+
+
+Below Credentials for Web
+
+Surface	            URL	                            Credentials
+School admin	localhost:3000/login	demo-school · owner@demo-school.test · Owner@12345
+
+Teacher	same	teacher@demo-school.test · Teacher@12345
+
+Super-admin	localhost:3000/super-admin/login	superadmin@vidyut.test · SuperAdmin@12345
+
+Public site	localhost:3001	school code U8PTFC
+
+
+
+

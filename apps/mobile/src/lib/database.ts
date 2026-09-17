@@ -55,13 +55,32 @@ export class AttendanceRecordModel extends Model {
   @readonly @date("created_at") createdAt!: Date;
 }
 
-const adapter = new SQLiteAdapter({
-  schema,
-  migrations,
-  jsi: true,
-});
+let cachedDatabase: Database | null = null;
 
-export const database = new Database({
-  adapter,
-  modelClasses: [AttendanceRecordModel],
-});
+/**
+ * Lazy on purpose: SQLiteAdapter's constructor calls the native
+ * initializeJSI() synchronously, which throws in Expo Go (no native
+ * module) or a stale dev client. A top-level `export const database = new
+ * Database(...)` used to run that constructor the instant this file was
+ * *imported* — which happened for every teacher login regardless of
+ * whether they ever opened the attendance tab, and (worse) an earlier
+ * attempt to defer that via React.lazy()/dynamic import produced its own
+ * separate Metro bug ("Element type is invalid... resolves to undefined").
+ * Deferring construction to first *call* means merely importing this
+ * module is always safe; the throw only happens where a caller can
+ * actually catch it (TeacherAttendanceScreen's existing try/catch blocks).
+ */
+export function getDatabase(): Database {
+  if (!cachedDatabase) {
+    const adapter = new SQLiteAdapter({
+      schema,
+      migrations,
+      jsi: true,
+    });
+    cachedDatabase = new Database({
+      adapter,
+      modelClasses: [AttendanceRecordModel],
+    });
+  }
+  return cachedDatabase;
+}

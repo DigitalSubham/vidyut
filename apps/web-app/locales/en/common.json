@@ -37,7 +37,8 @@
     "userPlaceholder": "Guest User",
     "searchPlaceholder": "Search students, staff, invoices…",
     "searchEmpty": "No matches.",
-    "searchStaffTag": "staff"
+    "searchStaffTag": "staff",
+    "logout": "Log out"
   },
   "language": {
     "label": "Language",
@@ -49,7 +50,7 @@
     "description": "Run your school with less effort — fees, attendance, and results, all in one place."
   },
   "school": {
-    "branchIdPlaceholder": "Branch ID",
+    "branchIdPlaceholder": "Select branch",
     "tour": {
       "step1Title": "Welcome to Vidyut",
       "step1Body": "This dashboard shows your school's fee collection, attendance, and admissions at a glance.",
@@ -75,7 +76,8 @@
       "cancel": "Cancel",
       "search": "Search",
       "load": "Load",
-      "select": "Select…"
+      "select": "Select…",
+      "delete": "Delete"
     },
     "students": {
       "title": "Students",
@@ -103,7 +105,8 @@
         "siblingIdPlaceholder": "Sibling student ID",
         "link": "Link",
         "timeline": "Timeline",
-        "add": "Add"
+        "add": "Add",
+        "transferred": "Student transferred"
       }
     },
     "fees": {
@@ -284,7 +287,35 @@
       "houseColor": "House color",
       "houseId": "House ID",
       "viewRoster": "View roster",
-      "admissionNo": "Admission No."
+      "admissionNo": "Admission No.",
+      "classesTab": "Classes",
+      "subjectsTab": "Subjects",
+      "className": "Class name",
+      "classNamePlaceholder": "e.g. Class 9",
+      "classOrder": "Order",
+      "createClass": "Create class",
+      "classCreated": "Class created",
+      "noClasses": "No classes yet — add one above.",
+      "manageSections": "Manage Sections",
+      "sectionsHeading": "Sections",
+      "sectionName": "Section name",
+      "sectionCapacity": "Capacity",
+      "createSection": "Add section",
+      "sectionCreated": "Section created",
+      "noSections": "No sections in this class yet.",
+      "subjectName": "Subject name",
+      "subjectNamePlaceholder": "e.g. Mathematics",
+      "subjectCode": "Code",
+      "subjectType": "Type",
+      "createSubject": "Create subject",
+      "subjectCreated": "Subject created",
+      "noSubjects": "No subjects yet — add one above.",
+      "subjectTypes": {
+        "CORE": "Core",
+        "ELECTIVE": "Elective",
+        "CO_SCHOLASTIC": "Co-Scholastic",
+        "PRACTICAL": "Practical"
+      }
     },
     "exams": {
       "title": "Exams",
@@ -477,10 +508,14 @@
       "email": "Email",
       "created": "Guardian created",
       "linkToStudent": "Link to a student",
-      "studentId": "Student ID",
-      "guardianId": "Guardian ID",
       "link": "Link",
-      "linked": "Guardian linked"
+      "linked": "Guardian linked",
+      "student": "Student",
+      "guardian": "Guardian",
+      "searchStudent": "Search by name or roll no…",
+      "searchGuardian": "Search by name or phone…",
+      "noStudentsFound": "No students found",
+      "noGuardiansFound": "No guardians found"
     },
     "admissions": {
       "title": "Admissions",
@@ -750,7 +785,17 @@
       "loading": "Loading…"
     },
     "errors": {
-      "unknown": "Something went wrong. Please try again."
+      "unknown": "Something went wrong. Please try again.",
+      "validation": "Please check the highlighted fields and try again.",
+      "notFound": "We couldn't find that — it may have been removed.",
+      "unauthenticated": "Your session has expired. Please sign in again.",
+      "forbidden": "You don't have permission to do that.",
+      "conflict": "That conflicts with something that already exists.",
+      "rateLimited": "Too many attempts — please wait a moment and try again.",
+      "tenantSuspended": "This school's account is currently suspended.",
+      "moduleDisabled": "This feature isn't enabled for your plan.",
+      "limitExceeded": "You've reached a plan limit for this.",
+      "payment": "The payment could not be processed. Please try again."
     },
     "login": {
       "title": "Super-admin login",

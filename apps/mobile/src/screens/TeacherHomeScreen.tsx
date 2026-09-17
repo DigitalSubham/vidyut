@@ -1,59 +1,64 @@
-import React, { Component, Suspense, useEffect, useState, type ReactNode } from "react";
+import React, { useEffect, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useTranslation } from "react-i18next";
+import { Construction, Menu } from "lucide-react-native";
 import { useAuth } from "../lib/auth-context";
+import { AppDrawer } from "../components/AppDrawer";
+import { getDatabase } from "../lib/database";
+import { TEACHER_MENU_GROUP_KEYS, TEACHER_TAB_ICONS, type TeacherTab } from "../lib/teacher-menu";
+import { colors } from "../theme";
 import { MarksEntryScreen } from "./MarksEntryScreen";
 import { HomeworkPostScreen } from "./HomeworkPostScreen";
 import { HomeworkGradingScreen } from "./HomeworkGradingScreen";
 import { MessagesScreen } from "./MessagesScreen";
 import { LeaveScreen } from "./LeaveScreen";
 import { TeacherSummaryScreen } from "./TeacherSummaryScreen";
+import { TeacherAttendanceScreen } from "./TeacherAttendanceScreen";
 import { listMyTeacherAssignments, type MyTeacherAssignment } from "../lib/api-client";
 
-/**
- * Lazy + error-boundary wrapped: this screen (via ../lib/database.ts)
- * constructs a WatermelonDB SQLiteAdapter at module scope, which calls the
- * native initializeJSI() synchronously. A plain top-level import pulls that
- * in for every role at app boot, even ones that never open this tab — and
- * it throws in Expo Go (no native module) or a stale dev client, crashing
- * the whole app before any screen renders. Deferring the import to first
- * render of this one tab, and catching the throw locally, keeps that
- * failure scoped to the tab that needs it.
- */
-const LazyTeacherAttendanceScreen = React.lazy(() =>
-  import("./TeacherAttendanceScreen").then((m) => ({ default: m.TeacherAttendanceScreen }))
-);
-
-class AttendanceErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
-  state = { failed: false };
-  static getDerivedStateFromError() {
-    return { failed: true };
-  }
-  render() {
-    if (this.state.failed) {
-      return (
-        <View style={styles.attendanceError}>
-          <Text style={styles.attendanceErrorText}>
-            Offline attendance needs a native dev client (WatermelonDB) — it isn't available in Expo Go.
-          </Text>
-        </View>
-      );
-    }
-    return this.props.children;
-  }
-}
-
-function AttendanceTab() {
+function AttendanceUnavailable() {
+  const { t } = useTranslation();
   return (
-    <AttendanceErrorBoundary>
-      <Suspense fallback={null}>
-        <LazyTeacherAttendanceScreen />
-      </Suspense>
-    </AttendanceErrorBoundary>
+    <View style={styles.attendanceError}>
+      <View style={styles.attendanceErrorIcon}>
+        <Construction size={28} color={colors.warning} />
+      </View>
+      <Text style={styles.attendanceErrorTitle}>{t("teacherHome.attendanceUnavailable.title")}</Text>
+      <Text style={styles.attendanceErrorBody}>{t("teacherHome.attendanceUnavailable.body")}</Text>
+    </View>
   );
 }
 
-type Tab = "attendance" | "marks" | "homework" | "grading" | "messages" | "leave" | "summary";
+/**
+ * ../lib/database.ts's getDatabase() is a lazy singleton — merely importing
+ * TeacherAttendanceScreen (a plain static import now, above) can never
+ * crash, since nothing there touches WatermelonDB at module scope either.
+ * Only *calling* getDatabase() can throw (native module absent — Expo Go
+ * or a stale dev client), so this check does exactly that once, up front,
+ * and shows the same friendly fallback instead of mounting a screen whose
+ * own data-loading would otherwise hit that error on the first render.
+ *
+ * This replaces an earlier React.lazy()/Suspense/class-ErrorBoundary
+ * version of this same idea, which had its own separate bug under this
+ * app's Metro setup ("Element type is invalid... resolves to undefined") —
+ * a synchronous try/catch sidesteps that entire mechanism.
+ */
+function AttendanceTab() {
+  const [available, setAvailable] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    try {
+      getDatabase();
+      setAvailable(true);
+    } catch {
+      setAvailable(false);
+    }
+  }, []);
+
+  if (available === null) return null;
+  if (!available) return <AttendanceUnavailable />;
+  return <TeacherAttendanceScreen />;
+}
 
 /** Unit 26 — the teacher's three surfaces (attendance already built in Unit
  * 16, marks + homework new) behind one tab row. Unit 45 adds a fourth:
@@ -61,9 +66,10 @@ type Tab = "attendance" | "marks" | "homework" | "grading" | "messages" | "leave
  * with a guardian. */
 export function TeacherHomeScreen() {
   const { t } = useTranslation();
-  const { session } = useAuth();
-  const [tab, setTab] = useState<Tab>("attendance");
+  const { session, logout } = useAuth();
+  const [tab, setTab] = useState<TeacherTab>("summary");
   const [assignment, setAssignment] = useState<MyTeacherAssignment | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   useEffect(() => {
     if (!session) return;
@@ -72,13 +78,33 @@ export function TeacherHomeScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.tabRow}>
-        {(["attendance", "marks", "homework", "grading", "messages", "leave", "summary"] as Tab[]).map((key) => (
-          <TouchableOpacity key={key} style={[styles.tab, tab === key ? styles.tabActive : null]} onPress={() => setTab(key)}>
-            <Text>{t(`teacherHome.tabs.${key}`)}</Text>
-          </TouchableOpacity>
-        ))}
+      <View style={styles.header}>
+        <TouchableOpacity
+          onPress={() => setDrawerOpen(true)}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel={t("home.openMenu")}
+        >
+          <Menu size={24} color={colors.textPrimary} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>{t(`teacherHome.tabs.${tab}`)}</Text>
+        <View style={{ width: 24 }} />
       </View>
+
+      <AppDrawer<TeacherTab>
+        visible={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        groups={TEACHER_MENU_GROUP_KEYS.map((group) => ({ label: t(`teacherHome.menuGroups.${group.label}`), items: group.items }))}
+        activeItem={tab}
+        onSelect={setTab}
+        getLabel={(key) => t(`teacherHome.tabs.${key}`)}
+        getIcon={(key) => TEACHER_TAB_ICONS[key]}
+        brandName={t("app.name")}
+        subtitle={assignment ? `${assignment.subject.name} — ${assignment.section.class.name} ${assignment.section.name}` : undefined}
+        onLogout={logout}
+        logoutLabel={t("home.logout")}
+      />
+
       <View style={styles.content}>
         {tab === "attendance" ? <AttendanceTab /> : null}
         {tab === "marks" ? <MarksEntryScreen /> : null}
@@ -102,10 +128,25 @@ export function TeacherHomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  tabRow: { flexDirection: "row", gap: 8, padding: 16, paddingBottom: 0, flexWrap: "wrap" },
-  tab: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 6, backgroundColor: "#F3F4F6" },
-  tabActive: { backgroundColor: "#DCFCE7" },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  headerTitle: { fontSize: 20, fontWeight: "600", color: colors.textPrimary },
   content: { flex: 1, paddingHorizontal: 16 },
-  attendanceError: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24 },
-  attendanceErrorText: { textAlign: "center", color: "#6B7280" },
+  attendanceError: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32, gap: 8 },
+  attendanceErrorIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.warningTint,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 8,
+  },
+  attendanceErrorTitle: { fontSize: 17, fontWeight: "700", color: colors.textPrimary, textAlign: "center" },
+  attendanceErrorBody: { fontSize: 14, color: colors.textSecondary, textAlign: "center", lineHeight: 20 },
 });

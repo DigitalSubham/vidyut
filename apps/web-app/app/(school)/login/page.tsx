@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { adminApi, setAdminToken, AdminApiError } from "@/lib/admin-client";
+import { adminApi, setAdminToken, setAdminRefreshToken, AdminApiError } from "@/lib/admin-client";
 
 export default function SchoolLoginPage() {
   const { t } = useTranslation();
@@ -30,6 +30,7 @@ export default function SchoolLoginPage() {
         setChallenge(res.data.challenge);
       } else {
         setAdminToken(res.data.accessToken);
+        setAdminRefreshToken(res.data.refreshToken);
         router.push("/students");
       }
     } catch (err) {
@@ -47,6 +48,7 @@ export default function SchoolLoginPage() {
     try {
       const res = await adminApi.verifyTwoFa(challenge, code);
       setAdminToken(res.data.accessToken);
+      setAdminRefreshToken(res.data.refreshToken);
       router.push("/students");
     } catch (err) {
       setError(err instanceof AdminApiError ? `${err.code}: ${err.message}` : t("platform.errors.unknown"));

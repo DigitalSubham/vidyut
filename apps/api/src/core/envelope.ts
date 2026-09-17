@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction, ErrorRequestHandler } from "express";
+import { Prisma } from "@vidyut/db";
 import { AppError } from "./errors";
 import { captureError } from "./sentry";
 
@@ -49,6 +50,26 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
         code: err.code,
         message: err.message,
         ...(err.fields ? { fields: err.fields } : {}),
+      },
+    });
+    return;
+  }
+
+  // A unique-constraint violation (duplicate class name, subject code,
+  // admission no., etc. — any @@unique in packages/db/prisma/schema) is a
+  // normal, expected user mistake, not a server fault. No individual
+  // service module in this codebase catches Prisma's P2002 (confirmed —
+  // zero call sites), so every one of them previously fell through to this
+  // handler's generic 500 below. Handled once, globally, here: covers every
+  // unique constraint across every module, not just whichever ones a given
+  // change happens to touch.
+  if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+    const target = Array.isArray(err.meta?.target) ? (err.meta.target as string[]) : [];
+    res.status(409).json({
+      error: {
+        code: "CONFLICT",
+        message: "platform.errors.duplicateValue",
+        ...(target.length > 0 ? { fields: Object.fromEntries(target.map((f) => [f, "platform.errors.alreadyExists"])) } : {}),
       },
     });
     return;

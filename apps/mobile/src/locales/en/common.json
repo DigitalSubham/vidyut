@@ -1,4 +1,7 @@
 {
+  "app": {
+    "name": "Vidyut"
+  },
   "schoolCode": {
     "title": "Enter your school code",
     "placeholder": "e.g. AB12CD",
@@ -20,7 +23,8 @@
     "teacher": "Teacher Home",
     "staff": "Staff Home",
     "student": "Student Home",
-    "logout": "Log out"
+    "logout": "Log out",
+    "openMenu": "Open menu"
   },
   "language": {
     "english": "English",
@@ -39,7 +43,10 @@
     "status": {
       "PRESENT": "Present",
       "ABSENT": "Absent",
-      "LATE": "Late"
+      "LATE": "Late",
+      "LEAVE": "Leave",
+      "HALF_DAY": "Half Day",
+      "HOLIDAY": "Holiday"
     },
     "daily": "Daily",
     "period": "Period"
@@ -53,6 +60,16 @@
       "messages": "Messages",
       "leave": "Leave",
       "summary": "Summary"
+    },
+    "menuGroups": {
+      "overview": "Overview",
+      "classroom": "Classroom",
+      "communication": "Communication",
+      "account": "Account"
+    },
+    "attendanceUnavailable": {
+      "title": "Not available in this preview",
+      "body": "Offline attendance needs a real app build — it can't run inside Expo Go. Everything else in the app works normally."
     }
   },
   "marks": {
@@ -64,7 +81,13 @@
     "markAbsent": "Mark Absent",
     "markPresent": "Mark Present",
     "next": "Next",
-    "done": "All students entered"
+    "done": "All students entered",
+    "examLabel": "Exam",
+    "studentProgress": "Student {{current}} of {{total}}",
+    "admissionNo": "Admission No. {{no}}",
+    "outOfMax": "out of {{max}}",
+    "retry": "Retry",
+    "noStudents": "No students found in this section"
   },
   "homework": {
     "title": "Post Homework",
@@ -112,7 +135,32 @@
       "payNow": "Pay Now",
       "orderCreatedTitle": "Payment order created",
       "orderCreatedBody": "Order reference:",
-      "downloadReceipt": "Download receipt"
+      "downloadReceipt": "Download receipt",
+      "summary": {
+        "totalDue": "Total Due",
+        "totalPaid": "Total Paid",
+        "allClear": "All fees paid — you're all set"
+      },
+      "dueOn": "Due",
+      "paidVia": "Paid via",
+      "empty": "No fee records yet",
+      "status": {
+        "PAID": "Paid",
+        "PENDING": "Due",
+        "PARTIAL": "Partially Paid",
+        "OVERDUE": "Overdue",
+        "CANCELLED": "Cancelled"
+      },
+      "mode": {
+        "CASH": "Cash",
+        "CHEQUE": "Cheque",
+        "DD": "Demand Draft",
+        "CARD": "Card",
+        "UPI": "UPI",
+        "NETBANKING": "Net Banking",
+        "BANK": "Bank Transfer",
+        "WALLET": "Wallet"
+      }
     },
     "reportCards": {
       "downloadPdf": "Download PDF"
@@ -133,6 +181,32 @@
       "event": "Event",
       "exam": "Exam",
       "homework": "Homework"
+    },
+    "menuGroups": {
+      "academics": "Academics",
+      "fees": "Fees",
+      "communication": "Communication",
+      "campus": "Campus",
+      "account": "Account"
+    },
+    "attendance": {
+      "months": [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December"
+      ],
+      "summary": "Present {{present}} of {{total}} school days ({{pct}}%)",
+      "empty": "No attendance marked for this month yet",
+      "noSchoolDays": "No school days recorded for this month"
     }
   },
   "onlineExams": {

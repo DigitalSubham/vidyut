@@ -13,7 +13,7 @@ import {
   type StudentListItem,
   type TimetablePeriodItem,
 } from "../lib/api-client";
-import { database, AttendanceRecordModel } from "../lib/database";
+import { getDatabase, AttendanceRecordModel } from "../lib/database";
 
 const STATUSES = ["PRESENT", "ABSENT", "LATE"] as const;
 type Status = (typeof STATUSES)[number];
@@ -75,7 +75,9 @@ export function TeacherAttendanceScreen() {
       const items = await listSectionStudents(session.accessToken, active.section.branchId, active.sectionId);
       setStudents(items);
 
-      const existing = await database
+      // Throws synchronously here (native module absent) if unavailable —
+      // caught by this same try/catch, same as any other loadRoster failure.
+      const existing = await getDatabase()
         .get<AttendanceRecordModel>("attendance_records")
         .query(
           Q.where("section_id", active.sectionId),
@@ -102,6 +104,9 @@ export function TeacherAttendanceScreen() {
       const next = STATUSES[(STATUSES.indexOf(current) + 1) % STATUSES.length];
       setMarks((prev) => ({ ...prev, [studentId]: next }));
 
+      // Reachable only via a rendered student row, which only exists once
+      // loadRoster's own getDatabase() call has already succeeded once.
+      const database = getDatabase();
       await database.write(async () => {
         const existing = await database
           .get<AttendanceRecordModel>("attendance_records")
@@ -130,19 +135,23 @@ export function TeacherAttendanceScreen() {
 
   const sync = useCallback(async () => {
     if (!session || !active) return;
-    const unsynced = await database
-      .get<AttendanceRecordModel>("attendance_records")
-      .query(
-        Q.where("section_id", active.sectionId),
-        Q.where("date", date),
-        Q.where("period_id", periodId),
-        Q.where("synced_at", null)
-      )
-      .fetch();
-    if (unsynced.length === 0) return;
-
     setSyncing(true);
     try {
+      // Sync is reachable directly (its button isn't gated behind a
+      // successful loadRoster), so getDatabase() needs its own try/catch
+      // here too — it can't rely on loadRoster having already succeeded.
+      const database = getDatabase();
+      const unsynced = await database
+        .get<AttendanceRecordModel>("attendance_records")
+        .query(
+          Q.where("section_id", active.sectionId),
+          Q.where("date", date),
+          Q.where("period_id", periodId),
+          Q.where("synced_at", null)
+        )
+        .fetch();
+      if (unsynced.length === 0) return;
+
       await pushAttendance(session.accessToken, {
         branchId: active.section.branchId,
         sectionId: active.sectionId,

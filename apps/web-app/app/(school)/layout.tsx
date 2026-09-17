@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { getAdminToken } from "@/lib/admin-client";
+import { getAdminToken, TOKEN_CHANGE_EVENT } from "@/lib/admin-client";
 import { SchoolSidebar } from "@/components/school-sidebar";
 import { AppTopbar } from "@/components/app-topbar";
 import { BranchSelector } from "@/components/branch-selector";
@@ -14,13 +14,21 @@ export default function SchoolLayout({ children }: { children: ReactNode }) {
   const [checked, setChecked] = useState(false);
 
   useEffect(() => {
-    const token = getAdminToken();
-    if (!token && pathname !== "/login") {
-      router.replace("/login");
-      return;
+    function check() {
+      const token = getAdminToken();
+      if (!token && pathname !== "/login") {
+        router.replace("/login");
+        return;
+      }
+      setChecked(true);
     }
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setChecked(true);
+    check();
+    // Reacts to components/token-refresher.tsx clearing the token (a dead
+    // refresh token, e.g.) while this layout is already mounted — without
+    // this, only a route change or full reload would notice and redirect,
+    // leaving a blank authenticated-looking page in between.
+    window.addEventListener(TOKEN_CHANGE_EVENT, check);
+    return () => window.removeEventListener(TOKEN_CHANGE_EVENT, check);
   }, [pathname, router]);
 
   if (!checked) return null;

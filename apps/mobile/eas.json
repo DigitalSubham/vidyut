@@ -13,7 +13,7 @@
       "channel": "dedicated",
       "env": {
         "VIDYUT_APP_MODE": "DEDICATED",
-        "apiBaseUrl": "http://10.101.239.252:4000/api/v1"
+        "apiBaseUrl": "http://192.168.1.16:4000/api/v1"
       }
     }
   },
