@@ -66,13 +66,23 @@ function EnquiriesTab() {
           </div>
           <div className="flex flex-col gap-1.5">
             <Label>{t("school.guardians.phone")}</Label>
-            <Input className="max-w-xs" value={phone} onChange={(e) => setPhone(e.target.value)} />
+            <Input
+              className="max-w-xs"
+              type="tel"
+              inputMode="numeric"
+              maxLength={10}
+              value={phone}
+              onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+            />
           </div>
           <div className="flex flex-col gap-1.5">
             <Label>{t("school.admissions.source")}</Label>
             <Input className="max-w-xs" placeholder="Walk-in / Website / Referral" value={source} onChange={(e) => setSource(e.target.value)} />
           </div>
-          <Button onClick={() => createMutation.mutate()} disabled={!childName || !guardianName || !phone || !source}>
+          <Button
+            onClick={() => createMutation.mutate()}
+            disabled={!childName || !guardianName || phone.length !== 10 || !source}
+          >
             {t("school.common.save")}
           </Button>
         </div>
@@ -147,11 +157,28 @@ function ApplicationsTab() {
   const [convertingId, setConvertingId] = useState("");
   const [sectionId, setSectionId] = useState("");
 
+  const classesQuery = useQuery({
+    queryKey: ["classes", branchId],
+    queryFn: () => adminApi.listClasses(branchId),
+    enabled: !!branchId,
+  });
+  const classes = classesQuery.data?.data ?? [];
+  const classNameById = Object.fromEntries(classes.map((c) => [c.id, c.name]));
+
   const applicationsQuery = useQuery({
     queryKey: ["applications", branchId, statusFilter],
     queryFn: () => adminApi.listApplications(branchId, statusFilter || undefined),
     enabled: !!branchId,
   });
+  const applications = applicationsQuery.data?.data ?? [];
+
+  const convertingClassId = applications.find((a) => a.id === convertingId)?.classAppliedId ?? "";
+  const sectionsQuery = useQuery({
+    queryKey: ["sections", convertingClassId],
+    queryFn: () => adminApi.listSections(convertingClassId),
+    enabled: !!convertingClassId,
+  });
+  const sections = sectionsQuery.data?.data ?? [];
 
   const createMutation = useMutation({
     mutationFn: () =>
@@ -181,8 +208,6 @@ function ApplicationsTab() {
     },
   });
 
-  const applications = applicationsQuery.data?.data ?? [];
-
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-3 rounded-lg border border-border p-4">
@@ -202,15 +227,33 @@ function ApplicationsTab() {
           </div>
           <div className="flex flex-col gap-1.5">
             <Label>{t("school.admissions.guardianPhone")}</Label>
-            <Input className="max-w-xs" value={guardianPhone} onChange={(e) => setGuardianPhone(e.target.value)} />
+            <Input
+              className="max-w-xs"
+              type="tel"
+              inputMode="numeric"
+              maxLength={10}
+              value={guardianPhone}
+              onChange={(e) => setGuardianPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+            />
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label>{t("school.admissions.classAppliedId")}</Label>
-            <Input className="max-w-xs" value={classAppliedId} onChange={(e) => setClassAppliedId(e.target.value)} />
+            <Label>{t("school.admissions.classApplied")}</Label>
+            <Select value={classAppliedId} onValueChange={setClassAppliedId}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder={t("school.common.select") as string} />
+              </SelectTrigger>
+              <SelectContent>
+                {classes.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <Button
             onClick={() => createMutation.mutate()}
-            disabled={!childName || !dob || !guardianName || !guardianPhone || !classAppliedId}
+            disabled={!childName || !dob || !guardianName || guardianPhone.length !== 10 || !classAppliedId}
           >
             {t("school.common.save")}
           </Button>
@@ -240,6 +283,7 @@ function ApplicationsTab() {
         <TableHeader>
           <TableRow>
             <TableHead>{t("school.admissions.childName")}</TableHead>
+            <TableHead>{t("school.admissions.classApplied")}</TableHead>
             <TableHead>{t("school.admissions.status")}</TableHead>
             <TableHead />
           </TableRow>
@@ -248,12 +292,20 @@ function ApplicationsTab() {
           {applications.map((a) => (
             <TableRow key={a.id}>
               <TableCell className="font-medium">{a.formData.childName}</TableCell>
+              <TableCell className="text-text-secondary">{classNameById[a.classAppliedId] ?? "—"}</TableCell>
               <TableCell>
                 <Badge variant="outline">{a.status}</Badge>
               </TableCell>
               <TableCell>
                 {a.status !== "CONFIRMED" ? (
-                  <Button variant="outline" size="sm" onClick={() => setConvertingId(a.id)}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setConvertingId(a.id);
+                      setSectionId("");
+                    }}
+                  >
                     {t("school.admissions.convert")}
                   </Button>
                 ) : null}
@@ -266,8 +318,19 @@ function ApplicationsTab() {
       {convertingId ? (
         <div className="flex items-end gap-2 rounded-lg border border-border p-4">
           <div className="flex flex-col gap-1.5">
-            <Label>{t("school.admissions.sectionId")}</Label>
-            <Input className="max-w-xs" value={sectionId} onChange={(e) => setSectionId(e.target.value)} />
+            <Label>{t("school.admissions.section")}</Label>
+            <Select value={sectionId} onValueChange={setSectionId}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder={t("school.common.select") as string} />
+              </SelectTrigger>
+              <SelectContent>
+                {sections.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <Button onClick={() => convertMutation.mutate()} disabled={!sectionId}>
             {t("school.admissions.confirmConvert")}

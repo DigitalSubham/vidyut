@@ -33,7 +33,12 @@ model Class {
   syllabusChapters SyllabusChapter[]
   contentItems ContentItem[]
 
-  @@unique([branchId, name])
+  // Plain @@unique would also cover soft-deleted rows (deletedAt still set,
+  // row still occupies the slot), so recreating a class with the same name
+  // after deleting the old one would wrongly 409. Real uniqueness is instead
+  // a partial index scoped to deletedAt IS NULL, added by hand in this
+  // migration's SQL (Prisma's schema DSL can't express a WHERE clause here).
+  @@index([branchId, name])
   @@index([tenantId])
 }
 
@@ -63,7 +68,8 @@ model Section {
   lessonPlans        LessonPlan[]
   liveClassLinks     LiveClassLink[]
 
-  @@unique([classId, name])
+  // Same reasoning as Class above — see that model's comment.
+  @@index([classId, name])
   @@index([tenantId])
 }
 

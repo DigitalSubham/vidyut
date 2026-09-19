@@ -2,18 +2,24 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
+import { Eye, Pencil, ArrowRightLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { TransferStudentDialog } from "@/components/transfer-student-dialog";
 import { adminApi, getAdminBranchId } from "@/lib/admin-client";
 
 export default function StudentsListPage() {
   const { t } = useTranslation();
+  const router = useRouter();
+  const queryClient = useQueryClient();
   const branchId = getAdminBranchId() ?? "";
   const [search, setSearch] = useState("");
+  const [transferStudentId, setTransferStudentId] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["students", branchId, search],
@@ -52,16 +58,13 @@ export default function StudentsListPage() {
               <TableHead>{t("school.students.name")}</TableHead>
               <TableHead>{t("school.students.rollNo")}</TableHead>
               <TableHead>{t("school.students.status")}</TableHead>
+              <TableHead className="text-right">{t("school.students.actions")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {students.map((student) => (
               <TableRow key={student.id}>
-                <TableCell>
-                  <Link href={`/students/${student.id}`} className="font-medium text-brand hover:underline">
-                    {student.admissionNo}
-                  </Link>
-                </TableCell>
+                <TableCell className="font-medium">{student.admissionNo}</TableCell>
                 <TableCell>
                   {student.firstName} {student.lastName}
                 </TableCell>
@@ -69,10 +72,48 @@ export default function StudentsListPage() {
                 <TableCell>
                   <Badge variant={student.status === "ACTIVE" ? "default" : "secondary"}>{student.status}</Badge>
                 </TableCell>
+                <TableCell>
+                  <div className="flex justify-end gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={t("school.students.view") as string}
+                      onClick={() => router.push(`/students/${student.id}`)}
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={t("school.students.edit") as string}
+                      onClick={() => router.push(`/students/${student.id}/edit`)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={t("school.students.lifecycle.transfer") as string}
+                      onClick={() => setTransferStudentId(student.id)}
+                    >
+                      <ArrowRightLeft className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
+      )}
+
+      {transferStudentId && (
+        <TransferStudentDialog
+          key={transferStudentId}
+          studentId={transferStudentId}
+          open={!!transferStudentId}
+          onOpenChange={(open) => !open && setTransferStudentId(null)}
+          onTransferred={() => void queryClient.invalidateQueries({ queryKey: ["students", branchId] })}
+        />
       )}
     </div>
   );

@@ -124,6 +124,14 @@ export async function listAttendance(auth: RequestAuth, query: ListAttendanceQue
       ...(query.sectionId ? { sectionId: query.sectionId } : {}),
       ...(query.studentId ? { studentId: query.studentId } : {}),
       ...(query.date ? { date: query.date } : {}),
+      ...(query.fromDate || query.toDate
+        ? {
+            date: {
+              ...(query.fromDate ? { gte: query.fromDate } : {}),
+              ...(query.toDate ? { lte: query.toDate } : {}),
+            },
+          }
+        : {}),
       ...(query.periodId ? { periodId: query.periodId } : {}),
       ...(query.since ? { updatedAt: { gte: query.since } } : {}),
     };

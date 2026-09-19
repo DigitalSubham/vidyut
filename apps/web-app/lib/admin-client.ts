@@ -155,6 +155,33 @@ export interface Student {
   branchId: string;
 }
 
+export interface StudentEnrollment {
+  classId: string;
+  className: string;
+  sectionId: string;
+  sectionName: string;
+}
+
+export interface StudentDetail extends Student {
+  dob: string;
+  gender: string;
+  bloodGroup: string | null;
+  category: string | null;
+  religion: string | null;
+  address: string;
+  enrollment: StudentEnrollment | null;
+}
+
+export interface GuardianLink {
+  id: string;
+  name: string;
+  relation: "FATHER" | "MOTHER" | "GUARDIAN" | "OTHER";
+  phone: string;
+  email: string | null;
+  isPrimary: boolean;
+  canPay: boolean;
+}
+
 export interface StudentTimelineEntry {
   id: string;
   studentId: string;
@@ -211,6 +238,15 @@ export interface DefaulterRow {
   firstName: string;
   lastName: string;
   attendancePercent: number;
+}
+
+export interface AttendanceRecordItem {
+  id: string;
+  studentId: string;
+  sectionId: string;
+  date: string;
+  status: "PRESENT" | "ABSENT" | "LATE" | "LEAVE" | "HALF_DAY" | "HOLIDAY";
+  source: string;
 }
 
 export interface TenantProfile {
@@ -1013,15 +1049,20 @@ export const adminApi = {
   listSections: (classId: string) =>
     adminFetch<{ data: SectionItem[] }>(`/api/v1/academic/classes/${encodeURIComponent(classId)}/sections?pageSize=100`),
 
-  listStudents: (branchId: string, search?: string) =>
+  listStudents: (branchId: string, search?: string, sectionId?: string) =>
     adminFetch<{ data: Student[]; meta: { total: number } }>(
-      `/api/v1/students?branchId=${encodeURIComponent(branchId)}${search ? `&search=${encodeURIComponent(search)}` : ""}&pageSize=50`
+      `/api/v1/students?branchId=${encodeURIComponent(branchId)}${search ? `&search=${encodeURIComponent(search)}` : ""}${sectionId ? `&sectionId=${encodeURIComponent(sectionId)}` : ""}&pageSize=50`
     ),
   createStudent: (input: Record<string, unknown>) =>
     adminFetch<{ data: Student }>("/api/v1/students", { method: "POST", body: JSON.stringify(input) }),
   patchStudent: (id: string, input: Record<string, unknown>) =>
     adminFetch<{ data: Student }>(`/api/v1/students/${id}`, { method: "PATCH", body: JSON.stringify(input) }),
-  getStudent: (id: string) => adminFetch<{ data: Student }>(`/api/v1/students/${id}`),
+  getStudent: (id: string) => adminFetch<{ data: StudentDetail }>(`/api/v1/students/${id}`),
+  listStudentGuardians: (id: string) => adminFetch<{ data: GuardianLink[] }>(`/api/v1/students/${id}/guardians`),
+  findStudentByAdmissionNo: (branchId: string, admissionNo: string) =>
+    adminFetch<{ data: Student }>(
+      `/api/v1/students/lookup?branchId=${encodeURIComponent(branchId)}&admissionNo=${encodeURIComponent(admissionNo)}`
+    ),
 
   transferStudent: (id: string, input: { targetBranchId: string; targetClassId: string; targetSectionId: string }) =>
     adminFetch<{ data: Student }>(`/api/v1/students/${id}/transfer`, { method: "POST", body: JSON.stringify(input) }),
@@ -1079,6 +1120,14 @@ export const adminApi = {
     adminFetch<{ data: AttendanceRegisterRow[] }>(
       `/api/v1/attendance/reports/register?sectionId=${sectionId}&month=${month}&year=${year}`
     ),
+  listAttendance: (params: { branchId: string; studentId?: string; fromDate?: string; toDate?: string; pageSize?: number }) => {
+    const query = new URLSearchParams({ branchId: params.branchId });
+    if (params.studentId) query.set("studentId", params.studentId);
+    if (params.fromDate) query.set("fromDate", params.fromDate);
+    if (params.toDate) query.set("toDate", params.toDate);
+    query.set("pageSize", String(params.pageSize ?? 100));
+    return adminFetch<{ data: AttendanceRecordItem[] }>(`/api/v1/attendance?${query.toString()}`);
+  },
   getDefaulters: (branchId: string, thresholdPercent = 75) =>
     adminFetch<{ data: DefaulterRow[] }>(
       `/api/v1/attendance/reports/defaulters?branchId=${encodeURIComponent(branchId)}&thresholdPercent=${thresholdPercent}`

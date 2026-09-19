@@ -15,7 +15,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { adminApi, getAdminBranchId, AdminApiError, type InvoiceItem } from "@/lib/admin-client";
+import { adminApi, getAdminBranchId, type InvoiceItem } from "@/lib/admin-client";
+import { getErrorMessage } from "@/lib/error-message";
 
 function ChequesTab() {
   const { t } = useTranslation();
@@ -198,7 +199,7 @@ export default function FeesPage() {
   const [chequeNo, setChequeNo] = useState("");
   const [bankName, setBankName] = useState("");
   const [chequeDueDate, setChequeDueDate] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ReturnType<typeof getErrorMessage> | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const { data, isLoading } = useQuery({
@@ -237,7 +238,7 @@ export default function FeesPage() {
       setChequeDueDate("");
       await queryClient.invalidateQueries({ queryKey: ["invoices", branchId] });
     } catch (err) {
-      setError(err instanceof AdminApiError ? `${err.code}: ${err.message}` : t("platform.errors.unknown"));
+      setError(getErrorMessage(err));
     } finally {
       setSubmitting(false);
     }
@@ -354,7 +355,12 @@ export default function FeesPage() {
                 </div>
               </>
             ) : null}
-            {error && <p className="text-sm text-danger">{error}</p>}
+            {error && (
+              <p className="text-sm text-danger">
+                {error.title}
+                {error.description ? ` — ${error.description}` : ""}
+              </p>
+            )}
             <Button
               onClick={submitPayment}
               disabled={

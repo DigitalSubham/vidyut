@@ -3,7 +3,7 @@ import { PLAN_KEYS } from "@vidyut/types";
 
 export const platformLoginSchema = z.object({
   email: z.string().trim().email("platform.errors.invalidEmail"),
-  password: z.string().min(8, "platform.errors.passwordTooShort"),
+  password: z.string().min(1, "platform.errors.passwordRequired"),
 });
 export type PlatformLoginInput = z.infer<typeof platformLoginSchema>;
 
@@ -19,7 +19,7 @@ export const createTenantSchema = z.object({
   planKey: z.enum(PLAN_KEYS),
   ownerName: z.string().trim().min(1, "platform.errors.ownerNameRequired"),
   ownerEmail: z.string().trim().email("platform.errors.invalidEmail"),
-  ownerPassword: z.string().min(8, "platform.errors.passwordTooShort"),
+  ownerPassword: z.string().min(1, "platform.errors.passwordRequired"),
   branchName: z.string().trim().min(1).optional(),
   branchCode: z.string().trim().min(1).optional(),
 });

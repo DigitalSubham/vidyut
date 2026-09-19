@@ -47,7 +47,7 @@ export type OtpVerifyInput = z.infer<typeof otpVerifySchema>;
 export const staffLoginSchema = z.object({
   tenantSlug,
   email: z.string().trim().email("auth.errors.invalidEmail"),
-  password: z.string().min(8, "auth.errors.passwordTooShort"),
+  password: z.string().min(1, "auth.errors.passwordRequired"),
 });
 export type StaffLoginInput = z.infer<typeof staffLoginSchema>;
 

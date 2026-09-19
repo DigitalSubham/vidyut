@@ -88,14 +88,14 @@ describe("guardians — CRUD + RBAC", () => {
     const createRes = await request(app)
       .post("/api/v1/guardians")
       .set("Authorization", `Bearer ${owner}`)
-      .send({ name: "Ramesh Kumar", relation: "FATHER", phone: "+919812340001" });
+      .send({ name: "Ramesh Kumar", relation: "FATHER", phone: "9812340001" });
     expect(createRes.status).toBe(201);
     const guardianId = createRes.body.data.id as string;
 
     const teacherCreate = await request(app)
       .post("/api/v1/guardians")
       .set("Authorization", `Bearer ${teacher}`)
-      .send({ name: "Someone", relation: "MOTHER", phone: "+919812340002" });
+      .send({ name: "Someone", relation: "MOTHER", phone: "9812340002" });
     expect(teacherCreate.status).toBe(403);
     expect(teacherCreate.body.error.code).toBe("FORBIDDEN");
 

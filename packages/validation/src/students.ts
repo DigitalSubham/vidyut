@@ -55,6 +55,13 @@ export const listStudentsQuerySchema = z.object({
 });
 export type ListStudentsQueryInput = z.infer<typeof listStudentsQuerySchema>;
 
+/** Exact lookup for sibling-linking by admission no. — admissionNo is only unique per branch (@@unique([branchId, admissionNo])), so branchId is required, not a free-text search. */
+export const findStudentByAdmissionNoQuerySchema = z.object({
+  branchId: z.string().min(1, "student.errors.branchRequired"),
+  admissionNo: z.string().trim().min(1, "student.errors.admissionNoRequired"),
+});
+export type FindStudentByAdmissionNoQueryInput = z.infer<typeof findStudentByAdmissionNoQuerySchema>;
+
 export const requestImportUploadSchema = z.object({
   branchId: z.string().min(1, "student.errors.branchRequired"),
   fileName: z.string().trim().min(1, "student.errors.fileNameRequired"),

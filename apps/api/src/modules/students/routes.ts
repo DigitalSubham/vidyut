@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   createStudentSchema,
   createTimelineEntrySchema,
+  findStudentByAdmissionNoQuerySchema,
   importStudentsSchema,
   linkSiblingsSchema,
   listAlumniQuerySchema,
@@ -72,6 +73,13 @@ studentsRouter.post(
   requirePermission("student.edit"),
   validateBody(linkSiblingsSchema),
   asyncHandler(controller.linkSiblings)
+);
+
+studentsRouter.get(
+  "/lookup",
+  requirePermission("student.view"),
+  validateQuery(findStudentByAdmissionNoQuerySchema),
+  asyncHandler(controller.findStudentByAdmissionNo)
 );
 
 studentsRouter.get("/:id", requirePermission("student.view"), asyncHandler(controller.getStudent));

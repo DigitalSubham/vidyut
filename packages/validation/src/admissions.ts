@@ -7,11 +7,14 @@ const pagination = {
 
 const enquiryStageValues = ["NEW", "CONTACTED", "VISITED", "APPLIED", "ADMITTED", "LOST"] as const;
 
+/** Bare 10-digit mobile number, no country code — same convention as guardians.ts's tenDigitPhone. */
+const tenDigitPhone = z.string().trim().regex(/^\d{10}$/, "admission.errors.invalidPhone");
+
 export const createEnquirySchema = z.object({
   branchId: z.string().min(1, "admission.errors.branchRequired"),
   childName: z.string().trim().min(1, "admission.errors.childNameRequired"),
   guardianName: z.string().trim().min(1, "admission.errors.guardianNameRequired"),
-  phone: z.string().trim().min(1, "admission.errors.phoneRequired"),
+  phone: tenDigitPhone,
   source: z.string().trim().min(1, "admission.errors.sourceRequired"),
   stage: z.enum(enquiryStageValues).default("NEW"),
   assignedToId: z.string().min(1).optional(),
@@ -22,7 +25,7 @@ export type CreateEnquiryInput = z.infer<typeof createEnquirySchema>;
 export const patchEnquirySchema = z.object({
   childName: z.string().trim().min(1).optional(),
   guardianName: z.string().trim().min(1).optional(),
-  phone: z.string().trim().min(1).optional(),
+  phone: tenDigitPhone.optional(),
   source: z.string().trim().min(1).optional(),
   stage: z.enum(enquiryStageValues).optional(),
   assignedToId: z.string().min(1).nullable().optional(),
@@ -42,7 +45,7 @@ const applicationFormDataSchema = z.object({
   childName: z.string().trim().min(1, "admission.errors.childNameRequired"),
   dob: z.coerce.date(),
   guardianName: z.string().trim().min(1, "admission.errors.guardianNameRequired"),
-  guardianPhone: z.string().trim().min(1, "admission.errors.phoneRequired"),
+  guardianPhone: tenDigitPhone,
   priorSchool: z.string().trim().min(1).optional(),
 });
 

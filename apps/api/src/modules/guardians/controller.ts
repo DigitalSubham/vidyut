@@ -43,6 +43,11 @@ export async function unlinkGuardian(req: Request, res: Response): Promise<void>
   noContent(res);
 }
 
+export async function listStudentGuardians(req: Request, res: Response): Promise<void> {
+  const guardians = await service.listStudentGuardians(req.auth!, req.params.studentId!);
+  ok(res, guardians);
+}
+
 export async function inviteGuardian(req: Request, res: Response): Promise<void> {
   const result = await service.inviteGuardian(req.auth!, req.params.id!);
   ok(res, result);

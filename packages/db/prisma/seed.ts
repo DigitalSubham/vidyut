@@ -107,15 +107,15 @@ async function main() {
   const roleByKey = await seedDefaultRoles(tenant.id);
 
   // Demo OWNER login (dev credentials — never used outside local/demo seeding).
-  const ownerPasswordHash = await argon2.hash("Owner@12345", { type: argon2.argon2id });
+  const ownerPasswordHash = await argon2.hash("1234", { type: argon2.argon2id });
   const owner = await withTenant(tenant.id, (tx) =>
     tx.user.upsert({
-      where: { tenantId_email: { tenantId: tenant.id, email: "owner@demo-school.test" } },
+      where: { tenantId_email: { tenantId: tenant.id, email: "santoshrajbgp13@gmail.com" } },
       update: {},
       create: {
         tenantId: tenant.id,
         name: "Demo Owner",
-        email: "owner@demo-school.test",
+        email: "santoshrajbgp13@gmail.com",
         passwordHash: ownerPasswordHash,
         status: "ACTIVE",
       },
@@ -174,13 +174,13 @@ async function main() {
   );
 
   // Demo super-admin login — platform-level, no tenantId (dev credentials only).
-  const platformPasswordHash = await argon2.hash("SuperAdmin@12345", { type: argon2.argon2id });
+  const platformPasswordHash = await argon2.hash("1234", { type: argon2.argon2id });
   await prisma.platformUser.upsert({
-    where: { email: "superadmin@vidyut.test" },
+    where: { email: "santoshrajbgp11@gmail.com" },
     update: {},
     create: {
       name: "Demo Super Admin",
-      email: "superadmin@vidyut.test",
+      email: "santoshrajbgp11@gmail.com",
       passwordHash: platformPasswordHash,
       status: "ACTIVE",
     },
@@ -210,26 +210,26 @@ async function seedDemoAcademicData(
     tx.academicSession.findFirstOrThrow({ where: { branchId, isCurrent: true } })
   );
 
+  // Class/Section uniqueness is now a partial index scoped to deletedAt IS
+  // NULL (see academic.prisma), so there's no compound-unique input for
+  // upsert's `where` anymore — find-the-active-row-or-create instead.
   const classes = await withTenant(tenantId, async (tx) => {
-    const class9 = await tx.class.upsert({
-      where: { branchId_name: { branchId, name: "Class 9" } },
-      update: {},
-      create: { tenantId, branchId, name: "Class 9", order: 9 },
-    });
-    const class10 = await tx.class.upsert({
-      where: { branchId_name: { branchId, name: "Class 10" } },
-      update: {},
-      create: { tenantId, branchId, name: "Class 10", order: 10 },
-    });
+    const class9 =
+      (await tx.class.findFirst({ where: { branchId, name: "Class 9", deletedAt: null } })) ??
+      (await tx.class.create({ data: { tenantId, branchId, name: "Class 9", order: 9 } }));
+    const class10 =
+      (await tx.class.findFirst({ where: { branchId, name: "Class 10", deletedAt: null } })) ??
+      (await tx.class.create({ data: { tenantId, branchId, name: "Class 10", order: 10 } }));
     return { class9, class10 };
   });
 
-  const section9A = await withTenant(tenantId, (tx) =>
-    tx.section.upsert({
-      where: { classId_name: { classId: classes.class9.id, name: "9-A" } },
-      update: {},
-      create: { tenantId, branchId, classId: classes.class9.id, name: "9-A", capacity: 40 },
-    })
+  const section9A = await withTenant(
+    tenantId,
+    async (tx) =>
+      (await tx.section.findFirst({ where: { classId: classes.class9.id, name: "9-A", deletedAt: null } })) ??
+      (await tx.section.create({
+        data: { tenantId, branchId, classId: classes.class9.id, name: "9-A", capacity: 40 },
+      }))
   );
 
   const subjectCodes = ["MATH", "SCI", "ENG", "HIN"] as const;
@@ -263,16 +263,16 @@ async function seedDemoAcademicData(
   });
 
   // Teacher: a real staff record + linked login, class teacher of 9-A.
-  const teacherPasswordHash = await argon2.hash("Teacher@12345", { type: argon2.argon2id });
+  const teacherPasswordHash = await argon2.hash("1234", { type: argon2.argon2id });
   const teacherUser = await withTenant(tenantId, (tx) =>
     tx.user.upsert({
-      where: { tenantId_email: { tenantId, email: "teacher@demo-school.test" } },
+      where: { tenantId_email: { tenantId, email: "santoshrajbgp14@gmail.com" } },
       update: {},
       create: {
         tenantId,
         name: "Meena Kumari",
-        email: "teacher@demo-school.test",
-        phone: "+919812340001",
+        email: "santoshrajbgp14@gmail.com",
+        phone: "+918888888888",
         passwordHash: teacherPasswordHash,
         status: "ACTIVE",
       },

@@ -7,14 +7,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { platformApi, setPlatformToken, PlatformApiError } from "@/lib/platform-client";
+import { platformApi, setPlatformToken } from "@/lib/platform-client";
+import { getErrorMessage } from "@/lib/error-message";
 
 export default function SuperAdminLoginPage() {
   const router = useRouter();
   const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ReturnType<typeof getErrorMessage> | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(event: FormEvent) {
@@ -26,7 +27,7 @@ export default function SuperAdminLoginPage() {
       setPlatformToken(res.data.accessToken);
       router.push("/super-admin/tenants");
     } catch (err) {
-      setError(err instanceof PlatformApiError ? err.message : t("platform.errors.unknown"));
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -61,7 +62,12 @@ export default function SuperAdminLoginPage() {
                 required
               />
             </div>
-            {error && <p className="text-sm text-danger">{error}</p>}
+            {error && (
+              <p className="text-sm text-danger">
+                {error.title}
+                {error.description ? ` — ${error.description}` : ""}
+              </p>
+            )}
             <Button type="submit" disabled={loading}>
               {loading ? t("platform.common.loading") : t("platform.login.submit")}
             </Button>

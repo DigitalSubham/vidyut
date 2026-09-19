@@ -121,6 +121,28 @@ export async function unlinkGuardianFromStudent(
   );
 }
 
+/** The student profile's "linked parents" list — same guardian.manage gate as link/unlink. */
+export async function listStudentGuardians(auth: RequestAuth, studentId: string) {
+  const student = await getStudentOrThrow(auth, studentId);
+  if (!branchAccessAllowed(auth, student.branchId)) {
+    throw new AppError("FORBIDDEN", "auth.errors.branchForbidden");
+  }
+
+  const links = await withTenant(auth.tenantId, (tx) =>
+    tx.studentGuardian.findMany({ where: { studentId }, include: { guardian: true } })
+  );
+
+  return links.map((link) => ({
+    id: link.guardian.id,
+    name: link.guardian.name,
+    relation: link.guardian.relation,
+    phone: link.guardian.phone,
+    email: link.guardian.email,
+    isPrimary: link.isPrimary,
+    canPay: link.canPay,
+  }));
+}
+
 /**
  * Unit 39 (DPDP) — `inviteGuardianSchema` requires `consent === true` before
  * this runs; `Guardian.consentedAt` is only ever set here, from a real

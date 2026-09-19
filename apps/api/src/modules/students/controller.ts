@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import type {
   CreateStudentInput,
   CreateTimelineEntryInput,
+  FindStudentByAdmissionNoQueryInput,
   ImportStudentsInput,
   LinkSiblingsInput,
   ListAlumniQueryInput,
@@ -29,6 +30,12 @@ export async function listStudents(req: Request, res: Response): Promise<void> {
 
 export async function getStudent(req: Request, res: Response): Promise<void> {
   const student = await service.getStudent(req.auth!, req.params.id!);
+  ok(res, student);
+}
+
+export async function findStudentByAdmissionNo(req: Request, res: Response): Promise<void> {
+  const query = res.locals.query as FindStudentByAdmissionNoQueryInput;
+  const student = await service.findStudentByAdmissionNo(req.auth!, query);
   ok(res, student);
 }
 

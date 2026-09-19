@@ -30,6 +30,11 @@ export const listAttendanceQuerySchema = z.object({
   sectionId: z.string().min(1).optional(),
   studentId: z.string().min(1).optional(),
   date: z.coerce.date().optional(),
+  // A day range (e.g. a student's last 10/20 days) — distinct from `date`
+  // above (an exact single day, used by mobile sync). Either bound alone is
+  // a half-open range; both together bound it on each side.
+  fromDate: z.coerce.date().optional(),
+  toDate: z.coerce.date().optional(),
   periodId: z.string().min(1).optional(),
   // Delta sync (Unit 32) — returns only rows updated at/after this instant,
   // so a returning-online device doesn't have to re-pull the full roster.

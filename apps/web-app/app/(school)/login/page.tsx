@@ -7,7 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { adminApi, setAdminToken, setAdminRefreshToken, AdminApiError } from "@/lib/admin-client";
+import { adminApi, setAdminToken, setAdminRefreshToken } from "@/lib/admin-client";
+import { getErrorMessage } from "@/lib/error-message";
 
 export default function SchoolLoginPage() {
   const { t } = useTranslation();
@@ -17,7 +18,7 @@ export default function SchoolLoginPage() {
   const [password, setPassword] = useState("");
   const [challenge, setChallenge] = useState<string | null>(null);
   const [code, setCode] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ReturnType<typeof getErrorMessage> | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   async function handleLogin(event: FormEvent) {
@@ -31,10 +32,10 @@ export default function SchoolLoginPage() {
       } else {
         setAdminToken(res.data.accessToken);
         setAdminRefreshToken(res.data.refreshToken);
-        router.push("/students");
+        router.push("/dashboard");
       }
     } catch (err) {
-      setError(err instanceof AdminApiError ? `${err.code}: ${err.message}` : t("platform.errors.unknown"));
+      setError(getErrorMessage(err));
     } finally {
       setSubmitting(false);
     }
@@ -49,9 +50,9 @@ export default function SchoolLoginPage() {
       const res = await adminApi.verifyTwoFa(challenge, code);
       setAdminToken(res.data.accessToken);
       setAdminRefreshToken(res.data.refreshToken);
-      router.push("/students");
+      router.push("/dashboard");
     } catch (err) {
-      setError(err instanceof AdminApiError ? `${err.code}: ${err.message}` : t("platform.errors.unknown"));
+      setError(getErrorMessage(err));
     } finally {
       setSubmitting(false);
     }
@@ -78,7 +79,12 @@ export default function SchoolLoginPage() {
                 <Label htmlFor="password">{t("school.login.password")}</Label>
                 <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
               </div>
-              {error && <p className="text-sm text-danger">{error}</p>}
+              {error && (
+                <p className="text-sm text-danger">
+                  {error.title}
+                  {error.description ? ` — ${error.description}` : ""}
+                </p>
+              )}
               <Button type="submit" disabled={submitting}>
                 {submitting ? t("platform.common.loading") : t("school.login.submit")}
               </Button>
@@ -89,7 +95,12 @@ export default function SchoolLoginPage() {
                 <Label htmlFor="code">{t("school.login.twoFaCode")}</Label>
                 <Input id="code" value={code} onChange={(e) => setCode(e.target.value)} required />
               </div>
-              {error && <p className="text-sm text-danger">{error}</p>}
+              {error && (
+                <p className="text-sm text-danger">
+                  {error.title}
+                  {error.description ? ` — ${error.description}` : ""}
+                </p>
+              )}
               <Button type="submit" disabled={submitting}>
                 {submitting ? t("platform.common.loading") : t("school.login.verify")}
               </Button>

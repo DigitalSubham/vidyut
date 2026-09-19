@@ -12,7 +12,7 @@ export const createStaffSchema = z.object({
   branchId: z.string().min(1, "staff.errors.branchRequired"),
   role: z.enum(staffRoleValues),
   email: z.string().trim().email("staff.errors.invalidEmail"),
-  password: z.string().min(8, "staff.errors.passwordTooShort"),
+  password: z.string().min(1, "staff.errors.passwordRequired"),
   name: z.string().trim().min(1, "staff.errors.nameRequired"),
   employeeNo: z.string().trim().min(1, "staff.errors.employeeNoRequired"),
   designation: z.string().trim().min(1, "staff.errors.designationRequired"),

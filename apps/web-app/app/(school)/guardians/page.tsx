@@ -95,11 +95,25 @@ export default function GuardiansPage() {
           </div>
           <div className="flex flex-col gap-1.5">
             <Label>{t("school.guardians.phone")}</Label>
-            <Input className="max-w-xs" value={phone} onChange={(e) => setPhone(e.target.value)} />
+            <Input
+              className="max-w-xs"
+              type="tel"
+              inputMode="numeric"
+              maxLength={10}
+              value={phone}
+              onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+            />
           </div>
           <div className="flex flex-col gap-1.5">
             <Label>{t("school.guardians.alternatePhone")}</Label>
-            <Input className="max-w-xs" value={alternatePhone} onChange={(e) => setAlternatePhone(e.target.value)} />
+            <Input
+              className="max-w-xs"
+              type="tel"
+              inputMode="numeric"
+              maxLength={10}
+              value={alternatePhone}
+              onChange={(e) => setAlternatePhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+            />
           </div>
           <div className="flex items-center gap-2 pb-2">
             <input
@@ -114,7 +128,7 @@ export default function GuardiansPage() {
             <Label>{t("school.guardians.email")}</Label>
             <Input className="max-w-xs" value={email} onChange={(e) => setEmail(e.target.value)} />
           </div>
-          <Button onClick={() => createMutation.mutate()} disabled={!name || !phone}>
+          <Button onClick={() => createMutation.mutate()} disabled={!name || phone.length !== 10}>
             {t("school.common.save")}
           </Button>
         </div>

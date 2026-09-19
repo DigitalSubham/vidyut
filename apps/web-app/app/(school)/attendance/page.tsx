@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { adminApi, getAdminBranchId } from "@/lib/admin-client";
@@ -17,38 +18,197 @@ function today() {
   return { month: now.getMonth() + 1, year: now.getFullYear() };
 }
 
+function isoDate(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+function daysAgoIso(days: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  return isoDate(d);
+}
+
+interface LoadedFilter {
+  sectionId: string;
+  studentId: string;
+  fromDate: string;
+  toDate: string;
+}
+
 function RegisterTab() {
   const { t } = useTranslation();
+  const branchId = getAdminBranchId() ?? "";
+  const [classId, setClassId] = useState("");
   const [sectionId, setSectionId] = useState("");
-  const [loadedSectionId, setLoadedSectionId] = useState("");
+  const [studentId, setStudentId] = useState("");
+  const [rangeDays, setRangeDays] = useState(10);
+  const [loaded, setLoaded] = useState<LoadedFilter | null>(null);
   const { month, year } = today();
 
-  const registerQuery = useQuery({
-    queryKey: ["attendance-register", loadedSectionId, month, year],
-    queryFn: () => adminApi.getRegister(loadedSectionId, month, year),
-    enabled: !!loadedSectionId,
+  const classesQuery = useQuery({
+    queryKey: ["classes", branchId],
+    queryFn: () => adminApi.listClasses(branchId),
+    enabled: !!branchId,
   });
+  const classes = classesQuery.data?.data ?? [];
 
+  const sectionsQuery = useQuery({
+    queryKey: ["sections", classId],
+    queryFn: () => adminApi.listSections(classId),
+    enabled: !!classId,
+  });
+  const sections = sectionsQuery.data?.data ?? [];
+
+  const studentsQuery = useQuery({
+    queryKey: ["students", branchId, sectionId],
+    queryFn: () => adminApi.listStudents(branchId, undefined, sectionId),
+    enabled: !!branchId && !!sectionId,
+  });
+  const students = studentsQuery.data?.data ?? [];
+
+  const registerQuery = useQuery({
+    queryKey: ["attendance-register", loaded?.sectionId, month, year],
+    queryFn: () => adminApi.getRegister(loaded!.sectionId, month, year),
+    enabled: !!loaded && !loaded.studentId,
+  });
   const register = registerQuery.data?.data ?? [];
   const dayColumns = Array.from(new Set(register.flatMap((row) => Object.keys(row.days)))).sort(
     (a, b) => Number(a) - Number(b)
   );
 
+  const studentAttendanceQuery = useQuery({
+    queryKey: ["attendance-student", loaded?.studentId, loaded?.fromDate, loaded?.toDate],
+    queryFn: () =>
+      adminApi.listAttendance({
+        branchId,
+        studentId: loaded!.studentId,
+        fromDate: loaded!.fromDate,
+        toDate: loaded!.toDate,
+        pageSize: 60,
+      }),
+    enabled: !!loaded && !!loaded.studentId,
+  });
+  const studentRecords = studentAttendanceQuery.data?.data ?? [];
+
+  function handleLoad() {
+    if (!sectionId) return;
+    setLoaded(
+      studentId
+        ? { sectionId, studentId, fromDate: daysAgoIso(rangeDays), toDate: isoDate(new Date()) }
+        : { sectionId, studentId: "", fromDate: "", toDate: "" }
+    );
+  }
+
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-2">
-        <Input
-          className="max-w-xs"
-          placeholder={t("school.attendance.sectionId") as string}
-          value={sectionId}
-          onChange={(e) => setSectionId(e.target.value)}
-        />
-        <Button onClick={() => setLoadedSectionId(sectionId)}>{t("school.attendance.loadRegister")}</Button>
+      <div className="flex flex-wrap items-end gap-2">
+        <div className="flex flex-col gap-1.5">
+          <Label>{t("school.students.class")}</Label>
+          <Select
+            value={classId}
+            onValueChange={(v) => {
+              setClassId(v);
+              setSectionId("");
+              setStudentId("");
+            }}
+          >
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder={t("school.common.select") as string} />
+            </SelectTrigger>
+            <SelectContent>
+              {classes.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label>{t("school.students.section")}</Label>
+          <Select
+            value={sectionId}
+            onValueChange={(v) => {
+              setSectionId(v);
+              setStudentId("");
+            }}
+          >
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder={t("school.common.select") as string} />
+            </SelectTrigger>
+            <SelectContent>
+              {sections.map((s) => (
+                <SelectItem key={s.id} value={s.id}>
+                  {s.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        {sectionId ? (
+          <div className="flex flex-col gap-1.5">
+            <Label>{t("school.attendance.student")}</Label>
+            <Select value={studentId || "ALL"} onValueChange={(v) => setStudentId(v === "ALL" ? "" : v)}>
+              <SelectTrigger className="w-48">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">{t("school.attendance.allStudents")}</SelectItem>
+                {students.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.firstName} {s.lastName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        ) : null}
+        {studentId ? (
+          <div className="flex flex-col gap-1.5">
+            <Label>{t("school.attendance.range")}</Label>
+            <Select value={String(rangeDays)} onValueChange={(v) => setRangeDays(Number(v))}>
+              <SelectTrigger className="w-36">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="10">{t("school.attendance.last10Days")}</SelectItem>
+                <SelectItem value="20">{t("school.attendance.last20Days")}</SelectItem>
+                <SelectItem value="30">{t("school.attendance.last30Days")}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        ) : null}
+        <Button onClick={handleLoad} disabled={!sectionId}>
+          {t("school.attendance.loadRegister")}
+        </Button>
       </div>
 
-      {registerQuery.isLoading ? (
-        <p className="text-text-secondary">{t("school.common.loading")}</p>
-      ) : register.length > 0 ? (
+      {loaded?.studentId ? (
+        studentAttendanceQuery.isLoading ? (
+          <p className="text-text-secondary">{t("school.common.loading")}</p>
+        ) : studentRecords.length > 0 ? (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t("school.attendance.date")}</TableHead>
+                <TableHead>{t("school.students.status")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {studentRecords.map((r) => (
+                <TableRow key={r.id}>
+                  <TableCell>{new Date(r.date).toLocaleDateString()}</TableCell>
+                  <TableCell>
+                    <Badge variant="secondary">{r.status}</Badge>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        ) : (
+          <p className="text-text-secondary">{t("school.attendance.noAttendanceRecords")}</p>
+        )
+      ) : loaded && !registerQuery.isLoading && register.length > 0 ? (
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -73,6 +233,8 @@ function RegisterTab() {
             </TableBody>
           </Table>
         </div>
+      ) : loaded && registerQuery.isLoading ? (
+        <p className="text-text-secondary">{t("school.common.loading")}</p>
       ) : null}
     </div>
   );

@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { getPlatformToken } from "@/lib/platform-client";
+import { PlatformTopbar } from "@/components/platform-topbar";
 
 /** Client-side guard only — the real gate is the API's platformAuthGuard on every request. */
 export default function SuperAdminLayout({ children }: { children: ReactNode }) {
@@ -24,5 +25,12 @@ export default function SuperAdminLayout({ children }: { children: ReactNode }) 
   }, [pathname, router]);
 
   if (!checked) return null;
-  return <>{children}</>;
+  if (pathname === "/super-admin/login") return <>{children}</>;
+
+  return (
+    <div className="flex min-h-screen w-full flex-col bg-bg-base">
+      <PlatformTopbar />
+      <main className="flex-1 p-4 md:p-6">{children}</main>
+    </div>
+  );
 }

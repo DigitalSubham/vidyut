@@ -69,7 +69,7 @@ describe("admissions — enquiry -> application -> convert-to-student", () => {
         branchId: branch.id,
         childName: "Aarav Kumar",
         guardianName: "Ravi Kumar",
-        phone: "+919812340001",
+        phone: "9812340001",
         source: "walk-in",
       });
     expect(enquiryRes.status).toBe(201);
@@ -93,7 +93,7 @@ describe("admissions — enquiry -> application -> convert-to-student", () => {
           childName: "Aarav Kumar",
           dob: "2016-03-10",
           guardianName: "Ravi Kumar",
-          guardianPhone: "+919812340001",
+          guardianPhone: "9812340001",
           priorSchool: "ABC Play School",
         },
         status: "SUBMITTED",
@@ -183,7 +183,7 @@ describe("admissions — enquiry -> application -> convert-to-student", () => {
         branchId: branch.id,
         childName: "RBAC Child",
         guardianName: "RBAC Guardian",
-        phone: "+919812340002",
+        phone: "9812340002",
         source: "referral",
       });
     expect(adminCreate.status).toBe(201);
@@ -195,7 +195,7 @@ describe("admissions — enquiry -> application -> convert-to-student", () => {
         branchId: branch.id,
         childName: "Denied Child",
         guardianName: "Denied Guardian",
-        phone: "+919812340003",
+        phone: "9812340003",
         source: "referral",
       });
     expect(teacherCreate.status).toBe(403);
@@ -208,7 +208,7 @@ describe("admissions — enquiry -> application -> convert-to-student", () => {
         branchId: branch.id,
         childName: "Denied Child 2",
         guardianName: "Denied Guardian 2",
-        phone: "+919812340004",
+        phone: "9812340004",
         source: "referral",
       });
     expect(accountantCreate.status).toBe(403);
@@ -230,7 +230,7 @@ describe("admissions — enquiry -> application -> convert-to-student", () => {
         branchId: branchB.id,
         childName: "Cross Branch Child",
         guardianName: "Cross Branch Guardian",
-        phone: "+919812340005",
+        phone: "9812340005",
         source: "referral",
       });
     expect(crossBranch.status).toBe(403);

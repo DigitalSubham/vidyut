@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { platformApi, PlatformApiError } from "@/lib/platform-client";
+import { platformApi } from "@/lib/platform-client";
+import { getErrorMessage } from "@/lib/error-message";
 
 const PLAN_OPTIONS = ["STARTER", "STANDARD", "PRO", "ENTERPRISE"] as const;
 
@@ -32,7 +33,7 @@ export default function NewTenantPage() {
     ownerEmail: "",
     ownerPassword: "",
   });
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ReturnType<typeof getErrorMessage> | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
@@ -47,7 +48,7 @@ export default function NewTenantPage() {
       const res = await platformApi.createTenant(form);
       router.push(`/super-admin/tenants/${res.data.tenant.id}`);
     } catch (err) {
-      setError(err instanceof PlatformApiError ? `${err.code}: ${err.message}` : t("platform.errors.unknown"));
+      setError(getErrorMessage(err));
     } finally {
       setSubmitting(false);
     }
@@ -123,7 +124,12 @@ export default function NewTenantPage() {
                 required
               />
             </div>
-            {error && <p className="text-sm text-danger">{error}</p>}
+            {error && (
+              <p className="text-sm text-danger">
+                {error.title}
+                {error.description ? ` — ${error.description}` : ""}
+              </p>
+            )}
             <Button type="submit" disabled={submitting}>
               {submitting ? t("platform.common.loading") : t("platform.newTenant.submit")}
             </Button>

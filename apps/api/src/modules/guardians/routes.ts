@@ -57,6 +57,12 @@ export const studentGuardiansRouter = Router();
 
 studentGuardiansRouter.use(authGuard, tenantContext);
 
+studentGuardiansRouter.get(
+  "/:studentId/guardians",
+  requirePermission("guardian.manage"),
+  asyncHandler(controller.listStudentGuardians)
+);
+
 studentGuardiansRouter.post(
   "/:studentId/guardians",
   requirePermission("guardian.manage"),

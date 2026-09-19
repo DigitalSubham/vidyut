@@ -3,6 +3,7 @@ import { getCurrentSessionId, nextAdmissionNo, Prisma, withTenant } from "@vidyu
 import type {
   CreateStudentInput,
   CreateTimelineEntryInput,
+  FindStudentByAdmissionNoQueryInput,
   ImportStudentsInput,
   LinkSiblingsInput,
   ListAlumniQueryInput,
@@ -117,6 +118,21 @@ export async function listStudents(auth: RequestAuth, query: ListStudentsQueryIn
   });
 }
 
+/** Exact lookup for sibling-linking by admission no. (only unique per branch — see the schema's @@unique). */
+export async function findStudentByAdmissionNo(auth: RequestAuth, query: FindStudentByAdmissionNoQueryInput) {
+  assertBranchAccess(auth, query.branchId);
+
+  const student = await withTenant(auth.tenantId, (tx) =>
+    tx.student.findUnique({
+      where: { branchId_admissionNo: { branchId: query.branchId, admissionNo: query.admissionNo } },
+    })
+  );
+  if (!student || student.deletedAt) {
+    throw new AppError("NOT_FOUND", "student.errors.notFound");
+  }
+  return student;
+}
+
 async function getStudentOrThrow(auth: RequestAuth, id: string) {
   const student = await withTenant(auth.tenantId, (tx) => tx.student.findUnique({ where: { id } }));
   if (!student || student.deletedAt) {
@@ -125,10 +141,39 @@ async function getStudentOrThrow(auth: RequestAuth, id: string) {
   return student;
 }
 
+/**
+ * Class/section aren't on Student itself (a student's current placement is
+ * the current-session Enrollment row — see transferStudent's comment above),
+ * so the student-detail view needs this resolved separately. No current
+ * session or no Enrollment yet (e.g. mid-admission) is a normal state, not
+ * an error — enrollment is just null rather than throwing, unlike
+ * requireCurrentSessionId's use in mutation paths.
+ */
 export async function getStudent(auth: RequestAuth, id: string) {
   const student = await getStudentOrThrow(auth, id);
   assertBranchAccess(auth, student.branchId);
-  return student;
+
+  return withTenant(auth.tenantId, async (tx) => {
+    const sessionId = await getCurrentSessionId(tx, student.branchId);
+    const enrollment = sessionId
+      ? await tx.enrollment.findUnique({
+          where: { studentId_sessionId: { studentId: id, sessionId } },
+          include: { class: true, section: true },
+        })
+      : null;
+
+    return {
+      ...student,
+      enrollment: enrollment
+        ? {
+            classId: enrollment.classId,
+            className: enrollment.class.name,
+            sectionId: enrollment.sectionId,
+            sectionName: enrollment.section.name,
+          }
+        : null,
+    };
+  });
 }
 
 export async function patchStudent(auth: RequestAuth, id: string, input: PatchStudentInput) {
@@ -199,6 +244,15 @@ export async function getStudentTranscript(auth: RequestAuth, id: string) {
  * "close and reopen" a second row for that session — it updates the current
  * Enrollment in place (branch/class/section) and moves `Student.branchId`
  * forward, exactly mirroring how a promotion updates one row, not two.
+ *
+ * The session used to find that existing row must come from the student's
+ * own (source) branch, not the target branch — `AcademicSession` is a
+ * per-branch row, so a freshly-provisioned target branch can have a
+ * different "current" session row than the branch the student is actually
+ * enrolled under, even when both represent the same academic year. Deriving
+ * the session from targetBranchId would look up an Enrollment keyed to a
+ * session the student was never enrolled in, wrongly reporting "no current
+ * enrollment" for an active student.
  */
 export async function transferStudent(auth: RequestAuth, id: string, input: TransferStudentInput) {
   const student = await getStudentOrThrow(auth, id);
@@ -206,7 +260,7 @@ export async function transferStudent(auth: RequestAuth, id: string, input: Tran
   assertBranchAccess(auth, input.targetBranchId);
 
   return withTenant(auth.tenantId, async (tx) => {
-    const sessionId = await requireCurrentSessionId(tx, input.targetBranchId);
+    const sessionId = await requireCurrentSessionId(tx, student.branchId);
 
     const currentEnrollment = await tx.enrollment.findUnique({
       where: { studentId_sessionId: { studentId: id, sessionId } },

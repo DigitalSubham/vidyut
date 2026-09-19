@@ -3,6 +3,19 @@
 @import "@vidyut/config/tailwind-tokens.css";
 
 @custom-variant dark (&:is(.dark *));
+/*
+ * components/ui/tabs.tsx uses bare `data-active:`/`data-horizontal:`/
+ * `data-vertical:` utilities expecting them to key off Radix's actual
+ * data-state="active"/data-orientation="horizontal|vertical" attributes.
+ * Tailwind's own shorthand for an unregistered `data-word:` instead checks
+ * for a literal `[data-word]` attribute, which Radix never sets — so without
+ * these, the active tab never gets its highlight, and (more visibly) the
+ * root's `data-horizontal:flex-col` never applies, leaving TabsList and
+ * TabsContent as row-siblings instead of stacked list-above-content.
+ */
+@custom-variant data-active (&[data-state="active"]);
+@custom-variant data-horizontal (&[data-orientation="horizontal"]);
+@custom-variant data-vertical (&[data-orientation="vertical"]);
 
 @theme inline {
   --color-background: var(--background);

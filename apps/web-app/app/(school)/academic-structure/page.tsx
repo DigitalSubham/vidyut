@@ -521,6 +521,10 @@ function HousesTab() {
   );
 }
 
+// Hidden for now at the user's request (not removed — flip back to true to restore).
+const SHOW_ELECTIVES_TAB = false;
+const SHOW_HOUSES_TAB = false;
+
 export default function AcademicStructurePage() {
   const { t } = useTranslation();
 
@@ -533,8 +537,10 @@ export default function AcademicStructurePage() {
         <TabsList>
           <TabsTrigger value="classes">{t("school.academicStructure.classesTab")}</TabsTrigger>
           <TabsTrigger value="subjects">{t("school.academicStructure.subjectsTab")}</TabsTrigger>
-          <TabsTrigger value="electives">{t("school.academicStructure.electivesTab")}</TabsTrigger>
-          <TabsTrigger value="houses">{t("school.academicStructure.housesTab")}</TabsTrigger>
+          {SHOW_ELECTIVES_TAB && (
+            <TabsTrigger value="electives">{t("school.academicStructure.electivesTab")}</TabsTrigger>
+          )}
+          {SHOW_HOUSES_TAB && <TabsTrigger value="houses">{t("school.academicStructure.housesTab")}</TabsTrigger>}
         </TabsList>
         <TabsContent value="classes">
           <ClassesTab />
@@ -542,12 +548,16 @@ export default function AcademicStructurePage() {
         <TabsContent value="subjects">
           <SubjectsTab />
         </TabsContent>
-        <TabsContent value="electives">
-          <ElectivesTab />
-        </TabsContent>
-        <TabsContent value="houses">
-          <HousesTab />
-        </TabsContent>
+        {SHOW_ELECTIVES_TAB && (
+          <TabsContent value="electives">
+            <ElectivesTab />
+          </TabsContent>
+        )}
+        {SHOW_HOUSES_TAB && (
+          <TabsContent value="houses">
+            <HousesTab />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

@@ -1,5 +1,6 @@
 import i18next from "./i18n";
 import { AdminApiError } from "./admin-client";
+import { PlatformApiError } from "./platform-client";
 
 /**
  * apps/api's AppError always carries an i18n *key* as its message (e.g.
@@ -30,6 +31,20 @@ const ERROR_CODE_MESSAGE_KEY: Record<string, string> = {
   PAYMENT_ERROR: "platform.errors.payment",
 };
 
+/**
+ * UNAUTHENTICATED also covers a failed *attempt* to authenticate (wrong
+ * password, bad OTP, expired 2FA challenge) at a login/verify endpoint —
+ * not just an existing session dying. ERROR_CODE_MESSAGE_KEY's per-code
+ * "session expired" title is wrong for those; this keys off the backend's
+ * specific message instead, so login screens show the real reason.
+ */
+const AUTH_ATTEMPT_MESSAGE_KEY: Record<string, string> = {
+  "auth.errors.invalidCredentials": "platform.errors.invalidCredentials",
+  "platform.errors.invalidCredentials": "platform.errors.invalidCredentials",
+  "auth.errors.invalidOtpCode": "platform.errors.invalidOtpCode",
+  "auth.errors.invalidChallenge": "platform.errors.invalidChallenge",
+};
+
 /** "academic.errors.nameRequired" -> "Name Required" — a readable fallback for the many backend keys with no real translation, not a substitute for one. */
 function humanizeKey(key: string): string {
   const last = key.split(".").pop() ?? key;
@@ -45,8 +60,8 @@ export interface DisplayError {
 export function getErrorMessage(error: unknown): DisplayError {
   const t = i18next.t.bind(i18next);
 
-  if (error instanceof AdminApiError) {
-    const messageKey = ERROR_CODE_MESSAGE_KEY[error.code];
+  if (error instanceof AdminApiError || error instanceof PlatformApiError) {
+    const messageKey = AUTH_ATTEMPT_MESSAGE_KEY[error.message] ?? ERROR_CODE_MESSAGE_KEY[error.code];
     const title = messageKey ? (t(messageKey) as string) : (t("platform.errors.unknown") as string);
 
     if (error.fields && Object.keys(error.fields).length > 0) {
