@@ -33,17 +33,28 @@ interface LoadedFilter {
   studentId: string;
   fromDate: string;
   toDate: string;
+  month: number;
+  year: number;
 }
 
 function RegisterTab() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const branchId = getAdminBranchId() ?? "";
   const [classId, setClassId] = useState("");
   const [sectionId, setSectionId] = useState("");
   const [studentId, setStudentId] = useState("");
   const [rangeDays, setRangeDays] = useState(10);
+  const [month, setMonth] = useState(() => today().month);
+  const [year, setYear] = useState(() => today().year);
   const [loaded, setLoaded] = useState<LoadedFilter | null>(null);
-  const { month, year } = today();
+
+  const monthFormatter = new Intl.DateTimeFormat(i18n.language, { month: "long" });
+  const monthOptions = Array.from({ length: 12 }, (_, i) => ({
+    value: i + 1,
+    label: monthFormatter.format(new Date(2000, i, 1)),
+  }));
+  const currentYear = today().year;
+  const yearOptions = [currentYear - 1, currentYear, currentYear + 1];
 
   const classesQuery = useQuery({
     queryKey: ["classes", branchId],
@@ -67,8 +78,8 @@ function RegisterTab() {
   const students = studentsQuery.data?.data ?? [];
 
   const registerQuery = useQuery({
-    queryKey: ["attendance-register", loaded?.sectionId, month, year],
-    queryFn: () => adminApi.getRegister(loaded!.sectionId, month, year),
+    queryKey: ["attendance-register", loaded?.sectionId, loaded?.month, loaded?.year],
+    queryFn: () => adminApi.getRegister(loaded!.sectionId, loaded!.month, loaded!.year),
     enabled: !!loaded && !loaded.studentId,
   });
   const register = registerQuery.data?.data ?? [];
@@ -94,8 +105,8 @@ function RegisterTab() {
     if (!sectionId) return;
     setLoaded(
       studentId
-        ? { sectionId, studentId, fromDate: daysAgoIso(rangeDays), toDate: isoDate(new Date()) }
-        : { sectionId, studentId: "", fromDate: "", toDate: "" }
+        ? { sectionId, studentId, fromDate: daysAgoIso(rangeDays), toDate: isoDate(new Date()), month, year }
+        : { sectionId, studentId: "", fromDate: "", toDate: "", month, year }
     );
   }
 
@@ -177,6 +188,40 @@ function RegisterTab() {
               </SelectContent>
             </Select>
           </div>
+        ) : null}
+        {sectionId && !studentId ? (
+          <>
+            <div className="flex flex-col gap-1.5">
+              <Label>{t("school.attendance.month")}</Label>
+              <Select value={String(month)} onValueChange={(v) => setMonth(Number(v))}>
+                <SelectTrigger className="w-36">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {monthOptions.map((m) => (
+                    <SelectItem key={m.value} value={String(m.value)}>
+                      {m.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label>{t("school.attendance.year")}</Label>
+              <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
+                <SelectTrigger className="w-24">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {yearOptions.map((y) => (
+                    <SelectItem key={y} value={String(y)}>
+                      {y}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </>
         ) : null}
         <Button onClick={handleLoad} disabled={!sectionId}>
           {t("school.attendance.loadRegister")}

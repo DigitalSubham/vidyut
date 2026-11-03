@@ -185,6 +185,8 @@
       "last20Days": "Last 20 days",
       "last30Days": "Last 30 days",
       "noAttendanceRecords": "No attendance records in this range.",
+      "month": "Month",
+      "year": "Year",
       "trend": "Attendance trend",
       "chronicAbsentees": "Chronic absentees",
       "absences": "Absences",

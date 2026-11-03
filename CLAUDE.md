@@ -17,7 +17,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 pnpm install                 # pnpm 11, Node >=20 (CI uses 22)
-docker compose up -d postgres redis minio   # local infra (Postgres 16, Redis 7, MinIO)
+docker compose up -d postgres redis   # local infra (Postgres 16, Redis 7)
 ```
 
 Turborepo tasks from the root (`pnpm dev|build|lint|typecheck`) fan out to every workspace. Per-app:
